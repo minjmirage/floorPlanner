@@ -30,19 +30,18 @@ package
 		
 		private var mode:int=0;
 		
-		/**
-		 * 
-		 */
+		//=============================================================================================
+		//
+		//=============================================================================================
 		public function FloorPlanner():void 
 		{
 			if (stage) init();
 			else addEventListener(Event.ADDED_TO_STAGE, init);
 		}//
 		
-		/**
-		 * Entry point
-		 * @param	e
-		 */
+		//=============================================================================================
+		// Entry point
+		//=============================================================================================
 		private function init(e:Event=null):void 
 		{
 			removeEventListener(Event.ADDED_TO_STAGE, init);
@@ -80,9 +79,9 @@ package
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
 		}//endfunction
 				
-		/**
-		 * defacto mode
-		 */
+		//=============================================================================================
+		// defacto mode
+		//=============================================================================================
 		private function editMode():void
 		{
 			var lastJoint:Vector3D = null;
@@ -104,9 +103,9 @@ package
 			}
 		}//endfunction
 		
-		/**
-		 * create walls step
-		 */
+		//=============================================================================================
+		// create walls step
+		//=============================================================================================
 		private function addWallsMode():void
 		{
 			var lastJoint:Vector3D = null;
@@ -120,6 +119,7 @@ package
 			}
 			mouseDownFn = function():void
 			{
+				if (getTimer()-mouseDownPt.w<300) return;
 				var prevLastJoint:Vector3D = lastJoint;
 				if (prevLastJoint==null) prevLastJoint = new Vector3D(gridBg.mouseX,gridBg.mouseY);
 				lastJoint = new Vector3D(gridBg.mouseX,gridBg.mouseY);
@@ -131,22 +131,20 @@ package
 			}
 		}//endfunction
 		
-		/**
-		 * Main Loop
-		 * @param	ev
-		 */
+		//=============================================================================================
+		// Main Loop
+		//=============================================================================================
 		private function onEnterFrame(ev:Event):void
 		{
 			if (stepFn!=null) stepFn();
 			titleTf.x = (800-titleTf.width)/2;
 			titleTf.y = (600*0.1);
-			drawFloorPlan(floorPlanBg);		// update floor plan drawings
+			floorPlan.draw(floorPlanBg);		// update floor plan drawings
 		}//endfunction
 		
-		/**
-		 * 
-		 * @param	ev
-		 */
+		//=============================================================================================
+		//
+		//=============================================================================================
 		private function onMouseDown(ev:Event):void
 		{
 			if (getTimer()-mouseDownPt.w<300)
@@ -154,31 +152,29 @@ package
 				if (mode==0)	{mode=1; titleTf.text="Adding Walls"; addWallsMode();}
 				else			{mode=0; titleTf.text="Editing Walls"; editMode();}
 			}
-			mouseDownPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
 			if (mouseDownFn!=null) mouseDownFn();
+			mouseDownPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
 		}//endfunction
 		
-		/**
-		 * 
-		 * @param	ev
-		 */
+		//=============================================================================================
+		//
+		//=============================================================================================
 		private function onMouseUp(ev:Event):void
 		{
-			mouseUpPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
 			if (mouseUpFn!=null) mouseUpFn();
+			mouseUpPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
 		}//endfunction
 		
-		/**
-		 * 
-		 * @param	s			sprite to draw into
-		 * @param	w			width
-		 * @param	h			height
-		 * @param	interval	distince between grid lines
-		 */
+		//=============================================================================================
+		// @param	s			sprite to draw into
+		// @param	w			width
+		// @param	h			height
+		// @param	interval	distince between grid lines
+		//=============================================================================================
 		private function drawGrid(s:Sprite,w:int,h:int,interval:int=10,color:uint=0x666666):void
 		{
 			s.graphics.clear();
-			
+		
 			var i:int = 0;
 			var n:int = w/interval;
 			for (i=1; i<n; i++)	
@@ -197,32 +193,14 @@ package
 				s.graphics.lineTo(w,i*interval);
 			}
 		}//endfunction
-		
-		/**
-		 * refresh draw out existing walls
-		 * @param	s
-		 */
-		private function drawFloorPlan(s:Sprite):void
-		{
-			s.graphics.clear();
-			var i:int = 0;
-			for (i = floorPlan.Walls.length - 1; i > -1; i--)
-			{
-				var wall:Wall = floorPlan.Walls[i];
-				var dv:Vector3D = wall.joint2.subtract(wall.joint1);
-				dv.normalize();
-				s.graphics.lineStyle(0,0x000000,1);
-				s.graphics.moveTo(wall.joint1.x-dv.y*wall.thickness, wall.joint1.y+dv.x*wall.thickness);
-				s.graphics.lineTo(wall.joint2.x-dv.y*wall.thickness, wall.joint2.y+dv.x*wall.thickness);
-				s.graphics.moveTo(wall.joint1.x+dv.y*wall.thickness, wall.joint1.y-dv.x*wall.thickness);
-				s.graphics.lineTo(wall.joint2.x+dv.y*wall.thickness, wall.joint2.y-dv.x*wall.thickness);
-			}
-		}//endfunction
+	
 	}//endclass
 	
 }
 
 import flash.geom.Vector3D;
+import flash.geom.Point;
+import flash.display.Sprite;
 
 class FloorPlan
 {
@@ -238,9 +216,9 @@ class FloorPlan
 		Walls = new Vector.<Wall>();
 	}//endfunction
 	
-	/**
-	 * 
-	 */
+	//=============================================================================================
+	//
+	//=============================================================================================
 	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Boolean
 	{
 		var wall:Wall = new Wall(pt1, pt2, width);
@@ -250,10 +228,9 @@ class FloorPlan
 		return wall;
 	}//endfunction
 	
-	/**
-	 * finds the nearest joint to this position
-	 * @param	pt
-	 */
+	//=============================================================================================
+	// finds the nearest joint to this position
+	//=============================================================================================
 	public function nearestJoint(posn:Vector3D,cutOff:Number):Vector3D
 	{
 		var joint:Vector3D = null;
@@ -266,10 +243,9 @@ class FloorPlan
 		return joint;
 	}//endfunction
 	
-	/**
-	 * finds the nearest wall to this position
-	 * @param	pt
-	 */
+	//=============================================================================================
+	// finds the nearest wall to this position
+	//=============================================================================================
 	public function nearestWall(posn:Vector3D,cutOff:Number):Wall
 	{
 		var wall:Wall = null;
@@ -280,6 +256,79 @@ class FloorPlan
 				cutOff = wall.perpenticularDist(posn);
 			}
 		return wall;
+	}//endfunction
+	
+	//=============================================================================================
+	// returns all walls adjacent to given wall
+	//=============================================================================================
+	public function adjWalls(wall:Wall) : Vector.<Wall>
+	{
+		var R:Vector.<Wall> = new Vector.<Wall>();
+		for (var i:int=Walls.length-1; i>=-1; i--)
+		{
+			var w:Wall = Walls[i];
+			if (w!=wall &&
+				(w.joint1==wall.joint1 || w.joint2==wall.joint2 || w.joint2==wall.joint1 || w.joint1==wall.joint2))
+				R.push(w);
+		}
+		return R;
+	}//endfunction
+	
+	//=============================================================================================
+	// refresh draw out existing walls to given sprite s
+	//=============================================================================================
+	public function draw(s:Sprite):void
+	{
+		s.graphics.clear();
+		var i:int = 0;
+		for (i = Walls.length - 1; i > -1; i--)
+		{
+			var wall:Wall = Walls[i];
+			var Pts:Vector.<Point> = wall.wallBounds();
+			s.graphics.lineStyle(0,0x000000,1);
+			s.graphics.beginFill(0x000000,0.5);
+			s.graphics.moveTo(Pts[0].x,Pts[0].y);
+			s.graphics.lineTo(Pts[1].x,Pts[1].y);
+			s.graphics.lineTo(Pts[2].x,Pts[2].y);
+			s.graphics.lineTo(Pts[3].x,Pts[3].y);
+			s.graphics.lineTo(Pts[0].x,Pts[0].y);
+			s.graphics.endFill();
+		}
+	}//endfunction
+	
+	//=======================================================================================
+	// find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
+	// returns null for parrallel segs and point segments, does not detect end points
+	//=======================================================================================
+	public static function segmentsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number) : Point
+	{
+		var avx:Number = bx-ax;
+		var avy:Number = by-ay;
+		var cvx:Number = dx-cx;
+		var cvy:Number = dy-cy;
+		
+		var al:Number = Math.sqrt(avx*avx + avy*avy);	// length of seg A
+		var cl:Number = Math.sqrt(cvx*cvx + cvy*cvy);	// length of seg C
+		
+		if (al==0 || cl==0 || avx/al==cvx/cl || avy/al==cvy/cl)		return null;
+		
+		// ----- optimization, see actual function below -----------------------------
+		var ck:Number = -1;
+		if (avx/al==0)		ck = (ax-cx)/cvx*cl;
+		else	ck = (cy-ay + (ax-cx)*avy/avx) / (cvx/cl*avy/avx - cvy/cl);
+		
+		var ak:Number = -1;
+		if (cvx/cl==0)		ak = (cx-ax)/avx*al;
+		else	ak = (ay-cy + (cx-ax)*cvy/cvx) / (avx/al*cvy/cvx - avy/al);
+		
+		//var ck:Number = linesCrossScalar(ax,ay,avx/al,avy/al, cx,cy,cvx/cl,cvy/cl);
+		//var ak:Number = linesCrossScalar(cx,cy,cvx/cl,cvy/cl, ax,ay,avx/al,avy/al);
+			
+		if (ak<=0 || ak>=al || ck<=0 || ck>=cl)	return null;
+		
+		//trace("avx="+avx+"  avy="+avy + "  cvx="+cvx+"  cvy="+cvy);
+		
+		return new Point(ax + avx/al*ak,ay + avy/al*ak);
 	}//endfunction
 }//endclass
 
@@ -318,5 +367,19 @@ class Wall
 		if (proj<0 || proj>len) return Number.MAX_VALUE;
 		
 		return Math.sqrt(ptDir.lengthSquared - proj*proj);
+	}//endfunction
+	
+	//=======================================================================================
+	// returns the 4 corner positions of the wall if it were standalone
+	//=======================================================================================
+	public function wallBounds():Vector.<Point>
+	{
+			var dv:Vector3D = joint2.subtract(joint1);
+			dv.scaleBy(thickness/dv.length);
+			
+			return Vector.<Point>([	new Point(joint1.x-dv.x+dv.y,joint1.y-dv.y-dv.x),
+									new Point(joint2.x+dv.x+dv.y,joint2.y+dv.y-dv.x),
+									new Point(joint2.x+dv.x-dv.y,joint2.y+dv.y+dv.x),
+									new Point(joint1.x-dv.x-dv.y,joint1.y-dv.y+dv.x)]);
 	}//endfunction
 }//endclass
