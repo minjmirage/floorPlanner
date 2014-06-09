@@ -44,6 +44,7 @@ package
 		//=============================================================================================
 		private function init(e:Event=null):void 
 		{
+			stage.scaleMode = "noScale";
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 			
 			debugTf = new TextField();
@@ -58,8 +59,7 @@ package
 			floorPlan = new FloorPlan();
 			
 			// ----- add grid background
-			gridBg = new Sprite();
-			drawGrid(gridBg, stage.stageWidth, stage.stageHeight, 10);
+			gridBg = new WireGrid(stage.stageWidth,stage.stageHeight);
 			stage.addChild(gridBg);
 			
 			// ----- drawing sprite
@@ -106,28 +106,30 @@ package
 		//=============================================================================================
 		// create walls step
 		//=============================================================================================
-		private function addWallsMode():void
+		private function addWallsMode(snapDist:Number=10):void
 		{
-			var lastJoint:Vector3D = null;
+			var wall:Wall = null;
+			
 			stepFn = function():void
 			{
-				if (lastJoint!=null)
+				if (wall!=null)
 				{
-					lastJoint.x = gridBg.mouseX;
-					lastJoint.y = gridBg.mouseY;
+					wall.joint2.x = gridBg.mouseX;
+					wall.joint2.y = gridBg.mouseY;
 				}
 			}
 			mouseDownFn = function():void
 			{
-				if (getTimer()-mouseDownPt.w<300) return;
-				var prevLastJoint:Vector3D = lastJoint;
-				if (prevLastJoint==null) prevLastJoint = new Vector3D(gridBg.mouseX,gridBg.mouseY);
-				lastJoint = new Vector3D(gridBg.mouseX,gridBg.mouseY);
-				floorPlan.createWall(prevLastJoint,lastJoint,3);
+				if (wall==null)
+					wall = floorPlan.createWall(new Vector3D(gridBg.mouseX,gridBg.mouseY),
+												new Vector3D(gridBg.mouseX,gridBg.mouseY),
+												10);
 			}
 			mouseUpFn = function():void
 			{
-				//lastJoint = null;
+				if (wall!=null && wall.joint1.subtract(wall.joint2).length<=snapDist)
+					floorPlan.removeWall(wall);
+				wall = null;
 			}
 		}//endfunction
 		
@@ -165,101 +167,156 @@ package
 			mouseUpPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
 		}//endfunction
 		
-		//=============================================================================================
-		// @param	s			sprite to draw into
-		// @param	w			width
-		// @param	h			height
-		// @param	interval	distince between grid lines
-		//=============================================================================================
-		private function drawGrid(s:Sprite,w:int,h:int,interval:int=10,color:uint=0x666666):void
-		{
-			s.graphics.clear();
 		
-			var i:int = 0;
-			var n:int = w/interval;
-			for (i=1; i<n; i++)	
-			{
-				if (i%10==0) s.graphics.lineStyle(0, color, 1);
-				else		s.graphics.lineStyle(0, color, 0.5);
-				s.graphics.moveTo(i*interval,0);
-				s.graphics.lineTo(i*interval,h);
-			}
-			n = h/interval;
-			for (i=1; i<n; i++)	
-			{
-				if (i%10==0) s.graphics.lineStyle(0, color, 1);
-				else		s.graphics.lineStyle(0, color, 0.5);
-				s.graphics.moveTo(0,i*interval);
-				s.graphics.lineTo(w,i*interval);
-			}
-		}//endfunction
-	
-		//=============================================================================================
-		// 
-		//=============================================================================================
-		function vSlider(w:int,h:int,markings:Array,callBack:Function):Sprite
-		{
-			// ----- main sprite
-			var s:Sprite = new Sprite();
-			s.graphics.beginFill(0xCCCCCC,1);
-			s.graphics.drawRect(0,0,w,h);
-			s.graphics.endFill();
-			
-			// ----- slider knob
-			var slider:Sprite = new Sprite();
-			slider.graphics.beginFill(0xEEEEEE,1);
-			slider.graphics.drawRoundRect(-w,-w/2,w*2,w,w,w);
-			slider.graphics.endFill();
-			slider.buttonMode = true;
-			slider.mouseChildren = false;
-			slider.filters = [new DropShadowFilter(2)];
-			slider.x = w/2;
-			s.addChild(slider);
-			
-			// ----- draw markings
-			s.graphics.lineStyle(0,0x000000,1);
-			var n:int = markings.length;
-			for (var i:int=0; i<n; i++)
-			{
-				s.graphics.moveTo(w/2,h/(n-1)*i);
-				s.graphics.lineTo(w*3/2,h/(n-1)*i);
-				var tf:TextField = new TextField();
-				tf.text = markings[i];
-				tf.autoSize = "left";
-				tf.wordWrap = false;
-				tf.x = w*2;
-				tf.y = h/(n-1)*i-tf.height/2;
-				s.addChild(tf);
-			}
-			
-			function updateHandler(ev:Event):void
-			{
-				if (callBack!=null) callBack(slider.y/h);
-			}
-			function startDragHandler(ev:Event):void
-			{
-				slider.startDrag(false,new Rectangle(slider.x,0,0,h));
-				stage.addEventListener(Event.ENTER_FRAME,updateHandler);
-				stage.addEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
-			}
-			function stopDragHandler(ev:Event):void
-			{
-				slider.stopDrag();
-				stage.removeEventListener(Event.ENTER_FRAME,updateHandler);
-				stage.removeEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
-			}
-			slider.addEventListener(MouseEvent.MOUSE_DOWN,startDragHandler);
-			
-			s.x = 100;
-			s.y=100;
-			return s;
-		}//endfunction
 	}//endclass
-}
+}//endpackage
 
 import flash.geom.Vector3D;
 import flash.geom.Point;
+import flash.geom.Rectangle;
+import flash.text.TextField;
 import flash.display.Sprite;
+import flash.events.Event;
+import flash.events.MouseEvent;
+import flash.filters.DropShadowFilter;
+
+class ButtonsMenu extends Sprite
+{
+	private var Btns:Vector.<Sprite> = null;
+	private var titleTf:TextField = null;
+
+	public function ButtonsMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
+	{
+		titleTf = new TextField();
+		titleTf.text = title;
+		
+		Btns = new Vector.<Sprite>();
+		var n:int = Math.min(labels.length,callBacks.length);
+		for (var i:int=0; i<n; i++)
+		{
+			//Btns.push(
+		}
+	}//endfunction
+}//endclass
+
+class WireGrid extends Sprite
+{
+	public var sc:Number = 1;
+	public var center:Point = new Point(0,0);
+	public var zoomSlider:Sprite = null;
+	
+	//=============================================================================================
+	// constructor for background grid markings sprite
+	//=============================================================================================
+	public function WireGrid(w:int,h:int):void
+	{
+		var ppp:Sprite = this;
+		
+		function draw(sc:Number):void 
+		{
+			drawGrid(ppp,w,h,10+50*sc,0x666666);
+		}
+		zoomSlider = vSlider(10,100,["1","2","3","4","5"],draw);
+		zoomSlider.x = 100;
+		zoomSlider.y = 100;
+		addChild(zoomSlider);
+		draw(0);
+	}//endfunction
+
+	//=============================================================================================
+	// @param	s			sprite to draw into
+	// @param	w			width
+	// @param	h			height
+	// @param	interval	distince between grid lines
+	//=============================================================================================
+	private function drawGrid(s:Sprite,w:int,h:int,interval:int=10,color:uint=0x666666):void
+	{
+		s.graphics.clear();
+	
+		var i:int = 0;
+		var n:int = w/interval;
+		if (n%2==0)	n--;
+		var k:int = (n-1)/2;
+		for (i=-k; i<=k; i++)	
+		{
+			if (i%10==0) s.graphics.lineStyle(0, color, 1);
+			else		s.graphics.lineStyle(0, color, 0.5);
+			s.graphics.moveTo(w/2+i*interval,0);
+			s.graphics.lineTo(w/2+i*interval,h);
+		}
+		n = h/interval;
+		if (n%2==0)	n--;
+		k = (n-1)/2;
+		for (i=-k; i<=k; i++)	
+		{
+			if (i%10==0) s.graphics.lineStyle(0, color, 1);
+			else		s.graphics.lineStyle(0, color, 0.5);
+			s.graphics.moveTo(0,h/2+i*interval);
+			s.graphics.lineTo(w,h/2+i*interval);
+		}
+	}//endfunction
+	
+	//=============================================================================================
+	// creates a vertical slider bar of wxh dimensions  
+	//=============================================================================================
+	private function vSlider(w:int,h:int,markings:Array,callBack:Function):Sprite
+	{
+		// ----- main sprite
+		var s:Sprite = new Sprite();
+		s.graphics.beginFill(0xCCCCCC,1);
+		s.graphics.drawRect(0,0,w,h);
+		s.graphics.endFill();
+		
+		// ----- slider knob
+		var slider:Sprite = new Sprite();
+		slider.graphics.beginFill(0xEEEEEE,1);
+		slider.graphics.drawRoundRect(-w,-w/2,w*2,w,w,w);
+		slider.graphics.endFill();
+		slider.buttonMode = true;
+		slider.mouseChildren = false;
+		slider.filters = [new DropShadowFilter(2)];
+		slider.x = w/2;
+		s.addChild(slider);
+		
+		// ----- draw markings
+		s.graphics.lineStyle(0,0x000000,1);
+		var n:int = markings.length;
+		for (var i:int=0; i<n; i++)
+		{
+			s.graphics.moveTo(w/2,h/(n-1)*i);
+			s.graphics.lineTo(w*3/2,h/(n-1)*i);
+			var tf:TextField = new TextField();
+			tf.text = markings[i];
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.x = w*2;
+			tf.y = h/(n-1)*i-tf.height/2;
+			s.addChild(tf);
+		}
+		
+		function updateHandler(ev:Event):void
+		{
+			if (callBack!=null) callBack(slider.y/h);
+		}
+		function startDragHandler(ev:Event):void
+		{
+			slider.startDrag(false,new Rectangle(slider.x,0,0,h));
+			stage.addEventListener(Event.ENTER_FRAME,updateHandler);
+			stage.addEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+		}
+		function stopDragHandler(ev:Event):void
+		{
+			slider.stopDrag();
+			stage.removeEventListener(Event.ENTER_FRAME,updateHandler);
+			stage.removeEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+		}
+		slider.addEventListener(MouseEvent.MOUSE_DOWN,startDragHandler);
+		
+		s.x = 100;
+		s.y=100;
+		return s;
+	}//endfunction
+}//endclass
 
 class FloorPlan
 {
@@ -278,13 +335,31 @@ class FloorPlan
 	//=============================================================================================
 	//
 	//=============================================================================================
-	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Boolean
+	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Wall
 	{
+		Joints.push(pt1,pt2);
 		var wall:Wall = new Wall(pt1, pt2, width);
 		Walls.push(wall);
-		if (Joints.indexOf(pt1)==-1) Joints.push(pt1);
-		if (Joints.indexOf(pt2)==-1) Joints.push(pt2);
 		return wall;
+	}//endfunction
+	
+	//=============================================================================================
+	//
+	//=============================================================================================
+	public function removeWall(wall:Wall):void
+	{
+		if (Walls.indexOf(wall)!=-1)	Walls.splice(Walls.indexOf(wall),1);
+		
+		var canRemJt1:Boolean = true;
+		var canRemJt2:Boolean = true;
+		for (var i:int=Walls.length-1; i>-1; i--)
+		{
+			var w:Wall = Walls[i];
+			if (w.joint1==wall.joint1 || w.joint2==wall.joint1)	canRemJt1 = false;
+			if (w.joint1==wall.joint2 || w.joint2==wall.joint2)	canRemJt2 = false;
+		}
+		if (canRemJt1 && Joints.indexOf(wall.joint1)!=-1) Joints.splice(Joints.indexOf(wall.joint1),1);
+		if (canRemJt2 && Joints.indexOf(wall.joint2)!=-1) Joints.splice(Joints.indexOf(wall.joint2),1);
 	}//endfunction
 	
 	//=============================================================================================
