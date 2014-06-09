@@ -194,8 +194,67 @@ package
 			}
 		}//endfunction
 	
+		//=============================================================================================
+		// 
+		//=============================================================================================
+		function vSlider(w:int,h:int,markings:Array,callBack:Function):Sprite
+		{
+			// ----- main sprite
+			var s:Sprite = new Sprite();
+			s.graphics.beginFill(0xCCCCCC,1);
+			s.graphics.drawRect(0,0,w,h);
+			s.graphics.endFill();
+			
+			// ----- slider knob
+			var slider:Sprite = new Sprite();
+			slider.graphics.beginFill(0xEEEEEE,1);
+			slider.graphics.drawRoundRect(-w,-w/2,w*2,w,w,w);
+			slider.graphics.endFill();
+			slider.buttonMode = true;
+			slider.mouseChildren = false;
+			slider.filters = [new DropShadowFilter(2)];
+			slider.x = w/2;
+			s.addChild(slider);
+			
+			// ----- draw markings
+			s.graphics.lineStyle(0,0x000000,1);
+			var n:int = markings.length;
+			for (var i:int=0; i<n; i++)
+			{
+				s.graphics.moveTo(w/2,h/(n-1)*i);
+				s.graphics.lineTo(w*3/2,h/(n-1)*i);
+				var tf:TextField = new TextField();
+				tf.text = markings[i];
+				tf.autoSize = "left";
+				tf.wordWrap = false;
+				tf.x = w*2;
+				tf.y = h/(n-1)*i-tf.height/2;
+				s.addChild(tf);
+			}
+			
+			function updateHandler(ev:Event):void
+			{
+				if (callBack!=null) callBack(slider.y/h);
+			}
+			function startDragHandler(ev:Event):void
+			{
+				slider.startDrag(false,new Rectangle(slider.x,0,0,h));
+				stage.addEventListener(Event.ENTER_FRAME,updateHandler);
+				stage.addEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+			}
+			function stopDragHandler(ev:Event):void
+			{
+				slider.stopDrag();
+				stage.removeEventListener(Event.ENTER_FRAME,updateHandler);
+				stage.removeEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+			}
+			slider.addEventListener(MouseEvent.MOUSE_DOWN,startDragHandler);
+			
+			s.x = 100;
+			s.y=100;
+			return s;
+		}//endfunction
 	}//endclass
-	
 }
 
 import flash.geom.Vector3D;
