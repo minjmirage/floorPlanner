@@ -458,21 +458,6 @@ class FloorPlan
 	//=============================================================================================
 	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Wall
 	{
-		var nearest:Vector3D = null;
-		for (var i:int=Joints.length-1; i>-1; i--)
-			if (nearest==null || 
-				Joints[i].subract(pt1).length<nearest.subtract(pt1).length)
-				nearest = Joints[i];
-		if (nearest.subtract(pt1).length<snapDist)	pt1=nearest;
-		nearest = null;
-		for (i=Joints.length-1; i>-1; i--)
-			if (Joints[i]!=pt1)
-			{
-				if (nearest==null || 
-					Joints[i].subract(pt1).length<nearest.subtract(pt1).length)
-					nearest = Joints[i];
-			}
-		if (nearest.subtract(pt2).length<snapDist)	pt2=nearest;
 		Joints.push(pt1,pt2);
 		var wall:Wall = new Wall(pt1, pt2, width);
 		Walls.push(wall);
