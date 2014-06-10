@@ -66,6 +66,11 @@ package
 			floorPlanBg = new Sprite();
 			stage.addChild(floorPlanBg);
 			
+			var menu:Sprite = new ButtonsMenu("OPERATIONS",
+												Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
+												Vector.<Function>([function():void {},function():void {},function():void {}]));
+			stage.addChild(menu);
+			
 			// ----- title
 			titleTf = new TextField();
 			titleTf.autoSize = "left";
@@ -171,32 +176,148 @@ package
 	}//endclass
 }//endpackage
 
+import flash.display.DisplayObject;
 import flash.geom.Vector3D;
 import flash.geom.Point;
+import flash.geom.Matrix;
 import flash.geom.Rectangle;
 import flash.text.TextField;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.events.MouseEvent;
+import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
+import flash.text.TextFormat;
+
 
 class ButtonsMenu extends Sprite
 {
 	private var Btns:Vector.<Sprite> = null;
+	private var Fns:Vector.<Function> = null;
 	private var titleTf:TextField = null;
 
 	public function ButtonsMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
 	{
-		titleTf = new TextField();
-		titleTf.text = title;
+		Fns = callBacks;
 		
+		// ----- create title
+		titleTf = new TextField();
+		var tff:TextFormat = titleTf.defaultTextFormat;
+		tff.font = "arial";
+		tff.bold = true;
+		tff.size = 20;
+		tff.align = "center";
+		titleTf.defaultTextFormat = tff;
+		titleTf.text = title;
+		titleTf.autoSize = "left";
+		titleTf.wordWrap = false;
+		addChild(titleTf);
+		
+		// ----- create buttons
+		tff.size = 15;
 		Btns = new Vector.<Sprite>();
 		var n:int = Math.min(labels.length,callBacks.length);
 		for (var i:int=0; i<n; i++)
 		{
-			//Btns.push(
+			var b:Sprite = new Sprite();
+			var tf:TextField = new TextField();
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.defaultTextFormat = tff;
+			tf.text = labels[i];
+			b.addChild(tf);
+			b.buttonMode = true;
+			b.mouseChildren = false;
+			Btns.push(b);
+			addChild(b);
 		}
+		
+		// ----- aligning
+		var w:int = this.width;
+		for (i=0; i<Btns.length; i++)
+		{
+			Btns[i].graphics.beginFill(0xEEEEEE,1);
+			Btns[i].graphics.drawRoundRect(0,0,w,Btns[i].height,10,10);
+			Btns[i].graphics.endFill();
+			Btns[i].getChildAt(0).x = (w-Btns[i].getChildAt(0).width)/2;
+		}
+		var offY:int=20;
+		for (i=0; i<this.numChildren; i++)
+		{
+			var c:DisplayObject = this.getChildAt(i);
+			c.y = offY;
+			c.x = w-c.width+10;
+			offY += c.height+5;
+		}
+		drawStripedRect(this,0,0,w+20,this.height+40,0xAAAAAA,0x999999,20);
+		
+		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		addEventListener(Event.ENTER_FRAME,onEnterFrame);
 	}//endfunction
+	
+	private function onMouseDown(ev:Event):void
+	{
+		if (stage==null) return;
+		this.startDrag();
+	}//endfunction
+	
+	private function onMouseUp(ev:Event):void
+	{
+		if (stage==null) return;
+		this.stopDrag();
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+				Fns[i]();	// exec callback function
+	}//endfunction
+	
+	private function onEnterFrame(ev:Event):void
+	{
+		if (stage==null) return;
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				if (Btns[i].filters==null)
+					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
+			}
+			else
+			{
+				if (Btns[i].filters!=null)
+				{
+					var A:Array = Btns[i].filters;
+					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
+						(GlowFilter)(A[0]).strength-=0.1;
+					else 
+						A = null;
+					Btns[i].filters = A;
+				}
+			}
+	}//endfunction
+	
+	private function onRemove(ev:Event):void
+	{
+		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// draws a striped rectangle in given sprite 
+	//===============================================================================================
+	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	{
+		if (s==null)	s = new Sprite();
+		var mat:Matrix = new Matrix();
+		mat.createGradientBox(sw,sw,rot,0,0);
+		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
+		s.graphics.drawRoundRect(x,y,w,h,10,10);
+		s.graphics.endFill();
+		
+		return s;
+	}//endfunction 
+		
 }//endclass
 
 class WireGrid extends Sprite
