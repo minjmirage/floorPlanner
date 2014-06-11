@@ -211,6 +211,7 @@ class ButtonsMenu extends Sprite
 		titleTf.text = title;
 		titleTf.autoSize = "left";
 		titleTf.wordWrap = false;
+		titleTf.selectable = false;
 		addChild(titleTf);
 		
 		// ----- create buttons
@@ -444,9 +445,9 @@ class FloorPlan
 	public var Joints:Vector.<Vector3D>;
 	public var Walls:Vector.<Wall>;
 	
-	/**
-	 * 
-	 */
+	//=============================================================================================
+	//
+	//=============================================================================================
 	public function FloorPlan():void
 	{
 		Joints = new Vector.<Vector3D>();
@@ -458,7 +459,30 @@ class FloorPlan
 	//=============================================================================================
 	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Wall
 	{
-		Joints.push(pt1,pt2);
+		// ----- snap pt1 to existing joint
+		var nearest:Vector3D = null;
+		for (var i:int=Joints.length-1; i>-1;i--)
+			if (nearest!=null || Joints[i].subtract(pt1).length<nearest.subtract(pt1).length)
+				nearest=Joints[i];
+		if (nearest!=null && nearest.subtract(pt1).length<snapDist)	
+			pt1 = nearest;
+		else
+			Joints.push(pt1);
+		
+		// ----- snap pt2 to existing joint not pt1
+		nearest = null;
+		for (i=Joints.length-1; i>-1; i--)
+			if (Joints[i]!=pt1)
+			{
+				if (nearest!=null || Joints[i].subtract(pt2).length<nearest.subtract(pt2).length)
+					nearest=Joints[i];
+			}
+		if (nearest!=null && nearest.subtract(pt2).length<snapDist)	
+			pt2 = nearest;
+		else
+			Joints.push(pt2);
+		
+		// ----- register new wall
 		var wall:Wall = new Wall(pt1, pt2, width);
 		Walls.push(wall);
 		return wall;
