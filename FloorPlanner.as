@@ -6,6 +6,7 @@ package
 	import flash.geom.Vector3D;
 	import flash.utils.getTimer;
 	import flash.text.TextField;
+	import flash.text.TextFormat;
 	
 	[SWF(width = "800", height = "600", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -21,14 +22,13 @@ package
 		private var floorPlanBg:Sprite = null;
 		private var floorPlan:FloorPlan = null;
 		
+		private var menu:Sprite = null;
+		
 		private var stepFn:Function = null;
 		private var mouseDownFn:Function = null;
 		private var mouseUpFn:Function = null;
 		
 		private var titleTf:TextField = null;
-		private var debugTf:TextField = null;
-		
-		private var mode:int=0;
 		
 		//=============================================================================================
 		//
@@ -46,49 +46,50 @@ package
 		{
 			stage.scaleMode = "noScale";
 			removeEventListener(Event.ADDED_TO_STAGE, init);
-			
-			debugTf = new TextField();
-			debugTf.width = stage.stageWidth;
-			debugTf.height = stage.stageHeight;
-			debugTf.mouseEnabled = false;
-			debugTf.text = "stage: "+stage.stageWidth+"x"+stage.stageHeight;
-			stage.addChild(debugTf);
-			
+					
 			mouseDownPt = new Vector3D();
 			mouseUpPt = new Vector3D();
 			floorPlan = new FloorPlan();
 			
 			// ----- add grid background
 			gridBg = new WireGrid(stage.stageWidth,stage.stageHeight);
-			stage.addChild(gridBg);
+			addChild(gridBg);
 			
 			// ----- drawing sprite
 			floorPlanBg = new Sprite();
-			stage.addChild(floorPlanBg);
+			addChild(floorPlanBg);
 			
-			var menu:Sprite = new ButtonsMenu("OPERATIONS",
-												Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-												Vector.<Function>([function():void {},function():void {},function():void {}]));
-			stage.addChild(menu);
+			// ----- enter default editing mode
+			modeDefault();
 			
-			// ----- title
-			titleTf = new TextField();
-			titleTf.autoSize = "left";
-			titleTf.wordWrap = false;
-			titleTf.text = "EDIT MODE";
-			stage.addChild(titleTf);
-						
 			// ----- add controls
 			stage.addEventListener(Event.ENTER_FRAME, onEnterFrame);
 			stage.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
 		}//endfunction
-				
+		
 		//=============================================================================================
-		// defacto mode
+		// go into defacto mode
 		//=============================================================================================
-		private function editMode():void
+		private function modeDefault():void
 		{
+			prn("modeDefault");
+			var px:int = 0;
+			var py:int = 0;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new ButtonsMenu("EDITING MODE",
+									Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
+									Vector.<Function>([modeAddWalls,modeAddDoors,modeAddDoors,modeAddWalls]));
+			menu.x = px;
+			menu.y = py;
+			stage.addChild(menu);
+			
+			// ----- default editing logic
 			var lastJoint:Vector3D = null;
 			stepFn = function():void
 			{
@@ -100,21 +101,39 @@ package
 			}
 			mouseDownFn = function():void
 			{
+				prn("modeDefault mouseDownFn");
 				lastJoint = floorPlan.nearestJoint(mouseDownPt,10);		// chk if near any joint
 			}
 			mouseUpFn = function():void
 			{
+				prn("modeDefault mouseUpFn");
 				lastJoint = null;
 			}
 		}//endfunction
 		
 		//=============================================================================================
-		// create walls step
+		// go into adding walls mode
 		//=============================================================================================
-		private function addWallsMode(snapDist:Number=10):void
+		private function modeAddWalls(snapDist:Number=10):void
 		{
+			prn("modeAddWalls");
+			var px:int = 0;
+			var py:int = 0;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new ButtonsMenu("ADDING WALLS",
+									Vector.<String>(["DONE"]),
+									Vector.<Function>([modeDefault]));
+			menu.x = px;
+			menu.y = py;
+			stage.addChild(menu);
+		
+			// ----- add walls logic
 			var wall:Wall = null;
-			
 			stepFn = function():void
 			{
 				if (wall!=null)
@@ -139,13 +158,66 @@ package
 		}//endfunction
 		
 		//=============================================================================================
+		// go into adding doors mode
+		//=============================================================================================
+		private function modeAddDoors(snapDist:Number=10):void
+		{
+			prn("modeAddDoors");
+			var px:int = 0;
+			var py:int = 0;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new ButtonsMenu("ADDING DOORS",
+									Vector.<String>(["DONE"]),
+									Vector.<Function>([modeDefault]));
+			menu.x = px;
+			menu.y = py;
+			stage.addChild(menu);
+			prn("modeAddDoors ?");
+			
+			// ----- add doors logic
+			var wall:Wall = null;
+			var door:Door = null;
+			stepFn = function():void
+			{
+				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
+				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
+				if (near!=null)
+				{
+					var wallV:Vector3D = near.joint2.subtract(near.joint1);
+					var proj:Number = mouseP.subtract(near.joint1).dotProduct(wallV);
+					var posn:Vector3D = near.joint1.add(new Vector3D(wallV.x/wallV.length*proj,wallV.y/wallV.length*proj,0));
+					if (door==null) 	
+					{
+						door = new Door(proj,0.3);
+						near.Doors.push(door);
+					}
+					else				door.pivot = proj;
+					
+				}
+			}
+			mouseDownFn = function():void
+			{
+			
+			}
+			mouseUpFn = function():void
+			{
+				
+			}
+			prn("modeAddDoors ??");
+			
+		}//endfunction
+		
+		//=============================================================================================
 		// Main Loop
 		//=============================================================================================
 		private function onEnterFrame(ev:Event):void
 		{
 			if (stepFn!=null) stepFn();
-			titleTf.x = (800-titleTf.width)/2;
-			titleTf.y = (600*0.1);
 			floorPlan.draw(floorPlanBg);		// update floor plan drawings
 		}//endfunction
 		
@@ -154,13 +226,9 @@ package
 		//=============================================================================================
 		private function onMouseDown(ev:Event):void
 		{
-			if (getTimer()-mouseDownPt.w<300)
-			{
-				if (mode==0)	{mode=1; titleTf.text="Adding Walls"; addWallsMode();}
-				else			{mode=0; titleTf.text="Editing Walls"; editMode();}
-			}
-			if (mouseDownFn!=null) mouseDownFn();
+			if (menu!=null && menu.hitTestPoint(stage.mouseX,stage.mouseY)) return;
 			mouseDownPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
+			if (mouseDownFn!=null) mouseDownFn();
 		}//endfunction
 		
 		//=============================================================================================
@@ -168,11 +236,31 @@ package
 		//=============================================================================================
 		private function onMouseUp(ev:Event):void
 		{
-			if (mouseUpFn!=null) mouseUpFn();
 			mouseUpPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
+			if (mouseUpFn!=null) mouseUpFn();
 		}//endfunction
 		
+		//=============================================================================================
+		// debug printout function
+		//=============================================================================================
+		private var debugTf:TextField;
+		private function prn(s:String):void
+		{
+			if (debugTf==null)
+			{
+				debugTf = new TextField();
+				debugTf.autoSize = "left";
+				debugTf.wordWrap = false;
+				debugTf.mouseEnabled = false;
+				var tff:TextFormat = debugTf.defaultTextFormat;
+				tff.color = 0xFFFFFF;
+				debugTf.defaultTextFormat = tff;
+				debugTf.text = "";
+				addChild(debugTf);
+			}
 		
+			debugTf.appendText(s+"\n");
+		}//endfunction
 	}//endclass
 }//endpackage
 
@@ -354,7 +442,10 @@ class WireGrid extends Sprite
 	private function drawGrid(s:Sprite,w:int,h:int,interval:int=10,color:uint=0x666666):void
 	{
 		s.graphics.clear();
-	
+		s.graphics.beginFill(0x99AAFF,1);
+		s.graphics.drawRect(0,0,w,h);
+		s.graphics.endFill();
+		
 		var i:int = 0;
 		var n:int = w/interval;
 		if (n%2==0)	n--;
@@ -462,7 +553,7 @@ class FloorPlan
 		// ----- snap pt1 to existing joint
 		var nearest:Vector3D = null;
 		for (var i:int=Joints.length-1; i>-1;i--)
-			if (nearest!=null || Joints[i].subtract(pt1).length<nearest.subtract(pt1).length)
+			if (nearest==null || Joints[i].subtract(pt1).length<nearest.subtract(pt1).length)
 				nearest=Joints[i];
 		if (nearest!=null && nearest.subtract(pt1).length<snapDist)	
 			pt1 = nearest;
@@ -474,7 +565,7 @@ class FloorPlan
 		for (i=Joints.length-1; i>-1; i--)
 			if (Joints[i]!=pt1)
 			{
-				if (nearest!=null || Joints[i].subtract(pt2).length<nearest.subtract(pt2).length)
+				if (nearest==null || Joints[i].subtract(pt2).length<nearest.subtract(pt2).length)
 					nearest=Joints[i];
 			}
 		if (nearest!=null && nearest.subtract(pt2).length<snapDist)	
@@ -536,43 +627,97 @@ class FloorPlan
 			}
 		return wall;
 	}//endfunction
-	
+		
 	//=============================================================================================
-	// returns all walls adjacent to given wall
-	//=============================================================================================
-	public function adjWalls(wall:Wall) : Vector.<Wall>
-	{
-		var R:Vector.<Wall> = new Vector.<Wall>();
-		for (var i:int=Walls.length-1; i>=-1; i--)
-		{
-			var w:Wall = Walls[i];
-			if (w!=wall &&
-				(w.joint1==wall.joint1 || w.joint2==wall.joint2 || w.joint2==wall.joint1 || w.joint1==wall.joint2))
-				R.push(w);
-		}
-		return R;
-	}//endfunction
-	
-	//=============================================================================================
-	// refresh draw out existing walls to given sprite s
+	// 
 	//=============================================================================================
 	public function draw(s:Sprite):void
 	{
 		s.graphics.clear();
-		var i:int = 0;
-		for (i = Walls.length - 1; i > -1; i--)
+		
+		for (var i:int=Walls.length-1; i>-1; i--)	// draw for each wall
+			drawWall(s,Walls[i]);
+	}//endfunction
+	
+	//=============================================================================================
+	// draws wall with any door and windows on it
+	//=============================================================================================
+	private function drawWall(s:Sprite,wall:Wall):void
+	{
+		// ----- draw wall bounds
+		var wallB:Vector.<Point> = wall.wallBounds(false);
+				
+		var ipt:Point = null;
+		var j:int=0;
+		var wb:Vector.<Point>=null;
+		var Adj:Vector.<Wall> = connectedToJoint(wall.joint2);
+		for (j=Adj.length-1; j>-1; j--)
 		{
-			var wall:Wall = Walls[i];
-			var Pts:Vector.<Point> = wall.wallBounds();
-			s.graphics.lineStyle(0,0x000000,1);
-			s.graphics.beginFill(0x000000,0.5);
-			s.graphics.moveTo(Pts[0].x,Pts[0].y);
-			s.graphics.lineTo(Pts[1].x,Pts[1].y);
-			s.graphics.lineTo(Pts[2].x,Pts[2].y);
-			s.graphics.lineTo(Pts[3].x,Pts[3].y);
-			s.graphics.lineTo(Pts[0].x,Pts[0].y);
+			wb = null;
+			if (Adj[j].joint2==wall.joint2)		wb = Adj[j].wallBounds(true);	// ensure point ordering is correct
+			else								wb = Adj[j].wallBounds(false);
+			
+			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			if (ipt!=null)	wallB[1] = ipt;
+			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			if (ipt!=null)	wallB[2] = ipt;
+		}
+		
+		Adj = connectedToJoint(wall.joint1);
+		for (j=Adj.length-1; j>-1; j--)
+		{
+			wb = null;
+			if (Adj[j].joint2==wall.joint1)		wb = Adj[j].wallBounds(false);	// ensure point ordering is correct
+			else								wb = Adj[j].wallBounds(true);
+			
+			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			if (ipt!=null)	wallB[0] = ipt;
+			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			if (ipt!=null)	wallB[3] = ipt;
+		}
+		
+		s.graphics.lineStyle(0,0x000000,1);
+		s.graphics.beginFill(0x000000,0.5);
+		s.graphics.moveTo(wallB[0].x,wallB[0].y);
+		s.graphics.lineTo(wallB[1].x,wallB[1].y);
+		s.graphics.lineTo(wallB[2].x,wallB[2].y);
+		s.graphics.lineTo(wallB[3].x,wallB[3].y);
+		s.graphics.lineTo(wallB[0].x,wallB[0].y);
+		s.graphics.endFill();
+		
+		// ----- draw all doors
+		for (j=wall.Doors.length-1; j>-1; j--)
+		{
+			var door:Door = wall.Doors[j];
+			var piv:Point = new Point(	wall.joint1.x + (wall.joint2.x-wall.joint1.x)*door.pivot,
+										wall.joint1.y + (wall.joint2.y-wall.joint1.y)*door.pivot);
+			var dir:Point = new Point(	(wall.joint2.x-wall.joint1.x)*door.dir,
+										(wall.joint2.y-wall.joint1.y)*door.dir);
+			var bearing:Number = Math.atan2(dir.x/dir.length,-dir.y/dir.length);
+			var angL:int = (bearing-door.angL)/Math.PI*180;
+			var angR:int = (bearing+door.angR)/Math.PI*180;
+			s.graphics.lineStyle(0,0x000099,1);
+			s.graphics.beginFill(0x666666,1);
+			s.graphics.moveTo(piv.x,piv.y);
+			for (var deg:int=angL; deg<angR; deg++)
+			{
+				s.graphics.lineTo(Math.sin(deg/180*Math.PI),-Math.cos(deg/180*Math.PI));
+			}
+			s.graphics.lineTo(piv.x,piv.y);
 			s.graphics.endFill();
 		}
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	private function connectedToJoint(pt:Vector3D):Vector.<Wall>
+	{
+		var W:Vector.<Wall> = new Vector.<Wall>();
+		for (var i:int=Walls.length-1; i>-1; i--)
+			if (Walls[i].joint1==pt || Walls[i].joint2==pt)
+				W.push(Walls[i]);
+		return W;
 	}//endfunction
 	
 	//=======================================================================================
@@ -616,6 +761,7 @@ class Wall
 	public var joint1:Vector3D;
 	public var joint2:Vector3D;
 	public var thickness:Number;
+	public var Doors:Vector.<Door>;
 	
 	/**
 	 * 
@@ -628,6 +774,7 @@ class Wall
 		joint1 = pt1;
 		joint2 = pt2;
 		thickness = thick;
+		 Doors = new Vector.<Door>();
 	}//endconstr
 	
 	/**
@@ -651,14 +798,36 @@ class Wall
 	//=======================================================================================
 	// returns the 4 corner positions of the wall if it were standalone
 	//=======================================================================================
-	public function wallBounds():Vector.<Point>
+	public function wallBounds(from2:Boolean=false):Vector.<Point>
 	{
-			var dv:Vector3D = joint2.subtract(joint1);
-			dv.scaleBy(thickness/dv.length);
-			
-			return Vector.<Point>([	new Point(joint1.x-dv.x+dv.y,joint1.y-dv.y-dv.x),
-									new Point(joint2.x+dv.x+dv.y,joint2.y+dv.y-dv.x),
-									new Point(joint2.x+dv.x-dv.y,joint2.y+dv.y+dv.x),
-									new Point(joint1.x-dv.x-dv.y,joint1.y-dv.y+dv.x)]);
+		var j1:Vector3D = joint1;
+		var j2:Vector3D = joint2;
+		if (from2)
+		{
+			j2 = joint1;
+			j1 = joint2;
+		}
+		
+		var dv:Vector3D = j2.subtract(j1);
+		dv.scaleBy(thickness/dv.length);
+		
+		return Vector.<Point>([	new Point(j1.x-dv.x+dv.y,j1.y-dv.y-dv.x),
+								new Point(j2.x+dv.x+dv.y,j2.y+dv.y-dv.x),
+								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
+								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
 	}//endfunction
 }//endclass
+
+class Door
+{
+	public var pivot:Number;	// a ratio from joint1 to joint2 of wall	
+	public var dir:Number;		// an added ratio relative to pivot
+	public var angL:Number=-Math.PI/2;
+	public var angR:Number=Math.PI/2;
+	
+	public function Door(piv:Number,wid:Number):void
+	{
+		pivot = piv;
+		dir = wid;
+	}
+}//endfunction
