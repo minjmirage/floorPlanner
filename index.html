@@ -1,0 +1,48 @@
+﻿<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<title>FloorPlanner Prototype</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<style type="text/css" media="screen">
+		
+		* {
+			font-family: arial;
+		}
+
+		body {
+			background-color:#CCD;
+		}
+				
+		#flashcontent {
+			background-color:#CCCCCC;
+			width: 960px;
+		  	margin: 0 auto;
+		}
+		
+		
+		</style>
+		
+		<script type="text/javascript" src="js/swfobject.js"></script>
+		<script type="text/javascript">
+		var params = {
+			menu: "false",
+			scale: "exactFit",
+			allowFullscreen: "true",
+			allowScriptAccess: "always",
+			bgcolor: "#FFFFFF",
+			wmode: "direct" // can cause issues with FP settings & webcam
+		};
+		var attributes = {
+			id:"main"
+		};
+		swfobject.embedSWF(	"FloorPlanner.swf",
+							"flashContentInner", "960px", "540px", "10.2.0",
+							null,
+							null, params, attributes);
+        </script>
+	</head>
+	<body>
+		<div id="flashContent">
+			<div id="flashContentInner"></div>
+		</div>
+	</body>
+</html>

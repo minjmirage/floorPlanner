@@ -3,6 +3,7 @@ package
 	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.geom.Point;
 	import flash.geom.Vector3D;
 	import flash.utils.getTimer;
 	import flash.text.TextField;
@@ -45,27 +46,49 @@ package
 		private function init(e:Event=null):void 
 		{
 			stage.scaleMode = "noScale";
+			stage.align = "topLeft";
 			removeEventListener(Event.ADDED_TO_STAGE, init);
 					
 			mouseDownPt = new Vector3D();
 			mouseUpPt = new Vector3D();
 			floorPlan = new FloorPlan();
 			
+			var sw:int = stage.stageWidth;
+			var sh:int = stage.stageHeight;
+			
 			// ----- add grid background
-			gridBg = new WireGrid(stage.stageWidth,stage.stageHeight);
+			gridBg = new WireGrid(sw,sh);
+			gridBg.x = sw/2;
+			gridBg.y = sh/2;
 			addChild(gridBg);
 			
 			// ----- drawing sprite
 			floorPlanBg = new Sprite();
+			floorPlanBg.x = gridBg.x;
+			floorPlanBg.y = gridBg.y;
 			addChild(floorPlanBg);
 			
 			// ----- enter default editing mode
 			modeDefault();
 			
+			createDefaRoom();
+			
 			// ----- add controls
 			stage.addEventListener(Event.ENTER_FRAME, onEnterFrame);
 			stage.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
+		}//endfunction
+		
+		//=============================================================================================
+		// just so it wouldnt be too boring 
+		//=============================================================================================
+		private function createDefaRoom():void
+		{
+			floorPlan.createWall(new Vector3D( -200, -200), new Vector3D(200, -200),10);
+			floorPlan.createWall(new Vector3D( 200, -200), new Vector3D(200, 200),10);
+			floorPlan.createWall(new Vector3D( 200, 200), new Vector3D( -200, 200),10);
+			floorPlan.createWall(new Vector3D( -200, 200), new Vector3D( -200, -200), 10);
+			floorPlan.Walls[2].Doors.push(new Door(0.35, 0.3));
 		}//endfunction
 		
 		//=============================================================================================
@@ -84,13 +107,15 @@ package
 			}
 			menu = new ButtonsMenu("EDITING MODE",
 									Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-									Vector.<Function>([modeAddWalls,modeAddDoors,modeAddDoors,modeAddWalls]));
+									Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddWalls]));
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
 			
 			// ----- default editing logic
 			var lastJoint:Vector3D = null;
+			var lastWall:Wall = null;
+			var prevMousePt:Point = new Point(0,0);
 			stepFn = function():void
 			{
 				if (lastJoint!=null)
@@ -98,16 +123,26 @@ package
 					lastJoint.x = gridBg.mouseX;
 					lastJoint.y = gridBg.mouseY;
 				}
+				else if (lastWall != null)
+				{
+					lastWall.joint1.x += gridBg.mouseX - prevMousePt.x;
+					lastWall.joint1.y += gridBg.mouseY - prevMousePt.y;
+					lastWall.joint2.x += gridBg.mouseX - prevMousePt.x;
+					lastWall.joint2.y += gridBg.mouseY - prevMousePt.y;
+				}
+				prevMousePt.x = gridBg.mouseX;
+				prevMousePt.y = gridBg.mouseY;
 			}
 			mouseDownFn = function():void
 			{
-				prn("modeDefault mouseDownFn");
-				lastJoint = floorPlan.nearestJoint(mouseDownPt,10);		// chk if near any joint
+				lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
+				if (lastJoint==null)
+					lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
 			}
 			mouseUpFn = function():void
 			{
-				prn("modeDefault mouseUpFn");
 				lastJoint = null;
+				lastWall = null;
 			}
 		}//endfunction
 		
@@ -140,6 +175,17 @@ package
 				{
 					wall.joint2.x = gridBg.mouseX;
 					wall.joint2.y = gridBg.mouseY;
+					var collided:Wall = floorPlan.chkWallCollide(wall);
+					if (collided != null)
+					{
+						var intercept:Vector3D = floorPlan.projectedWallPosition(collided, wall.joint2);
+						floorPlan.removeWall(collided);
+						floorPlan.createWall(collided.joint1, intercept,snapDist);
+						floorPlan.createWall(collided.joint2, intercept, snapDist);
+						floorPlan.removeWall(wall);
+						floorPlan.createWall(wall.joint1, intercept,snapDist);
+						wall = null;
+					}
 				}
 			}
 			mouseDownFn = function():void
@@ -147,12 +193,12 @@ package
 				if (wall==null)
 					wall = floorPlan.createWall(new Vector3D(gridBg.mouseX,gridBg.mouseY),
 												new Vector3D(gridBg.mouseX,gridBg.mouseY),
-												10);
+												snapDist);
 			}
 			mouseUpFn = function():void
 			{
 				if (wall!=null && wall.joint1.subtract(wall.joint2).length<=snapDist)
-					floorPlan.removeWall(wall);
+					floorPlan.removeWall(wall);		// remove wall stub
 				wall = null;
 			}
 		}//endfunction
@@ -162,7 +208,6 @@ package
 		//=============================================================================================
 		private function modeAddDoors(snapDist:Number=10):void
 		{
-			prn("modeAddDoors");
 			var px:int = 0;
 			var py:int = 0;
 			if (menu!=null)
@@ -177,39 +222,140 @@ package
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
-			prn("modeAddDoors ?");
 			
 			// ----- add doors logic
-			var wall:Wall = null;
+			var prevWall:Wall = null;
 			var door:Door = null;
 			stepFn = function():void
 			{
-				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
-				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
-				if (near!=null)
-				{
-					var wallV:Vector3D = near.joint2.subtract(near.joint1);
-					var proj:Number = mouseP.subtract(near.joint1).dotProduct(wallV);
-					var posn:Vector3D = near.joint1.add(new Vector3D(wallV.x/wallV.length*proj,wallV.y/wallV.length*proj,0));
-					if (door==null) 	
-					{
-						door = new Door(proj,0.3);
-						near.Doors.push(door);
-					}
-					else				door.pivot = proj;
-					
+				// ----- remove added display door
+				if (prevWall!=null)
+				{	
+					if (prevWall.Doors.indexOf(door)!=-1)
+						prevWall.Doors.splice(prevWall.Doors.indexOf(door),1);
 				}
-			}
+				
+				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
+				
+				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
+				var doorP:Point = null;
+				if (near!=null)	doorP = chkPlaceDoor(near, mouseP, 100);	// chk place door of 100 width
+				// ----- if in position to place door
+				if (near!=null && doorP!=null)
+				{
+					if (door==null) 	
+						door = new Door(doorP.x,doorP.y-doorP.x);
+					else
+						door.pivot = doorP.x;
+					
+					near.Doors.push(door);
+					prevWall = near;
+				}
+				// ----- if not in legal position to show door
+			}//endfunction
 			mouseDownFn = function():void
-			{
-			
-			}
-			mouseUpFn = function():void
 			{
 				
 			}
-			prn("modeAddDoors ??");
+			mouseUpFn = function():void
+			{
+				prevWall = null;	// forget about the last placed door
+				door = null;
+			}
+		}//endfunction
+		
+		//=============================================================================================
+		// go into adding doors mode
+		//=============================================================================================
+		private function modeAddWindows(snapDist:Number=10):void
+		{
+			var px:int = 0;
+			var py:int = 0;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new ButtonsMenu("ADDING WINDOWS",
+									Vector.<String>(["DONE"]),
+									Vector.<Function>([modeDefault]));
+			menu.x = px;
+			menu.y = py;
+			stage.addChild(menu);
 			
+			// ----- add doors logic
+			var prevWall:Wall = null;
+			var door:Door = null;
+			stepFn = function():void
+			{
+				// ----- remove added display door
+				if (prevWall!=null)
+				{	
+					if (prevWall.Doors.indexOf(door)!=-1)
+						prevWall.Doors.splice(prevWall.Doors.indexOf(door),1);
+				}
+				
+				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
+				
+				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
+				var doorP:Point = null;
+				if (near!=null)	doorP = chkPlaceDoor(near, mouseP, 60);	// chk place door of 60 width
+				// ----- if in position to place door
+				if (near!=null && doorP!=null)
+				{
+					if (door == null) 
+					{
+						door = new Door(doorP.x, doorP.y - doorP.x);
+						door.angR = 0;
+						door.thickness = 20;
+					}
+					else
+						door.pivot = doorP.x;
+					
+					near.Doors.push(door);
+					prevWall = near;
+				}
+				// ----- if not in legal position to show door
+			}//endfunction
+			mouseDownFn = function():void
+			{
+				
+			}
+			mouseUpFn = function():void
+			{
+				prevWall = null;	// forget about the last placed door
+				door = null;
+			}
+		}//endfunction
+		
+		//=============================================================================================
+		// returns whether door of width can be placed at position pt along given wall 
+		//=============================================================================================
+		private function chkPlaceDoor(wall:Wall, pt:Vector3D, width:Number):Point
+		{
+			var wallV:Vector3D = wall.joint2.subtract(wall.joint1);
+			var wallL:Number = wallV.length; 
+			wallV.normalize();
+			var proj:Number = pt.subtract(wall.joint1).dotProduct(wallV);	// ratio along wall where door is at
+			var a:Number = proj/wallL-0.5*width/wallL;	// door span along wallL
+			var b:Number = proj/wallL+0.5*width/wallL;
+			if (a<0 || b>1)	return null;	//exceed wall limit
+			
+			for (var i:int=wall.Doors.length-1; i>-1; i--)		// check if overlap other doors
+			{
+				var c:Number = wall.Doors[i].pivot;
+				var d:Number = wall.Doors[i].dir+c;
+				if (d<c)
+				{
+					var tmp:Number = d;
+					d = c;
+					c = tmp;
+				}
+				if ((a>c && a<d) || (b>c && b<d))
+					return null;
+			}
+			return new Point(a,b);
 		}//endfunction
 		
 		//=============================================================================================
@@ -219,6 +365,9 @@ package
 		{
 			if (stepFn!=null) stepFn();
 			floorPlan.draw(floorPlanBg);		// update floor plan drawings
+			floorPlanBg.scaleX = gridBg.scaleX;
+			floorPlanBg.scaleY = gridBg.scaleY;
+			
 		}//endfunction
 		
 		//=============================================================================================
@@ -358,7 +507,10 @@ class ButtonsMenu extends Sprite
 		this.stopDrag();
 		for (var i:int=Btns.length-1; i>-1; i--)
 			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
 				Fns[i]();	// exec callback function
+				return;
+			}
 	}//endfunction
 	
 	private function onEnterFrame(ev:Event):void
@@ -422,50 +574,53 @@ class WireGrid extends Sprite
 	{
 		var ppp:Sprite = this;
 		
-		function draw(sc:Number):void 
+		function draw(f:Number):void 
 		{
-			drawGrid(ppp,w,h,10+50*sc,0x666666);
+			updateZoom(f*4+1,w,h);
 		}
 		zoomSlider = vSlider(10,100,["1","2","3","4","5"],draw);
-		zoomSlider.x = 100;
-		zoomSlider.y = 100;
 		addChild(zoomSlider);
 		draw(0);
 	}//endfunction
-
+	
 	//=============================================================================================
-	// @param	s			sprite to draw into
-	// @param	w			width
-	// @param	h			height
-	// @param	interval	distince between grid lines
+	// 
 	//=============================================================================================
-	private function drawGrid(s:Sprite,w:int,h:int,interval:int=10,color:uint=0x666666):void
+	public function updateZoom(sc:Number,w:int,h:int):void
 	{
-		s.graphics.clear();
-		s.graphics.beginFill(0x99AAFF,1);
-		s.graphics.drawRect(0,0,w,h);
-		s.graphics.endFill();
+		scaleX = sc;
+		scaleY = sc;
+		drawGrid(new Rectangle(-0.5*w/sc,-0.5*h/sc,w/sc,h/sc),10);
+		zoomSlider.scaleX = 1/sc;
+		zoomSlider.scaleY = 1/sc;
+		zoomSlider.x = w/sc*0.45;
+		zoomSlider.y =-h/sc*0.45;
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	private function drawGrid(rect:Rectangle,interval:int=10,color:uint=0x666666):void
+	{
+		graphics.clear();
+		graphics.beginFill(0x99AAFF,1);
+		graphics.drawRect(rect.x,rect.y,rect.width,rect.height);
+		graphics.endFill();
 		
 		var i:int = 0;
-		var n:int = w/interval;
-		if (n%2==0)	n--;
-		var k:int = (n-1)/2;
-		for (i=-k; i<=k; i++)	
+		var a:int = int(rect.left/interval)*interval;
+		for (i=a; i<=rect.right; i+=interval)	
 		{
-			if (i%10==0) s.graphics.lineStyle(0, color, 1);
-			else		s.graphics.lineStyle(0, color, 0.5);
-			s.graphics.moveTo(w/2+i*interval,0);
-			s.graphics.lineTo(w/2+i*interval,h);
+			graphics.lineStyle(0, color, 0.5);
+			graphics.moveTo(i,rect.top);
+			graphics.lineTo(i,rect.bottom);
 		}
-		n = h/interval;
-		if (n%2==0)	n--;
-		k = (n-1)/2;
-		for (i=-k; i<=k; i++)	
+		a = int(rect.top/interval)*interval;
+		for (i=a; i<=rect.bottom; i+=interval)	
 		{
-			if (i%10==0) s.graphics.lineStyle(0, color, 1);
-			else		s.graphics.lineStyle(0, color, 0.5);
-			s.graphics.moveTo(0,h/2+i*interval);
-			s.graphics.lineTo(w,h/2+i*interval);
+			graphics.lineStyle(0, color, 0.5);
+			graphics.moveTo(rect.left,i);
+			graphics.lineTo(rect.right,i);
 		}
 	}//endfunction
 	
@@ -627,7 +782,35 @@ class FloorPlan
 			}
 		return wall;
 	}//endfunction
+	
+	//=============================================================================================
+	// returns wall that collided with given wall or null 
+	//=============================================================================================
+	public function chkWallCollide(wall:Wall):Wall
+	{
+		for (var i:int=Walls.length-1; i>-1; i--)
+		{
+			var w:Wall = Walls[i];
+			if (segmentsIntersectPt(w.joint1.x,w.joint1.y,w.joint2.x,w.joint2.y, wall.joint1.x,wall.joint1.y,wall.joint2.x,wall.joint2.y)!=null)
+				return w;
+		}
 		
+		return null;
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function projectedWallPosition(wall:Wall, pt:Vector3D) : Vector3D
+	{
+		var vpt:Vector3D = pt.subtract(wall.joint1);
+		var dir:Vector3D = wall.joint2.subtract(wall.joint1);
+		dir.normalize();
+		var k:Number = vpt.dotProduct(dir);
+		
+		return new Vector3D(wall.joint1.x + dir.x*k, wall.joint1.y + dir.y * k);;
+	}//endfunction
+	
 	//=============================================================================================
 	// 
 	//=============================================================================================
@@ -693,19 +876,38 @@ class FloorPlan
 										wall.joint1.y + (wall.joint2.y-wall.joint1.y)*door.pivot);
 			var dir:Point = new Point(	(wall.joint2.x-wall.joint1.x)*door.dir,
 										(wall.joint2.y-wall.joint1.y)*door.dir);
-			var bearing:Number = Math.atan2(dir.x/dir.length,-dir.y/dir.length);
-			var angL:int = (bearing-door.angL)/Math.PI*180;
-			var angR:int = (bearing+door.angR)/Math.PI*180;
-			s.graphics.lineStyle(0,0x000099,1);
-			s.graphics.beginFill(0x666666,1);
+			var bearing:Number = Math.atan2(dir.x,-dir.y);
+			var angL:Number = bearing+door.angL;
+			var angR:Number = bearing+door.angR;
+			s.graphics.lineStyle(0,0x000000,1);
+			var cnt:int = 0;
 			s.graphics.moveTo(piv.x,piv.y);
-			for (var deg:int=angL; deg<angR; deg++)
+			for (var deg:Number=angL; deg<angR; deg+=Math.PI/32)
 			{
-				s.graphics.lineTo(Math.sin(deg/180*Math.PI),-Math.cos(deg/180*Math.PI));
+				if (cnt%2==0)
+					s.graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+				else
+					s.graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+				cnt++;
 			}
-			s.graphics.lineTo(piv.x,piv.y);
-			s.graphics.endFill();
+			drawBar(s,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
+			drawBar(s,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 		}
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	private function drawBar(s:Sprite,from:Point,to:Point,thickness:Number):void
+	{
+		var dir:Point = to.subtract(from);
+		var dv:Point = new Point(dir.x/dir.length*thickness/2,dir.y/dir.length*thickness/2);
+		s.graphics.beginFill(0xCCCCCC,1);
+		s.graphics.moveTo(from.x-dv.y,from.y+dv.x);
+		s.graphics.lineTo(from.x+dv.y,from.y-dv.x);
+		s.graphics.lineTo(to.x+dv.y,to.y-dv.x);
+		s.graphics.lineTo(to.x-dv.y,to.y+dv.x);
+		s.graphics.endFill();
 	}//endfunction
 	
 	//=============================================================================================
@@ -774,7 +976,7 @@ class Wall
 		joint1 = pt1;
 		joint2 = pt2;
 		thickness = thick;
-		 Doors = new Vector.<Door>();
+		Doors = new Vector.<Door>();
 	}//endconstr
 	
 	/**
@@ -822,8 +1024,9 @@ class Door
 {
 	public var pivot:Number;	// a ratio from joint1 to joint2 of wall	
 	public var dir:Number;		// an added ratio relative to pivot
-	public var angL:Number=-Math.PI/2;
+	public var angL:Number=0;
 	public var angR:Number=Math.PI/2;
+	public var thickness:Number=10;
 	
 	public function Door(piv:Number,wid:Number):void
 	{
