@@ -19,8 +19,7 @@ package
 	{
 		private var mouseDownPt:Vector3D = null;
 		private var mouseUpPt:Vector3D= null;
-		private var gridBg:Sprite = null;
-		private var floorPlanBg:Sprite = null;
+		private var grid:WireGrid = null;
 		private var floorPlan:FloorPlan = null;
 		
 		private var menu:Sprite = null;
@@ -51,22 +50,21 @@ package
 					
 			mouseDownPt = new Vector3D();
 			mouseUpPt = new Vector3D();
-			floorPlan = new FloorPlan();
 			
 			var sw:int = stage.stageWidth;
 			var sh:int = stage.stageHeight;
 			
 			// ----- add grid background
-			gridBg = new WireGrid(sw,sh);
-			gridBg.x = sw/2;
-			gridBg.y = sh/2;
-			addChild(gridBg);
+			grid = new WireGrid(sw,sh);
+			grid.x = sw/2;
+			grid.y = sh/2;
+			grid.update();
+			addChild(grid);
 			
 			// ----- drawing sprite
-			floorPlanBg = new Sprite();
-			floorPlanBg.x = gridBg.x;
-			floorPlanBg.y = gridBg.y;
-			addChild(floorPlanBg);
+			floorPlan = new FloorPlan();
+			floorPlan.buttonMode = true;
+			grid.addChild(floorPlan);
 			
 			// ----- enter default editing mode
 			modeDefault();
@@ -119,19 +117,25 @@ package
 			stepFn = function():void
 			{
 				if (lastJoint!=null)
-				{
-					lastJoint.x = gridBg.mouseX;
-					lastJoint.y = gridBg.mouseY;
+				{	// shift joint
+					lastJoint.x = grid.mouseX;
+					lastJoint.y = grid.mouseY;
 				}
 				else if (lastWall != null)
-				{
-					lastWall.joint1.x += gridBg.mouseX - prevMousePt.x;
-					lastWall.joint1.y += gridBg.mouseY - prevMousePt.y;
-					lastWall.joint2.x += gridBg.mouseX - prevMousePt.x;
-					lastWall.joint2.y += gridBg.mouseY - prevMousePt.y;
+				{	// ----- shift wall
+					lastWall.joint1.x += grid.mouseX - prevMousePt.x;
+					lastWall.joint1.y += grid.mouseY - prevMousePt.y;
+					lastWall.joint2.x += grid.mouseX - prevMousePt.x;
+					lastWall.joint2.y += grid.mouseY - prevMousePt.y;
 				}
-				prevMousePt.x = gridBg.mouseX;
-				prevMousePt.y = gridBg.mouseY;
+				else if (mouseDownPt.w>mouseUpPt.w)
+				{	// ----- shift grid background
+					grid.x += (grid.mouseX - prevMousePt.x)/grid.scaleX;
+					grid.y += (grid.mouseY - prevMousePt.y)/grid.scaleY;
+					grid.update();
+				}
+				prevMousePt.x = grid.mouseX;
+				prevMousePt.y = grid.mouseY;
 			}
 			mouseDownFn = function():void
 			{
@@ -173,8 +177,8 @@ package
 			{
 				if (wall!=null)
 				{
-					wall.joint2.x = gridBg.mouseX;
-					wall.joint2.y = gridBg.mouseY;
+					wall.joint2.x = grid.mouseX;
+					wall.joint2.y = grid.mouseY;
 					var collided:Wall = floorPlan.chkWallCollide(wall);
 					if (collided != null)
 					{
@@ -191,8 +195,8 @@ package
 			mouseDownFn = function():void
 			{
 				if (wall==null)
-					wall = floorPlan.createWall(new Vector3D(gridBg.mouseX,gridBg.mouseY),
-												new Vector3D(gridBg.mouseX,gridBg.mouseY),
+					wall = floorPlan.createWall(new Vector3D(grid.mouseX,grid.mouseY),
+												new Vector3D(grid.mouseX,grid.mouseY),
 												snapDist);
 			}
 			mouseUpFn = function():void
@@ -235,7 +239,7 @@ package
 						prevWall.Doors.splice(prevWall.Doors.indexOf(door),1);
 				}
 				
-				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
+				var mouseP:Vector3D = new Vector3D(grid.mouseX,grid.mouseY,0);
 				
 				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
 				var doorP:Point = null;
@@ -296,7 +300,7 @@ package
 						prevWall.Doors.splice(prevWall.Doors.indexOf(door),1);
 				}
 				
-				var mouseP:Vector3D = new Vector3D(gridBg.mouseX,gridBg.mouseY,0);
+				var mouseP:Vector3D = new Vector3D(grid.mouseX,grid.mouseY,0);
 				
 				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
 				var doorP:Point = null;
@@ -364,10 +368,7 @@ package
 		private function onEnterFrame(ev:Event):void
 		{
 			if (stepFn!=null) stepFn();
-			floorPlan.draw(floorPlanBg);		// update floor plan drawings
-			floorPlanBg.scaleX = gridBg.scaleX;
-			floorPlanBg.scaleY = gridBg.scaleY;
-			
+			floorPlan.draw();		// update floor plan drawings
 		}//endfunction
 		
 		//=============================================================================================
@@ -376,7 +377,7 @@ package
 		private function onMouseDown(ev:Event):void
 		{
 			if (menu!=null && menu.hitTestPoint(stage.mouseX,stage.mouseY)) return;
-			mouseDownPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
+			mouseDownPt = new Vector3D(grid.mouseX,grid.mouseY,0,getTimer());
 			if (mouseDownFn!=null) mouseDownFn();
 		}//endfunction
 		
@@ -385,7 +386,7 @@ package
 		//=============================================================================================
 		private function onMouseUp(ev:Event):void
 		{
-			mouseUpPt = new Vector3D(gridBg.mouseX,gridBg.mouseY,0,getTimer());
+			mouseUpPt = new Vector3D(grid.mouseX,grid.mouseY,0,getTimer());
 			if (mouseUpFn!=null) mouseUpFn();
 		}//endfunction
 		
@@ -563,8 +564,8 @@ class ButtonsMenu extends Sprite
 
 class WireGrid extends Sprite
 {
-	public var sc:Number = 1;
-	public var center:Point = new Point(0,0);
+	public var sw:int = 800;
+	public var sh:int = 600;
 	public var zoomSlider:Sprite = null;
 	
 	//=============================================================================================
@@ -572,58 +573,67 @@ class WireGrid extends Sprite
 	//=============================================================================================
 	public function WireGrid(w:int,h:int):void
 	{
-		var ppp:Sprite = this;
+		sw = w;
+		sh = h;
 		
 		function draw(f:Number):void 
 		{
-			updateZoom(f*4+1,w,h);
+			zoom(f*4+1);
 		}
 		zoomSlider = vSlider(10,100,["1","2","3","4","5"],draw);
 		addChild(zoomSlider);
-		draw(0);
+		update();
 	}//endfunction
 	
 	//=============================================================================================
 	// 
 	//=============================================================================================
-	public function updateZoom(sc:Number,w:int,h:int):void
+	public function zoom(sc:Number):void
 	{
-		scaleX = sc;
-		scaleY = sc;
-		drawGrid(new Rectangle(-0.5*w/sc,-0.5*h/sc,w/sc,h/sc),10);
-		zoomSlider.scaleX = 1/sc;
-		zoomSlider.scaleY = 1/sc;
-		zoomSlider.x = w/sc*0.45;
-		zoomSlider.y =-h/sc*0.45;
+		scaleX = scaleY = sc;
+		update();
 	}//endfunction
 	
 	//=============================================================================================
-	// 
+	// redraws the grid background so the grid lines always cover the screen
 	//=============================================================================================
-	private function drawGrid(rect:Rectangle,interval:int=10,color:uint=0x666666):void
+	public function update():void
 	{
+		var interval:int = 10;
+		var rect:Rectangle = new Rectangle(-x/scaleX,-y/scaleY,sw/scaleX,sh/scaleY);	// define rectangle to draw
+		
+		// ----- draw bg color
 		graphics.clear();
 		graphics.beginFill(0x99AAFF,1);
 		graphics.drawRect(rect.x,rect.y,rect.width,rect.height);
 		graphics.endFill();
 		
+		// ----- draw grid lines
 		var i:int = 0;
 		var a:int = int(rect.left/interval)*interval;
 		for (i=a; i<=rect.right; i+=interval)	
 		{
-			graphics.lineStyle(0, color, 0.5);
+			if (i%(interval*10)==0)	graphics.lineStyle(0, 0x666666, 1);
+			else					graphics.lineStyle(0, 0x999999, 1);
 			graphics.moveTo(i,rect.top);
 			graphics.lineTo(i,rect.bottom);
 		}
 		a = int(rect.top/interval)*interval;
 		for (i=a; i<=rect.bottom; i+=interval)	
 		{
-			graphics.lineStyle(0, color, 0.5);
+			if (i%(interval*10)==0)	graphics.lineStyle(0, 0x666666, 1);
+			else					graphics.lineStyle(0, 0x999999, 1);
 			graphics.moveTo(rect.left,i);
 			graphics.lineTo(rect.right,i);
 		}
+		
+		// ----- scale and place zoom slider 
+		zoomSlider.scaleX = 1/scaleX;
+		zoomSlider.scaleY = 1/scaleY;
+		zoomSlider.x = rect.left+rect.width*0.9;
+		zoomSlider.y = rect.top+rect.height*0.1;
 	}//endfunction
-	
+		
 	//=============================================================================================
 	// creates a vertical slider bar of wxh dimensions  
 	//=============================================================================================
@@ -686,7 +696,7 @@ class WireGrid extends Sprite
 	}//endfunction
 }//endclass
 
-class FloorPlan
+class FloorPlan extends Sprite
 {
 	public var Joints:Vector.<Vector3D>;
 	public var Walls:Vector.<Wall>;
@@ -814,18 +824,18 @@ class FloorPlan
 	//=============================================================================================
 	// 
 	//=============================================================================================
-	public function draw(s:Sprite):void
+	public function draw():void
 	{
-		s.graphics.clear();
+		graphics.clear();
 		
 		for (var i:int=Walls.length-1; i>-1; i--)	// draw for each wall
-			drawWall(s,Walls[i]);
+			drawWall(Walls[i]);
 	}//endfunction
 	
 	//=============================================================================================
 	// draws wall with any door and windows on it
 	//=============================================================================================
-	private function drawWall(s:Sprite,wall:Wall):void
+	private function drawWall(wall:Wall):void
 	{
 		// ----- draw wall bounds
 		var wallB:Vector.<Point> = wall.wallBounds(false);
@@ -859,14 +869,14 @@ class FloorPlan
 			if (ipt!=null)	wallB[3] = ipt;
 		}
 		
-		s.graphics.lineStyle(0,0x000000,1);
-		s.graphics.beginFill(0x000000,0.5);
-		s.graphics.moveTo(wallB[0].x,wallB[0].y);
-		s.graphics.lineTo(wallB[1].x,wallB[1].y);
-		s.graphics.lineTo(wallB[2].x,wallB[2].y);
-		s.graphics.lineTo(wallB[3].x,wallB[3].y);
-		s.graphics.lineTo(wallB[0].x,wallB[0].y);
-		s.graphics.endFill();
+		graphics.lineStyle(0,0x000000,1);
+		graphics.beginFill(0x000000,0.5);
+		graphics.moveTo(wallB[0].x,wallB[0].y);
+		graphics.lineTo(wallB[1].x,wallB[1].y);
+		graphics.lineTo(wallB[2].x,wallB[2].y);
+		graphics.lineTo(wallB[3].x,wallB[3].y);
+		graphics.lineTo(wallB[0].x,wallB[0].y);
+		graphics.endFill();
 		
 		// ----- draw all doors
 		for (j=wall.Doors.length-1; j>-1; j--)
@@ -879,35 +889,35 @@ class FloorPlan
 			var bearing:Number = Math.atan2(dir.x,-dir.y);
 			var angL:Number = bearing+door.angL;
 			var angR:Number = bearing+door.angR;
-			s.graphics.lineStyle(0,0x000000,1);
+			graphics.lineStyle(0,0x000000,1);
 			var cnt:int = 0;
-			s.graphics.moveTo(piv.x,piv.y);
+			graphics.moveTo(piv.x,piv.y);
 			for (var deg:Number=angL; deg<angR; deg+=Math.PI/32)
 			{
 				if (cnt%2==0)
-					s.graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+					graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				else
-					s.graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+					graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				cnt++;
 			}
-			drawBar(s,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
-			drawBar(s,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
+			drawBar(piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
+			drawBar(piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 		}
 	}//endfunction
 	
 	//=============================================================================================
 	// 
 	//=============================================================================================
-	private function drawBar(s:Sprite,from:Point,to:Point,thickness:Number):void
+	private function drawBar(from:Point,to:Point,thickness:Number):void
 	{
 		var dir:Point = to.subtract(from);
 		var dv:Point = new Point(dir.x/dir.length*thickness/2,dir.y/dir.length*thickness/2);
-		s.graphics.beginFill(0xCCCCCC,1);
-		s.graphics.moveTo(from.x-dv.y,from.y+dv.x);
-		s.graphics.lineTo(from.x+dv.y,from.y-dv.x);
-		s.graphics.lineTo(to.x+dv.y,to.y-dv.x);
-		s.graphics.lineTo(to.x-dv.y,to.y+dv.x);
-		s.graphics.endFill();
+		graphics.beginFill(0xCCCCCC,1);
+		graphics.moveTo(from.x-dv.y,from.y+dv.x);
+		graphics.lineTo(from.x+dv.y,from.y-dv.x);
+		graphics.lineTo(to.x+dv.y,to.y-dv.x);
+		graphics.lineTo(to.x-dv.y,to.y+dv.x);
+		graphics.endFill();
 	}//endfunction
 	
 	//=============================================================================================
