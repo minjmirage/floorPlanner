@@ -78,7 +78,7 @@ package
 		}//endfunction
 		
 		//=============================================================================================
-		// just so it wouldnt be too boring 
+		// default room to look at just so it wouldnt be too boring 
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
@@ -130,8 +130,8 @@ package
 				}
 				else if (mouseDownPt.w>mouseUpPt.w)
 				{	// ----- shift grid background
-					grid.x += (grid.mouseX - prevMousePt.x)/grid.scaleX;
-					grid.y += (grid.mouseY - prevMousePt.y)/grid.scaleY;
+					grid.x += (grid.mouseX - prevMousePt.x)*grid.scaleX;
+					grid.y += (grid.mouseY - prevMousePt.y)*grid.scaleY;
 					grid.update();
 				}
 				prevMousePt.x = grid.mouseX;
@@ -139,6 +139,8 @@ package
 			}
 			mouseDownFn = function():void
 			{
+				prevMousePt.x = grid.mouseX;
+				prevMousePt.y = grid.mouseY;
 				lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
 				if (lastJoint==null)
 					lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
