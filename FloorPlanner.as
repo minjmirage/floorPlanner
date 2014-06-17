@@ -87,6 +87,7 @@ package
 			floorPlan.createWall(new Vector3D( 200, 200), new Vector3D( -200, 200),10);
 			floorPlan.createWall(new Vector3D( -200, 200), new Vector3D( -200, -200), 10);
 			floorPlan.Walls[2].Doors.push(new Door(0.35, 0.3));
+			floorPlan.refresh();
 		}//endfunction
 		
 		//=============================================================================================
@@ -143,10 +144,14 @@ package
 				prevMousePt.y = grid.mouseY;
 				lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
 				if (lastJoint==null)
+				{
 					lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
+					if (lastWall!=null) lastWall.highlight=true;
+				}
 			}
 			mouseUpFn = function():void
 			{
+				if (lastWall!=null) lastWall.highlight=false;
 				lastJoint = null;
 				lastWall = null;
 			}
@@ -181,6 +186,7 @@ package
 				{
 					wall.joint2.x = grid.mouseX;
 					wall.joint2.y = grid.mouseY;
+					
 					var collided:Wall = floorPlan.chkWallCollide(wall);
 					if (collided != null)
 					{
@@ -370,7 +376,7 @@ package
 		private function onEnterFrame(ev:Event):void
 		{
 			if (stepFn!=null) stepFn();
-			floorPlan.draw();		// update floor plan drawings
+			floorPlan.refresh();
 		}//endfunction
 		
 		//=============================================================================================
@@ -713,7 +719,7 @@ class FloorPlan extends Sprite
 	}//endfunction
 	
 	//=============================================================================================
-	//
+	// creates and add wall to floorplan 
 	//=============================================================================================
 	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Wall
 	{
@@ -743,6 +749,8 @@ class FloorPlan extends Sprite
 		// ----- register new wall
 		var wall:Wall = new Wall(pt1, pt2, width);
 		Walls.push(wall);
+		addChild(wall);
+		drawWall(wall);
 		return wall;
 	}//endfunction
 	
@@ -752,6 +760,7 @@ class FloorPlan extends Sprite
 	public function removeWall(wall:Wall):void
 	{
 		if (Walls.indexOf(wall)!=-1)	Walls.splice(Walls.indexOf(wall),1);
+		if (wall.parent!=null)			wall.parent.removeChild(wall);	
 		
 		var canRemJt1:Boolean = true;
 		var canRemJt2:Boolean = true;
@@ -824,12 +833,10 @@ class FloorPlan extends Sprite
 	}//endfunction
 	
 	//=============================================================================================
-	// 
+	// redraws every wall
 	//=============================================================================================
-	public function draw():void
+	public function refresh():void
 	{
-		graphics.clear();
-		
 		for (var i:int=Walls.length-1; i>-1; i--)	// draw for each wall
 			drawWall(Walls[i]);
 	}//endfunction
@@ -871,14 +878,15 @@ class FloorPlan extends Sprite
 			if (ipt!=null)	wallB[3] = ipt;
 		}
 		
-		graphics.lineStyle(0,0x000000,1);
-		graphics.beginFill(0x000000,0.5);
-		graphics.moveTo(wallB[0].x,wallB[0].y);
-		graphics.lineTo(wallB[1].x,wallB[1].y);
-		graphics.lineTo(wallB[2].x,wallB[2].y);
-		graphics.lineTo(wallB[3].x,wallB[3].y);
-		graphics.lineTo(wallB[0].x,wallB[0].y);
-		graphics.endFill();
+		wall.graphics.clear();
+		if (wall.highlight)	wall.graphics.beginFill(0xFF6600,1);
+		else				wall.graphics.beginFill(0x000000,1);
+		wall.graphics.moveTo(wallB[0].x,wallB[0].y);
+		wall.graphics.lineTo(wallB[1].x,wallB[1].y);
+		wall.graphics.lineTo(wallB[2].x,wallB[2].y);
+		wall.graphics.lineTo(wallB[3].x,wallB[3].y);
+		wall.graphics.lineTo(wallB[0].x,wallB[0].y);
+		wall.graphics.endFill();
 		
 		// ----- draw all doors
 		for (j=wall.Doors.length-1; j>-1; j--)
@@ -891,39 +899,39 @@ class FloorPlan extends Sprite
 			var bearing:Number = Math.atan2(dir.x,-dir.y);
 			var angL:Number = bearing+door.angL;
 			var angR:Number = bearing+door.angR;
-			graphics.lineStyle(0,0x000000,1);
+			wall.graphics.lineStyle(0,0x000000,1);
 			var cnt:int = 0;
-			graphics.moveTo(piv.x,piv.y);
+			wall.graphics.moveTo(piv.x,piv.y);
 			for (var deg:Number=angL; deg<angR; deg+=Math.PI/32)
 			{
 				if (cnt%2==0)
-					graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+					wall.graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				else
-					graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
+					wall.graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				cnt++;
 			}
-			drawBar(piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
-			drawBar(piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
+			drawBar(wall,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
+			drawBar(wall,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 		}
 	}//endfunction
 	
 	//=============================================================================================
-	// 
+	// draws a generic rectangle in given sprite s
 	//=============================================================================================
-	private function drawBar(from:Point,to:Point,thickness:Number):void
+	private function drawBar(s:Sprite,from:Point,to:Point,thickness:Number):void
 	{
 		var dir:Point = to.subtract(from);
 		var dv:Point = new Point(dir.x/dir.length*thickness/2,dir.y/dir.length*thickness/2);
-		graphics.beginFill(0xCCCCCC,1);
-		graphics.moveTo(from.x-dv.y,from.y+dv.x);
-		graphics.lineTo(from.x+dv.y,from.y-dv.x);
-		graphics.lineTo(to.x+dv.y,to.y-dv.x);
-		graphics.lineTo(to.x-dv.y,to.y+dv.x);
-		graphics.endFill();
+		s.graphics.beginFill(0xCCCCCC,1);
+		s.graphics.moveTo(from.x-dv.y,from.y+dv.x);
+		s.graphics.lineTo(from.x+dv.y,from.y-dv.x);
+		s.graphics.lineTo(to.x+dv.y,to.y-dv.x);
+		s.graphics.lineTo(to.x-dv.y,to.y+dv.x);
+		s.graphics.endFill();
 	}//endfunction
 	
 	//=============================================================================================
-	// 
+	// finds all walls connected to given wall joint
 	//=============================================================================================
 	private function connectedToJoint(pt:Vector3D):Vector.<Wall>
 	{
@@ -970,8 +978,9 @@ class FloorPlan extends Sprite
 	}//endfunction
 }//endclass
 
-class Wall
+class Wall extends Sprite
 {
+	public var highlight:Boolean = false;
 	public var joint1:Vector3D;
 	public var joint2:Vector3D;
 	public var thickness:Number;
@@ -1025,10 +1034,10 @@ class Wall
 		var dv:Vector3D = j2.subtract(j1);
 		dv.scaleBy(thickness/dv.length);
 		
-		return Vector.<Point>([	new Point(j1.x-dv.x+dv.y,j1.y-dv.y-dv.x),
-								new Point(j2.x+dv.x+dv.y,j2.y+dv.y-dv.x),
-								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
-								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
+		return Vector.<Point>([	new Point(j1.x-dv.x*2+dv.y,j1.y-dv.y*2-dv.x),
+								new Point(j2.x+dv.x*2+dv.y,j2.y+dv.y*2-dv.x),
+								new Point(j2.x+dv.x*2-dv.y,j2.y+dv.y*2+dv.x),
+								new Point(j1.x-dv.x*2-dv.y,j1.y-dv.y*2+dv.x)]);
 	}//endfunction
 }//endclass
 
