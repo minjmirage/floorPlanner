@@ -98,18 +98,49 @@ package
 			prn("modeDefault");
 			var px:int = 0;
 			var py:int = 0;
-			if (menu!=null)
+			
+			// ---------------------------------------------------------------------
+			function showMainMenu():void
 			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new ButtonsMenu("EDITING MODE",
+										Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
+										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddWalls]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
 			}
-			menu = new ButtonsMenu("EDITING MODE",
-									Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-									Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddWalls]));
-			menu.x = px;
-			menu.y = py;
-			stage.addChild(menu);
+			// ---------------------------------------------------------------------
+			function showWallProperties(wall:Wall):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new ButtonsMenu("PROPERTIES",
+										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE"]),
+										Vector.<Function>([	function(val:String):void 
+															{
+																wall.thickness = Math.max(5,Math.min(20,Number(val)));
+															},
+															function():void 
+															{
+																floorPlan.removeWall(wall);
+																showMainMenu();
+															}]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}
+			
+			showMainMenu();
 			
 			// ----- default editing logic
 			var lastJoint:Vector3D = null;
@@ -117,43 +148,51 @@ package
 			var prevMousePt:Point = new Point(0,0);
 			stepFn = function():void
 			{
-				if (lastJoint!=null)
-				{	// shift joint
-					lastJoint.x = grid.mouseX;
-					lastJoint.y = grid.mouseY;
+				if (mouseDownPt.w>mouseUpPt.w)	// is dragging
+				{
+					if (lastJoint!=null)
+					{	// shift joint
+						lastJoint.x = grid.mouseX;
+						lastJoint.y = grid.mouseY;
+					}
+					else if (lastWall != null)
+					{	// ----- shift wall
+						lastWall.joint1.x += grid.mouseX - prevMousePt.x;
+						lastWall.joint1.y += grid.mouseY - prevMousePt.y;
+						lastWall.joint2.x += grid.mouseX - prevMousePt.x;
+						lastWall.joint2.y += grid.mouseY - prevMousePt.y;
+					}
+					else 
+					{	// ----- shift grid background
+						grid.x += (grid.mouseX - prevMousePt.x)*grid.scaleX;
+						grid.y += (grid.mouseY - prevMousePt.y)*grid.scaleY;
+						grid.update();
+					}
+					prevMousePt.x = grid.mouseX;
+					prevMousePt.y = grid.mouseY;
 				}
-				else if (lastWall != null)
-				{	// ----- shift wall
-					lastWall.joint1.x += grid.mouseX - prevMousePt.x;
-					lastWall.joint1.y += grid.mouseY - prevMousePt.y;
-					lastWall.joint2.x += grid.mouseX - prevMousePt.x;
-					lastWall.joint2.y += grid.mouseY - prevMousePt.y;
-				}
-				else if (mouseDownPt.w>mouseUpPt.w)
-				{	// ----- shift grid background
-					grid.x += (grid.mouseX - prevMousePt.x)*grid.scaleX;
-					grid.y += (grid.mouseY - prevMousePt.y)*grid.scaleY;
-					grid.update();
-				}
-				prevMousePt.x = grid.mouseX;
-				prevMousePt.y = grid.mouseY;
 			}
 			mouseDownFn = function():void
 			{
 				prevMousePt.x = grid.mouseX;
 				prevMousePt.y = grid.mouseY;
+				if (lastWall!=null) lastWall.highlight=false;
 				lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
 				if (lastJoint==null)
 				{
 					lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
-					if (lastWall!=null) lastWall.highlight=true;
+					if (lastWall!=null) 
+					{
+						lastWall.highlight=true;
+						showWallProperties(lastWall);
+					}
+					else
+						showMainMenu();
 				}
 			}
 			mouseUpFn = function():void
 			{
-				if (lastWall!=null) lastWall.highlight=false;
-				lastJoint = null;
-				lastWall = null;
+				
 			}
 		}//endfunction
 		
@@ -423,6 +462,7 @@ package
 }//endpackage
 
 import flash.display.DisplayObject;
+import flash.events.FocusEvent;
 import flash.geom.Vector3D;
 import flash.geom.Point;
 import flash.geom.Matrix;
@@ -459,6 +499,7 @@ class ButtonsMenu extends Sprite
 		titleTf.wordWrap = false;
 		titleTf.selectable = false;
 		addChild(titleTf);
+		tff.size = 13;
 		
 		// ----- create buttons
 		tff.size = 15;
@@ -466,13 +507,32 @@ class ButtonsMenu extends Sprite
 		var n:int = Math.min(labels.length,callBacks.length);
 		for (var i:int=0; i<n; i++)
 		{
-			var b:Sprite = new Sprite();
 			var tf:TextField = new TextField();
+			var itf:TextField  = null;
 			tf.autoSize = "left";
 			tf.wordWrap = false;
 			tf.defaultTextFormat = tff;
-			tf.text = labels[i];
+			var lab:String = labels[i];
+			if (lab.indexOf("[")!=-1 && lab.indexOf("]")!=-1)
+			{
+				var A:Array = lab.split("[");
+				lab = A[0];
+				itf = new TextField();
+				itf.autoSize = "left";
+				itf.wordWrap = false;
+				itf.defaultTextFormat = tff;
+				itf.text = A[1].split("]")[0];
+				itf.border = true;
+				itf.borderColor = 0x333333;
+			}
+			tf.text = lab;
+			var b:Sprite = new Sprite();
 			b.addChild(tf);
+			if (itf!=null)
+			{
+				itf.x = tf.width;
+				b.addChild(itf);
+			}
 			b.buttonMode = true;
 			b.mouseChildren = false;
 			Btns.push(b);
@@ -483,10 +543,13 @@ class ButtonsMenu extends Sprite
 		var w:int = this.width;
 		for (i=0; i<Btns.length; i++)
 		{
-			Btns[i].graphics.beginFill(0xEEEEEE,1);
-			Btns[i].graphics.drawRoundRect(0,0,w,Btns[i].height,10,10);
-			Btns[i].graphics.endFill();
-			Btns[i].getChildAt(0).x = (w-Btns[i].getChildAt(0).width)/2;
+			var btn:Sprite = Btns[i];
+			var cW:int = btn.width;
+			btn.graphics.beginFill(0xEEEEEE,1);
+			btn.graphics.drawRoundRect(0,0,w,btn.height,10,10);
+			btn.graphics.endFill();
+			for (var j:int=0; j<btn.numChildren; j++)
+				btn.getChildAt(j).x += (w-cW)/2;
 		}
 		var offY:int=20;
 		for (i=0; i<this.numChildren; i++)
@@ -497,6 +560,8 @@ class ButtonsMenu extends Sprite
 			offY += c.height+5;
 		}
 		drawStripedRect(this,0,0,w+20,this.height+40,0xAAAAAA,0x999999,20);
+		
+		this.filters = [new DropShadowFilter(4,45,0x000000,1,4,4,1)];
 		
 		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
 		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
@@ -517,7 +582,21 @@ class ButtonsMenu extends Sprite
 		for (var i:int=Btns.length-1; i>-1; i--)
 			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
 			{
-				Fns[i]();	// exec callback function
+				if (Btns[i].numChildren>1)
+				{
+					var itf:TextField = (TextField)(Btns[i].getChildAt(1));
+					itf.type = "input";
+					itf.background = true;
+					stage.focus = itf;
+					function onFocusOut(ev:Event):void
+					{
+						Fns[i](itf.text);
+						itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+					}
+					itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+				}
+				else
+					Fns[i]();	// exec callback function
 				return;
 			}
 	}//endfunction
@@ -721,7 +800,7 @@ class FloorPlan extends Sprite
 	//=============================================================================================
 	// creates and add wall to floorplan 
 	//=============================================================================================
-	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=1, snapDist:Number=10):Wall
+	public function createWall(pt1:Vector3D, pt2:Vector3D, width:Number=10, snapDist:Number=10):Wall
 	{
 		// ----- snap pt1 to existing joint
 		var nearest:Vector3D = null;
@@ -992,7 +1071,7 @@ class Wall extends Sprite
 	 * @param	pt2		end position 2
 	 * @param	thick	thickness of wall
 	 */
-	public function Wall(pt1:Vector3D, pt2:Vector3D, thick:Number=1):void
+	public function Wall(pt1:Vector3D, pt2:Vector3D, thick:Number=10):void
 	{
 		joint1 = pt1;
 		joint2 = pt2;
@@ -1032,7 +1111,7 @@ class Wall extends Sprite
 		}
 		
 		var dv:Vector3D = j2.subtract(j1);
-		dv.scaleBy(thickness/dv.length);
+		dv.scaleBy(0.5*thickness/dv.length);
 		
 		return Vector.<Point>([	new Point(j1.x-dv.x*2+dv.y,j1.y-dv.y*2-dv.x),
 								new Point(j2.x+dv.x*2+dv.y,j2.y+dv.y*2-dv.x),
