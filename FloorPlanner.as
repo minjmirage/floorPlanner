@@ -139,10 +139,14 @@ package
 				menu.y = py;
 				stage.addChild(menu);
 			}
+			// ---------------------------------------------------------------------
+			
+			
 			
 			showMainMenu();
 			
 			// ----- default editing logic
+			var snapDist:Number = 10;
 			var lastJoint:Vector3D = null;
 			var lastWall:Wall = null;
 			var prevMousePt:Point = new Point(0,0);
@@ -154,6 +158,29 @@ package
 					{	// shift joint
 						lastJoint.x = grid.mouseX;
 						lastJoint.y = grid.mouseY;
+						var snapJ:Vector3D = floorPlan.nearestJoint(lastJoint, snapDist);		// chk if near any joint
+						if (snapJ!=null)	// snap end to joint
+						{
+							if  (snapJ!=lastJoint)
+							{
+								prn("snap to "+snapJ);
+								floorPlan.replaceJointWith(lastJoint,snapJ);
+								lastJoint = null;
+							}
+						}
+						else	// joint wall end to existing wall
+						{/*
+							var snapW:Wall = floorPlan.nearestWall(mouseDownPt, snapDist);
+							if (snapW!=null) prn("snapW="+snapW);
+							
+							if (snapW!=null && snapW.joint1!=lastJoint && snapW.joint2!=lastJoint)
+							{
+								floorPlan.removeWall(snapW);
+								floorPlan.createWall(snapW.joint1, lastJoint);
+								floorPlan.createWall(snapW.joint2, lastJoint);
+								lastJoint=null;
+							}*/
+						}
 					}
 					else if (lastWall != null)
 					{	// ----- shift wall
@@ -226,16 +253,29 @@ package
 					wall.joint2.x = grid.mouseX;
 					wall.joint2.y = grid.mouseY;
 					
-					var collided:Wall = floorPlan.chkWallCollide(wall);
-					if (collided != null)
+					var snapJ:Vector3D = floorPlan.nearestJoint(wall.joint2, snapDist);		// chk if near any joint
+					if (snapJ!=null && snapJ!=wall.joint1)	
+					{	// snap to another wall joint
+						if  (snapJ!=wall.joint2)
+						{
+							prn("snap to "+snapJ);
+							floorPlan.replaceJointWith(wall.joint2,snapJ);
+							wall = null;
+						}
+					}
+					else
 					{
-						var intercept:Vector3D = floorPlan.projectedWallPosition(collided, wall.joint2);
-						floorPlan.removeWall(collided);
-						floorPlan.createWall(collided.joint1, intercept,snapDist);
-						floorPlan.createWall(collided.joint2, intercept, snapDist);
-						floorPlan.removeWall(wall);
-						floorPlan.createWall(wall.joint1, intercept,snapDist);
-						wall = null;
+						var collided:Wall = floorPlan.chkWallCollide(wall);
+						if (collided != null)
+						{
+							var intercept:Vector3D = floorPlan.projectedWallPosition(collided, wall.joint2);
+							floorPlan.removeWall(collided);
+							floorPlan.createWall(collided.joint1, intercept,snapDist);
+							floorPlan.createWall(collided.joint2, intercept, snapDist);
+							floorPlan.removeWall(wall);
+							floorPlan.createWall(wall.joint1, intercept,snapDist);
+							wall = null;
+						}
 					}
 				}
 			}
@@ -245,6 +285,7 @@ package
 					wall = floorPlan.createWall(new Vector3D(grid.mouseX,grid.mouseY),
 												new Vector3D(grid.mouseX,grid.mouseY),
 												snapDist);
+				prn("creating new wall")
 			}
 			mouseUpFn = function():void
 			{
@@ -482,6 +523,9 @@ class ButtonsMenu extends Sprite
 	private var Fns:Vector.<Function> = null;
 	private var titleTf:TextField = null;
 
+	//===============================================================================================
+	// 
+	//===============================================================================================
 	public function ButtonsMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
 	{
 		Fns = callBacks;
@@ -569,12 +613,18 @@ class ButtonsMenu extends Sprite
 		addEventListener(Event.ENTER_FRAME,onEnterFrame);
 	}//endfunction
 	
+	//===============================================================================================
+	// 
+	//===============================================================================================
 	private function onMouseDown(ev:Event):void
 	{
 		if (stage==null) return;
 		this.startDrag();
 	}//endfunction
 	
+	//===============================================================================================
+	// 
+	//===============================================================================================
 	private function onMouseUp(ev:Event):void
 	{
 		if (stage==null) return;
@@ -587,13 +637,16 @@ class ButtonsMenu extends Sprite
 					var itf:TextField = (TextField)(Btns[i].getChildAt(1));
 					itf.type = "input";
 					itf.background = true;
-					stage.focus = itf;
-					function onFocusOut(ev:Event):void
+					if (stage.focus!=itf)
 					{
-						Fns[i](itf.text);
-						itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+						stage.focus = itf;
+						function onFocusOut(ev:Event):void
+						{
+							Fns[i](itf.text);
+							itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+						}
+						itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
 					}
-					itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
 				}
 				else
 					Fns[i]();	// exec callback function
@@ -601,6 +654,9 @@ class ButtonsMenu extends Sprite
 			}
 	}//endfunction
 	
+	//===============================================================================================
+	// 
+	//===============================================================================================
 	private function onEnterFrame(ev:Event):void
 	{
 		if (stage==null) return;
@@ -624,6 +680,9 @@ class ButtonsMenu extends Sprite
 			}
 	}//endfunction
 	
+	//===============================================================================================
+	// 
+	//===============================================================================================
 	private function onRemove(ev:Event):void
 	{
 		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
@@ -860,12 +919,32 @@ class FloorPlan extends Sprite
 	{
 		var joint:Vector3D = null;
 		for (var i:int=Joints.length-1; i>-1; i--)
-			if (cutOff>Joints[i].subtract(posn).length)
+			if (Joints[i]!=posn && cutOff>Joints[i].subtract(posn).length)
 			{
 				joint = Joints[i];
 				cutOff = joint.subtract(posn).length;
 			}
 		return joint;
+	}//endfunction
+	
+	//=============================================================================================
+	//
+	//=============================================================================================
+	public function replaceJointWith(jt:Vector3D,njt:Vector3D):void
+	{
+		if (Joints.indexOf(jt)==-1)	Joints.push(njt);
+		else						Joints[Joints.indexOf(jt)]=njt;
+		
+		for (var i:int=Walls.length-1; i>-1; i--)
+		{
+			if (Walls[i].joint1==jt)	Walls[i].joint1=njt;
+			if (Walls[i].joint2==jt)	Walls[i].joint2=njt;
+			if (Walls[i].joint1==Walls[i].joint2)
+			{	// remove any 0 lengthwall
+				this.removeChild(Walls[i]);
+				Walls.splice(i,1);
+			}
+		}
 	}//endfunction
 	
 	//=============================================================================================
@@ -1113,10 +1192,10 @@ class Wall extends Sprite
 		var dv:Vector3D = j2.subtract(j1);
 		dv.scaleBy(0.5*thickness/dv.length);
 		
-		return Vector.<Point>([	new Point(j1.x-dv.x*2+dv.y,j1.y-dv.y*2-dv.x),
-								new Point(j2.x+dv.x*2+dv.y,j2.y+dv.y*2-dv.x),
-								new Point(j2.x+dv.x*2-dv.y,j2.y+dv.y*2+dv.x),
-								new Point(j1.x-dv.x*2-dv.y,j1.y-dv.y*2+dv.x)]);
+		return Vector.<Point>([	new Point(j1.x-dv.x+dv.y,j1.y-dv.y-dv.x),
+								new Point(j2.x+dv.x+dv.y,j2.y+dv.y-dv.x),
+								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
+								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
 	}//endfunction
 }//endclass
 
