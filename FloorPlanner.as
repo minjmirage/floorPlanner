@@ -82,11 +82,15 @@ package
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
-			floorPlan.createWall(new Vector3D( -200, -200), new Vector3D(200, -200),10);
-			floorPlan.createWall(new Vector3D( 200, -200), new Vector3D(200, 200),10);
-			floorPlan.createWall(new Vector3D( 200, 200), new Vector3D( -200, 200),10);
-			floorPlan.createWall(new Vector3D( -200, 200), new Vector3D( -200, -200), 10);
-			floorPlan.Walls[2].Doors.push(new Door(0.35, 0.3));
+			floorPlan.createWall(new Vector3D( -250, -200), new Vector3D(250, -200),20);
+			floorPlan.createWall(new Vector3D( 250, -200), new Vector3D(250, 180),20);
+			floorPlan.createWall(new Vector3D( 250, 180), new Vector3D( 150, 180),20);
+			floorPlan.createWall(new Vector3D( 150, 180), new Vector3D( 50, 230),10);
+			floorPlan.createWall(new Vector3D( 50, 230), new Vector3D( -50, 230),10);
+			floorPlan.createWall(new Vector3D(-50, 230), new Vector3D(-150, 180),10);
+			floorPlan.createWall(new Vector3D(-150, 180), new Vector3D(-250, 180),20);
+			floorPlan.createWall(new Vector3D( -250, 180), new Vector3D( -250, -200), 20);
+			floorPlan.Walls[0].Doors.push(new Door(0.35, 0.3));
 			floorPlan.refresh();
 		}//endfunction
 		
@@ -141,8 +145,6 @@ package
 			}
 			// ---------------------------------------------------------------------
 			
-			
-			
 			showMainMenu();
 			
 			// ----- default editing logic
@@ -163,23 +165,20 @@ package
 						{
 							if  (snapJ!=lastJoint)
 							{
-								prn("snap to "+snapJ);
 								floorPlan.replaceJointWith(lastJoint,snapJ);
 								lastJoint = null;
 							}
 						}
 						else	// joint wall end to existing wall
-						{/*
-							var snapW:Wall = floorPlan.nearestWall(mouseDownPt, snapDist);
-							if (snapW!=null) prn("snapW="+snapW);
-							
+						{
+							var snapW:Wall = floorPlan.nearestWall(lastJoint, snapDist);
 							if (snapW!=null && snapW.joint1!=lastJoint && snapW.joint2!=lastJoint)
 							{
 								floorPlan.removeWall(snapW);
 								floorPlan.createWall(snapW.joint1, lastJoint);
 								floorPlan.createWall(snapW.joint2, lastJoint);
 								lastJoint=null;
-							}*/
+							}
 						}
 					}
 					else if (lastWall != null)
@@ -503,6 +502,8 @@ package
 }//endpackage
 
 import flash.display.DisplayObject;
+import flash.display.Bitmap;
+import flash.display.BitmapData;
 import flash.events.FocusEvent;
 import flash.geom.Vector3D;
 import flash.geom.Point;
@@ -707,6 +708,177 @@ class ButtonsMenu extends Sprite
 	}//endfunction 
 		
 }//endclass
+
+class Furniture extends Sprite
+{
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function transformControls(targ:Sprite,marg:int=5):Sprite
+	{
+		var ctrls:Sprite = new Sprite();
+		
+		function drawCtrls():void
+		{
+			var rot:Number = targ.rotation;
+			var bnds:Rectangle = targ.getBounds(targ);
+			bnds.x *= targ.scaleX;
+			bnds.width *= targ.scaleX;
+			bnds.y *= targ.scaleY;
+			bnds.height *= targ.scaleY;
+			while (ctrls.numChildren>0)	ctrls.removeChildAt(0);
+			ctrls.graphics.clear();
+			drawI(ctrls,bnds.left-marg,bnds.top,bnds.left-marg,bnds.bottom,marg*2,true);
+			drawI(ctrls,bnds.left,bnds.top-marg,bnds.right,bnds.top-marg,marg*2,true);
+			drawI(ctrls,bnds.right+marg,bnds.top,bnds.right+marg,bnds.bottom,marg*2);
+			drawI(ctrls,bnds.left,bnds.bottom+marg,bnds.right,bnds.bottom+marg,marg*2);
+			drawI(ctrls,bnds.left,bnds.top,bnds.right,bnds.bottom,marg*2,true);
+			ctrls.graphics.beginFill(0x666666,1);
+			ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
+			ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
+			ctrls.graphics.endFill();
+			ctrls.x = targ.x;
+			ctrls.y = targ.y;
+			ctrls.rotation = targ.rotation;
+			ctrls.buttonMode = true;
+		}
+		drawCtrls();
+		
+		var mouseDownPt:Point=null;
+		var mode:String = "";
+		var oPosn:Vector3D = null;	// {x,y,0,rotation}
+		var oScale:Vector3D = null;
+		function enterFrameHandler(ev:Event) : void
+		{
+			if (mode=="drag")
+			{
+				targ.x = oPosn.x+stage.mouseX-mouseDownPt.x;
+				targ.y = oPosn.y+stage.mouseY-mouseDownPt.y;
+			}
+			else if (mode=="rotate")
+			{
+				var pvx:Number = mouseDownPt.x-oPosn.x;
+				var pvy:Number = mouseDownPt.y-oPosn.y;
+				var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
+				pvx/=pvl; pvy/=pvl;
+				
+				var qvx:Number = stage.mouseX-oPosn.x;
+				var qvy:Number = stage.mouseY-oPosn.y;
+				var qvl:Number = Math.sqrt(qvx*qvx+qvy*qvy);
+				qvx/=qvl; qvy/=qvl;
+				var angDiff:Number = Math.acos(pvx*qvx+pvy*qvy);
+				if (pvx*qvy-pvy*qvx<0)	angDiff*=-1;
+				targ.rotation = oPosn.w+angDiff/Math.PI*180;
+			}
+			else if (mode=="scaleX" || mode=="scaleY")
+			{
+				var opt:Point = ctrls.globalToLocal(mouseDownPt);
+				var mpt:Point = ctrls.globalToLocal(mouseDownPt);
+				var sc:Number = mpt.length/opt.length;
+				if (mode=="scaleX")	targ.scaleX = oScale.x*sc;
+				if (mode=="scaleY")	targ.scaleY = oScale.y*sc;
+				
+			}
+					
+			ctrls.rotation = targ.rotation;
+			ctrls.x = targ.x;
+			ctrls.y = targ.y;
+		}//endfunction
+		
+		function mouseDownHandler(ev:Event):void
+		{
+			mouseDownPt = new Point(stage.mouseX,stage.mouseY);
+			oPosn = new Vector3D(targ.x,targ.y,0,targ.rotation);
+			oScale = new Vector3D(targ.scaleX,targ.scaleY);
+			var bnds:Rectangle = targ.getBounds(targ);
+			bnds.x *= targ.scaleX;
+			bnds.width *= targ.scaleX;
+			bnds.y *= targ.scaleY;
+			bnds.height *= targ.scaleY;
+			if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right &&
+				ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
+				mode = "drag";
+			else if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right)
+				mode = "scaleY";
+			else if (ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
+				mode = "scaleX";
+			else
+				mode = "rotate";
+		}//endfunction
+		
+		function mouseUpHandler(ev:Event):void
+		{
+			mode = "";
+		}//endfunction
+		
+		ctrls.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		ctrls.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+		stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+		
+		return ctrls;
+	}
+
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	private function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	{
+		var vx:Number = bx-ax;
+		var vy:Number = by-ay;
+		var vl:Number = Math.sqrt(vx*vx+vy*vy);
+		var ux:Number = vx/vl;
+		var uy:Number = vy/vl;
+		w/=2;
+		// ----- draw rect
+		s.graphics.lineStyle();
+		s.graphics.beginFill(0x000000,0);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		s.graphics.lineTo(bx-uy*w,by+ux*w);
+		s.graphics.endFill();
+		
+		// ----- draw lines
+		s.graphics.lineStyle(0,0x666666,1);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.moveTo(bx-uy*w,by+ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		
+		if (showLen)
+		{
+			var tf:TextField = new TextField();
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.color = 0x000000;
+			tff.font = "arial";
+			tf.wordWrap = false;
+			tf.autoSize = "left";
+			tf.selectable = false;
+			tf.text = int(vl)+"cm";
+			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
+			bmp.bitmapData.draw(tf,null,null,null,null,true);
+			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
+			var tx:Number = -0.5*bmp.width;
+			var ty:Number = 0.5*bmp.height;
+			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
+			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
+			bmp.rotation = rot/Math.PI*180;
+			bmp.x += (ax+bx)/2;
+			bmp.y += (ay+by)/2;
+			s.addChild(bmp);
+			var tw:int = Math.max(bmp.width,bmp.height);
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
+			s.graphics.moveTo(bx,by);
+			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
+		}
+		else
+		{
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(bx,by);
+		}
+	}//endfunction
+}
 
 class WireGrid extends Sprite
 {
@@ -1017,9 +1189,9 @@ class FloorPlan extends Sprite
 			if (Adj[j].joint2==wall.joint2)		wb = Adj[j].wallBounds(true);	// ensure point ordering is correct
 			else								wb = Adj[j].wallBounds(false);
 			
-			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
 			if (ipt!=null)	wallB[1] = ipt;
-			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
 			if (ipt!=null)	wallB[2] = ipt;
 		}
 		
@@ -1030,12 +1202,12 @@ class FloorPlan extends Sprite
 			if (Adj[j].joint2==wall.joint1)		wb = Adj[j].wallBounds(false);	// ensure point ordering is correct
 			else								wb = Adj[j].wallBounds(true);
 			
-			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
 			if (ipt!=null)	wallB[0] = ipt;
-			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
 			if (ipt!=null)	wallB[3] = ipt;
 		}
-		
+		// ----- draws the calculated wallB
 		wall.graphics.clear();
 		if (wall.highlight)	wall.graphics.beginFill(0xFF6600,1);
 		else				wall.graphics.beginFill(0x000000,1);
@@ -1071,6 +1243,22 @@ class FloorPlan extends Sprite
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 		}
+	}//endfunction
+	
+	//=============================================================================================
+	// convenience function to extend wall ends so they intersect nicely at acute angles
+	//=============================================================================================
+	private function extendedSegsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number,ext:Number=100):Point
+	{
+		var pvx:Number = bx-ax;
+		var pvy:Number = by-ay;
+		var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
+		pvx*=ext/pvl; pvy*=ext/pvl;
+		var qvx:Number = dx-cx;
+		var qvy:Number = dy-cy;
+		var qvl:Number = Math.sqrt(qvx*qvx+qvy*qvy);
+		qvx*=ext/qvl; qvy*=ext/qvl;
+		return segmentsIntersectPt(ax-pvx,ay-pvy,bx+pvx,by+pvy,cx-qvx,cy-qvy,dx+qvx,dy+qvy);
 	}//endfunction
 	
 	//=============================================================================================
