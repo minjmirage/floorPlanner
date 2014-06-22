@@ -1,0 +1,1 @@
+~/Desktop/AIR13.0/bin/mxmlc -compiler.optimize FloorPlanner.as -include-libraries assets.swc

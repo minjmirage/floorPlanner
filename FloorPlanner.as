@@ -17,6 +17,32 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
+		private var Items:XML = 
+		<Items>
+			<item en="LCD TV" cn="" cls="TVFlat" />
+			<item en="Toilet Bowl" cn="" cls="Toilet" />
+			<item en="Square Table" cn="" cls="TableSquare" />
+			<item en="Round Table" cn="" cls="TableRound" />
+			<item en="Rectangular Table" cn="" cls="TableRect" />
+			<item en="Octagonal Table" cn="" cls="TableOctagon" />
+			<item en="Corner Table" cn="" cls="TableL" />
+			<item en="Stove" cn="" cls="Stove" />
+			<item en="2 Seat Sofa" cn="" cls="Sofa2" />
+			<item en="3 Seat Sofa" cn="" cls="Sofa3" />
+			<item en="4 Seat Sofa" cn="" cls="Sofa4" />
+			<item en="Round Sink" cn="" cls="SinkRound" />
+			<item en="Kitchen Sink" cn="" cls="SinkKitchen" />
+			<item en="Piano" cn="" cls="Piano" />
+			<item en="Oven" cn="" cls="Oven" />
+			<item en="Chair" cn="" cls="Chair" />
+			<item en="Singale Bed" cn="" cls="BedSingle" />
+			<item en="Double Bed" cn="" cls="BedDouble" />
+			<item en="Round Bathtub" cn="" cls="BathTubRound" />
+			<item en="Corner Bathtub" cn="" cls="BathTubL" />
+			<item en="Bathtub" cn="" cls="BathTub" />
+			<item en="Armchair" cn="" cls="ArmChair" />
+		</Items>;
+	
 		private var mouseDownPt:Vector3D = null;
 		private var mouseUpPt:Vector3D= null;
 		private var grid:WireGrid = null;
@@ -114,7 +140,7 @@ package
 				}
 				menu = new ButtonsMenu("EDITING MODE",
 										Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddWalls]));
+										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddFurniture]));
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
@@ -200,21 +226,67 @@ package
 			}
 			mouseDownFn = function():void
 			{
-				prevMousePt.x = grid.mouseX;
-				prevMousePt.y = grid.mouseY;
-				if (lastWall!=null) lastWall.highlight=false;
-				lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
-				if (lastJoint==null)
+				if (floorPlan.selectFurniture())
 				{
-					lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
-					if (lastWall!=null) 
-					{
-						lastWall.highlight=true;
-						showWallProperties(lastWall);
-					}
-					else
-						showMainMenu();
+					mouseUpPt.w = getTimer();	// stop floorplan dragging
 				}
+				else
+				{
+					prevMousePt.x = grid.mouseX;
+					prevMousePt.y = grid.mouseY;
+					if (lastWall!=null) lastWall.highlight=false;
+					lastJoint = floorPlan.nearestJoint(mouseDownPt, 10);		// chk if near any joint
+					if (lastJoint==null)
+					{
+						lastWall = floorPlan.nearestWall(mouseDownPt, 10);		// chk if near any wall
+						if (lastWall!=null) 
+						{
+							lastWall.highlight=true;
+							showWallProperties(lastWall);
+						}
+						else
+							showMainMenu();
+					}
+				}
+			}
+			mouseUpFn = function():void
+			{
+				
+			}
+		}//endfunction
+		
+		//=============================================================================================
+		// go into adding furniture mode
+		//=============================================================================================
+		private function modeAddFurniture():void
+		{
+			var px:int = 0;
+			var py:int = 0;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new ButtonsMenu("ADDING FURNITURE",
+									Vector.<String>(["DONE"]),
+									Vector.<Function>([modeDefault]));
+			menu.x = px;
+			menu.y = py;
+			stage.addChild(menu);
+			
+			var fmenu:Sprite = new AddFurnitureMenu(Items,floorPlan);
+			fmenu.y = menu.height+10;
+			menu.addChild(fmenu);
+			
+			var curItem:Sprite = null;
+			stepFn = function():void
+			{
+			
+			}
+			mouseDownFn = function():void
+			{
+				floorPlan.selectFurniture();
 			}
 			mouseUpFn = function():void
 			{
@@ -227,7 +299,6 @@ package
 		//=============================================================================================
 		private function modeAddWalls(snapDist:Number=10):void
 		{
-			prn("modeAddWalls");
 			var px:int = 0;
 			var py:int = 0;
 			if (menu!=null)
@@ -284,7 +355,6 @@ package
 					wall = floorPlan.createWall(new Vector3D(grid.mouseX,grid.mouseY),
 												new Vector3D(grid.mouseX,grid.mouseY),
 												snapDist);
-				prn("creating new wall")
 			}
 			mouseUpFn = function():void
 			{
@@ -516,6 +586,7 @@ import flash.events.MouseEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
+import flash.utils.getDefinitionByName;
 
 
 class ButtonsMenu extends Sprite
@@ -709,176 +780,138 @@ class ButtonsMenu extends Sprite
 		
 }//endclass
 
-class Furniture extends Sprite
+class AddFurnitureMenu extends Sprite
 {
-	//=============================================================================================
+	private var Btns:Vector.<Sprite> = null;
+	private var IcoCls:Vector.<Class> = null;
+	private var floorPlan:FloorPlan = null;
+	
+	//===============================================================================================
 	// 
-	//=============================================================================================
-	public function transformControls(targ:Sprite,marg:int=5):Sprite
+	//===============================================================================================
+	public function AddFurnitureMenu(dat:XML,floorP:FloorPlan,icoW:int=50):void
 	{
-		var ctrls:Sprite = new Sprite();
+		Btns = new Vector.<Sprite>();
+		IcoCls = new Vector.<Class>();
+		floorPlan = floorP;
 		
-		function drawCtrls():void
+		for (var i:int=0; i<dat.item.length(); i++)
 		{
-			var rot:Number = targ.rotation;
-			var bnds:Rectangle = targ.getBounds(targ);
-			bnds.x *= targ.scaleX;
-			bnds.width *= targ.scaleX;
-			bnds.y *= targ.scaleY;
-			bnds.height *= targ.scaleY;
-			while (ctrls.numChildren>0)	ctrls.removeChildAt(0);
-			ctrls.graphics.clear();
-			drawI(ctrls,bnds.left-marg,bnds.top,bnds.left-marg,bnds.bottom,marg*2,true);
-			drawI(ctrls,bnds.left,bnds.top-marg,bnds.right,bnds.top-marg,marg*2,true);
-			drawI(ctrls,bnds.right+marg,bnds.top,bnds.right+marg,bnds.bottom,marg*2);
-			drawI(ctrls,bnds.left,bnds.bottom+marg,bnds.right,bnds.bottom+marg,marg*2);
-			drawI(ctrls,bnds.left,bnds.top,bnds.right,bnds.bottom,marg*2,true);
-			ctrls.graphics.beginFill(0x666666,1);
-			ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
-			ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
-			ctrls.graphics.endFill();
-			ctrls.x = targ.x;
-			ctrls.y = targ.y;
-			ctrls.rotation = targ.rotation;
-			ctrls.buttonMode = true;
+			var btn:Sprite = new Sprite();
+			btn.graphics.beginFill(0xFFFFFF,1);
+			btn.graphics.drawRoundRect(0,0,icoW,icoW,icoW/10,icoW/10);
+			btn.graphics.endFill();
+			IcoCls.push(getDefinitionByName(dat.item[i].@cls));
+			var ico:Sprite = new IcoCls[i]();
+			var bnds:Rectangle = ico.getBounds(ico);
+			var sc:Number = Math.min(icoW*0.8/ico.width,icoW*0.8/ico.height);
+			ico.scaleX = ico.scaleY = sc;
+			ico.x = (icoW-ico.width)/2 - bnds.left*sc;
+			ico.y = (icoW-ico.height)/2 - bnds.top*sc;
+			btn.addChild(ico);
+			btn.buttonMode = true;
+			btn.mouseChildren = false;
+			var tf:TextField = new TextField();
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			do {
+				var tff:TextFormat = tf.defaultTextFormat;
+				tff.color = 0x000000;
+				tff.size = int(tff.size)-1;
+				tf.defaultTextFormat = tff;
+				tf.text = dat.item[i].@en;
+			}
+			while (tf.width>icoW);
+			tf.y = btn.height;
+			btn.addChild(tf);
+			Btns.push(btn);
+			btn.x = 10+(icoW+5)*(i%3);
+			btn.y = 10+(icoW+20)*int(i/3);
+			addChild(btn);
 		}
-		drawCtrls();
 		
-		var mouseDownPt:Point=null;
-		var mode:String = "";
-		var oPosn:Vector3D = null;	// {x,y,0,rotation}
-		var oScale:Vector3D = null;
-		function enterFrameHandler(ev:Event) : void
-		{
-			if (mode=="drag")
-			{
-				targ.x = oPosn.x+stage.mouseX-mouseDownPt.x;
-				targ.y = oPosn.y+stage.mouseY-mouseDownPt.y;
-			}
-			else if (mode=="rotate")
-			{
-				var pvx:Number = mouseDownPt.x-oPosn.x;
-				var pvy:Number = mouseDownPt.y-oPosn.y;
-				var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
-				pvx/=pvl; pvy/=pvl;
-				
-				var qvx:Number = stage.mouseX-oPosn.x;
-				var qvy:Number = stage.mouseY-oPosn.y;
-				var qvl:Number = Math.sqrt(qvx*qvx+qvy*qvy);
-				qvx/=qvl; qvy/=qvl;
-				var angDiff:Number = Math.acos(pvx*qvx+pvy*qvy);
-				if (pvx*qvy-pvy*qvx<0)	angDiff*=-1;
-				targ.rotation = oPosn.w+angDiff/Math.PI*180;
-			}
-			else if (mode=="scaleX" || mode=="scaleY")
-			{
-				var opt:Point = ctrls.globalToLocal(mouseDownPt);
-				var mpt:Point = ctrls.globalToLocal(mouseDownPt);
-				var sc:Number = mpt.length/opt.length;
-				if (mode=="scaleX")	targ.scaleX = oScale.x*sc;
-				if (mode=="scaleY")	targ.scaleY = oScale.y*sc;
-				
-			}
-					
-			ctrls.rotation = targ.rotation;
-			ctrls.x = targ.x;
-			ctrls.y = targ.y;
-		}//endfunction
+		drawStripedRect(this,0,0,this.width+20,this.height+20,0xAAAAAA,0x999999,20);
 		
-		function mouseDownHandler(ev:Event):void
-		{
-			mouseDownPt = new Point(stage.mouseX,stage.mouseY);
-			oPosn = new Vector3D(targ.x,targ.y,0,targ.rotation);
-			oScale = new Vector3D(targ.scaleX,targ.scaleY);
-			var bnds:Rectangle = targ.getBounds(targ);
-			bnds.x *= targ.scaleX;
-			bnds.width *= targ.scaleX;
-			bnds.y *= targ.scaleY;
-			bnds.height *= targ.scaleY;
-			if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right &&
-				ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
-				mode = "drag";
-			else if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right)
-				mode = "scaleY";
-			else if (ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
-				mode = "scaleX";
-			else
-				mode = "rotate";
-		}//endfunction
-		
-		function mouseUpHandler(ev:Event):void
-		{
-			mode = "";
-		}//endfunction
-		
-		ctrls.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
-		ctrls.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-		stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
-		
-		return ctrls;
-	}
-
-	//=============================================================================================
+		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
 	// 
-	//=============================================================================================
-	private function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	//===============================================================================================
+	private function onMouseDown(ev:Event):void
 	{
-		var vx:Number = bx-ax;
-		var vy:Number = by-ay;
-		var vl:Number = Math.sqrt(vx*vx+vy*vy);
-		var ux:Number = vx/vl;
-		var uy:Number = vy/vl;
-		w/=2;
-		// ----- draw rect
-		s.graphics.lineStyle();
-		s.graphics.beginFill(0x000000,0);
-		s.graphics.moveTo(ax-uy*w,ay+ux*w);
-		s.graphics.lineTo(ax+uy*w,ay-ux*w);
-		s.graphics.lineTo(bx+uy*w,by-ux*w);	
-		s.graphics.lineTo(bx-uy*w,by+ux*w);
+		if (stage==null) return;
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onMouseUp(ev:Event):void
+	{
+		if (stage==null) return;
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				floorPlan.addFurniture(new IcoCls[i]());
+				return;
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onEnterFrame(ev:Event):void
+	{
+		if (stage==null) return;
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				if (Btns[i].filters==null)
+					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
+			}
+			else
+			{
+				if (Btns[i].filters!=null)
+				{
+					var A:Array = Btns[i].filters;
+					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
+						(GlowFilter)(A[0]).strength-=0.1;
+					else 
+						A = null;
+					Btns[i].filters = A;
+				}
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onRemove(ev:Event):void
+	{
+		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// draws a striped rectangle in given sprite 
+	//===============================================================================================
+	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	{
+		if (s==null)	s = new Sprite();
+		var mat:Matrix = new Matrix();
+		mat.createGradientBox(sw,sw,rot,0,0);
+		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
+		s.graphics.drawRoundRect(x,y,w,h,10,10);
 		s.graphics.endFill();
 		
-		// ----- draw lines
-		s.graphics.lineStyle(0,0x666666,1);
-		s.graphics.moveTo(ax-uy*w,ay+ux*w);
-		s.graphics.lineTo(ax+uy*w,ay-ux*w);
-		s.graphics.moveTo(bx-uy*w,by+ux*w);
-		s.graphics.lineTo(bx+uy*w,by-ux*w);	
-		
-		if (showLen)
-		{
-			var tf:TextField = new TextField();
-			var tff:TextFormat = tf.defaultTextFormat;
-			tff.color = 0x000000;
-			tff.font = "arial";
-			tf.wordWrap = false;
-			tf.autoSize = "left";
-			tf.selectable = false;
-			tf.text = int(vl)+"cm";
-			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
-			bmp.bitmapData.draw(tf,null,null,null,null,true);
-			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
-			var tx:Number = -0.5*bmp.width;
-			var ty:Number = 0.5*bmp.height;
-			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
-			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
-			bmp.rotation = rot/Math.PI*180;
-			bmp.x += (ax+bx)/2;
-			bmp.y += (ay+by)/2;
-			s.addChild(bmp);
-			var tw:int = Math.max(bmp.width,bmp.height);
-			s.graphics.moveTo(ax,ay);
-			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
-			s.graphics.moveTo(bx,by);
-			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
-		}
-		else
-		{
-			s.graphics.moveTo(ax,ay);
-			s.graphics.lineTo(bx,by);
-		}
+		return s;
 	}//endfunction
-}
+}//endclass
 
 class WireGrid extends Sprite
 {
@@ -1018,6 +1051,7 @@ class FloorPlan extends Sprite
 {
 	public var Joints:Vector.<Vector3D>;
 	public var Walls:Vector.<Wall>;
+	public var Furniture:Vector.<Sprite>;
 	
 	//=============================================================================================
 	//
@@ -1026,6 +1060,7 @@ class FloorPlan extends Sprite
 	{
 		Joints = new Vector.<Vector3D>();
 		Walls = new Vector.<Wall>();
+		Furniture = new Vector.<Sprite>();
 	}//endfunction
 	
 	//=============================================================================================
@@ -1150,7 +1185,7 @@ class FloorPlan extends Sprite
 	}//endfunction
 	
 	//=============================================================================================
-	// 
+	// find position of point projected onto wall
 	//=============================================================================================
 	public function projectedWallPosition(wall:Wall, pt:Vector3D) : Vector3D
 	{
@@ -1169,6 +1204,231 @@ class FloorPlan extends Sprite
 	{
 		for (var i:int=Walls.length-1; i>-1; i--)	// draw for each wall
 			drawWall(Walls[i]);
+	}//endfunction
+	
+	//=============================================================================================
+	// adds a furniture icon to floorplan
+	//=============================================================================================
+	public function addFurniture(fu:Sprite):void
+	{
+		Furniture.push(fu);
+		addChild(fu);
+		
+		// ----- hack to start dragging
+		if (stage!=null)
+		{
+			function enterFrameHandler(ev:Event=null) :void
+			{
+				fu.x = mouseX;
+				fu.y = mouseY;
+			}
+			function mouseDownHandler(ev:Event=null):void
+			{
+				fu.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+				stage.removeEventListener(MouseEvent.MOUSE_UP,mouseDownHandler);	
+			}
+			fu.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+			stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		}
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	private var furnitureCtrls:Sprite = null;
+	public function selectFurniture():Boolean
+	{
+		if (furnitureCtrls!=null && furnitureCtrls.hitTestPoint(stage.mouseX,stage.mouseY)) return true;
+		
+		var fu:Sprite = null;
+		for (var i:int=Furniture.length-1; i>-1; i--)
+			if (Furniture[i].hitTestPoint(stage.mouseX,stage.mouseY))
+				fu = Furniture[i];
+		
+		if (fu==null) return false;
+		
+		if (furnitureCtrls!=null)	furnitureCtrls.parent.removeChild(furnitureCtrls);
+		furnitureCtrls = furnitureTransformControls(fu);
+		addChild(furnitureCtrls);
+		
+		return true;
+	}//endfunction
+	
+	//=============================================================================================
+	// controls to shift scale rotate furniture
+	//=============================================================================================
+	public function furnitureTransformControls(targ:Sprite,marg:int=5):Sprite
+	{
+		var ctrls:Sprite = new Sprite();
+		
+		function drawCtrls():void
+		{
+			var rot:Number = targ.rotation;
+			var bnds:Rectangle = targ.getBounds(targ);
+			bnds.x *= targ.scaleX;
+			bnds.width *= targ.scaleX;
+			bnds.y *= targ.scaleY;
+			bnds.height *= targ.scaleY;
+			while (ctrls.numChildren>0)	ctrls.removeChildAt(0);
+			ctrls.graphics.clear();
+			drawI(ctrls,bnds.left-marg,bnds.top,bnds.left-marg,bnds.bottom,marg*2,true);
+			drawI(ctrls,bnds.left,bnds.top-marg,bnds.right,bnds.top-marg,marg*2,true);
+			drawI(ctrls,bnds.right+marg,bnds.top,bnds.right+marg,bnds.bottom,marg*2);
+			drawI(ctrls,bnds.left,bnds.bottom+marg,bnds.right,bnds.bottom+marg,marg*2);
+			drawI(ctrls,bnds.left,bnds.top,bnds.right,bnds.bottom,marg*2,true);
+			ctrls.graphics.beginFill(0x666666,1);
+			ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
+			ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
+			ctrls.graphics.endFill();
+			ctrls.x = targ.x;
+			ctrls.y = targ.y;
+			ctrls.rotation = targ.rotation;
+			ctrls.buttonMode = true;
+		}
+		drawCtrls();
+		
+		var mouseDownPt:Point=null;
+		var mode:String = "";
+		var oPosn:Vector3D = null;	// {x,y,0,rotation}
+		var oScale:Vector3D = null;
+		function enterFrameHandler(ev:Event) : void
+		{
+			if (mode=="drag")
+			{
+				targ.x = oPosn.x+ctrls.parent.mouseX-mouseDownPt.x;
+				targ.y = oPosn.y+ctrls.parent.mouseY-mouseDownPt.y;
+			}
+			else if (mode=="rotate")
+			{
+				var pvx:Number = mouseDownPt.x-oPosn.x;
+				var pvy:Number = mouseDownPt.y-oPosn.y;
+				var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
+				pvx/=pvl; pvy/=pvl;
+				
+				var qvx:Number = ctrls.parent.mouseX-oPosn.x;
+				var qvy:Number = ctrls.parent.mouseY-oPosn.y;
+				var qvl:Number = Math.sqrt(qvx*qvx+qvy*qvy);
+				qvx/=qvl; qvy/=qvl;
+				var angDiff:Number = Math.acos(pvx*qvx+pvy*qvy);
+				if (pvx*qvy-pvy*qvx<0)	angDiff*=-1;
+				targ.rotation = oPosn.w+angDiff/Math.PI*180;
+			}
+			else if (mode=="scaleX" || mode=="scaleY")
+			{
+				var opt:Point = mouseDownPt.subtract(new Point(ctrls.x,ctrls.y));
+				var mpt:Point = new Point(ctrls.parent.mouseX-ctrls.x,ctrls.parent.mouseY-ctrls.y);
+				var sc:Number = mpt.length/opt.length;
+				if (mode=="scaleX")	targ.scaleX = oScale.x*sc;
+				if (mode=="scaleY")	targ.scaleY = oScale.y*sc;
+				drawCtrls();
+			}
+					
+			ctrls.rotation = targ.rotation;
+			ctrls.x = targ.x;
+			ctrls.y = targ.y;
+		}//endfunction
+		
+		function mouseDownHandler(ev:Event):void
+		{
+			mouseDownPt = new Point(ctrls.parent.mouseX,ctrls.parent.mouseY);
+			oPosn = new Vector3D(targ.x,targ.y,0,targ.rotation);
+			oScale = new Vector3D(targ.scaleX,targ.scaleY);
+			var bnds:Rectangle = targ.getBounds(targ);
+			bnds.x *= targ.scaleX;
+			bnds.width *= targ.scaleX;
+			bnds.y *= targ.scaleY;
+			bnds.height *= targ.scaleY;
+			if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right &&
+				ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
+				mode = "drag";
+			else if (ctrls.mouseX>bnds.left && ctrls.mouseX<bnds.right)
+				mode = "scaleY";
+			else if (ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
+				mode = "scaleX";
+			else
+				mode = "rotate";
+		}//endfunction
+		
+		function mouseUpHandler(ev:Event):void
+		{
+			mode = "";
+		}//endfunction
+		
+		function removeHandler(ev:Event):void
+		{
+			ctrls.removeEventListener(Event.REMOVED_FROM_STAGE,removeHandler);
+			ctrls.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			ctrls.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+			stage.removeEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+		}
+		
+		ctrls.addEventListener(Event.REMOVED_FROM_STAGE,removeHandler);
+		ctrls.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		ctrls.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+		stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+		
+		return ctrls;
+	}
+
+	//=============================================================================================
+	// convenience function to draw the length markings
+	//=============================================================================================
+	private function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	{
+		var vx:Number = bx-ax;
+		var vy:Number = by-ay;
+		var vl:Number = Math.sqrt(vx*vx+vy*vy);
+		var ux:Number = vx/vl;
+		var uy:Number = vy/vl;
+		w/=2;
+		// ----- draw rect
+		s.graphics.lineStyle();
+		s.graphics.beginFill(0x000000,0);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		s.graphics.lineTo(bx-uy*w,by+ux*w);
+		s.graphics.endFill();
+		
+		// ----- draw lines
+		s.graphics.lineStyle(0,0x666666,1);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.moveTo(bx-uy*w,by+ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		
+		if (showLen)
+		{
+			var tf:TextField = new TextField();
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.color = 0x000000;
+			tff.font = "arial";
+			tf.wordWrap = false;
+			tf.autoSize = "left";
+			tf.selectable = false;
+			tf.text = int(vl)+"cm";
+			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
+			bmp.bitmapData.draw(tf,null,null,null,null,true);
+			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
+			var tx:Number = -0.5*bmp.width;
+			var ty:Number = 0.5*bmp.height;
+			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
+			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
+			bmp.rotation = rot/Math.PI*180;
+			bmp.x += (ax+bx)/2;
+			bmp.y += (ay+by)/2;
+			s.addChild(bmp);
+			var tw:int = Math.max(bmp.width,bmp.height);
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
+			s.graphics.moveTo(bx,by);
+			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
+		}
+		else
+		{
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(bx,by);
+		}
 	}//endfunction
 	
 	//=============================================================================================
@@ -1209,6 +1469,7 @@ class FloorPlan extends Sprite
 		}
 		// ----- draws the calculated wallB
 		wall.graphics.clear();
+		while (wall.numChildren>0)	wall.removeChildAt(0);
 		if (wall.highlight)	wall.graphics.beginFill(0xFF6600,1);
 		else				wall.graphics.beginFill(0x000000,1);
 		wall.graphics.moveTo(wallB[0].x,wallB[0].y);
@@ -1217,6 +1478,14 @@ class FloorPlan extends Sprite
 		wall.graphics.lineTo(wallB[3].x,wallB[3].y);
 		wall.graphics.lineTo(wallB[0].x,wallB[0].y);
 		wall.graphics.endFill();
+		
+		// ----- draw wall length info
+		var ux:Number = wallB[1].x-wallB[0].x;
+		var uy:Number = wallB[1].y-wallB[0].y;
+		var vl:Number = Math.sqrt(ux*ux+uy*uy);
+		ux/=vl; uy/=vl;
+		drawI(wall,wallB[0].x+uy*3,wallB[0].y-ux*3,wallB[1].x+uy*3,wallB[1].y-ux*3,6,true);
+		drawI(wall,wallB[2].x-uy*3,wallB[2].y+ux*3,wallB[3].x-uy*3,wallB[3].y+ux*3,6,true);
 		
 		// ----- draw all doors
 		for (j=wall.Doors.length-1; j>-1; j--)
