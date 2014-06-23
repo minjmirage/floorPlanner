@@ -941,6 +941,13 @@ class WireGrid extends Sprite
 	//=============================================================================================
 	public function zoom(sc:Number):void
 	{
+		// ----- shift so that zoom is in center
+		var ompt:Point = new Point((-x+sw/2)/scaleX,(-y+sh/2)/scaleY);	// original middle point
+		var nmpt:Point = new Point((-x+sw/2)/sc,(-y+sh/2)/sc);			// new skewed middle point
+		var dv:Point = ompt.subtract(nmpt);
+		x-= dv.x*sc;
+		y-= dv.y*sc;
+		
 		scaleX = scaleY = sc;
 		update();
 	}//endfunction
@@ -1406,7 +1413,7 @@ class FloorPlan extends Sprite
 			tf.wordWrap = false;
 			tf.autoSize = "left";
 			tf.selectable = false;
-			tf.text = int(vl)+"cm";
+			tf.text = (int(vl)/100)+"m";
 			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
 			bmp.bitmapData.draw(tf,null,null,null,null,true);
 			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
@@ -1558,22 +1565,112 @@ class FloorPlan extends Sprite
 	}//endfunction
 	
 	//=======================================================================================
+	// calculates area of poly by triangulating and summing the triangle areas
+	//=======================================================================================
+	public static function calculateArea(Poly:Vector.<Point>):Number
+	{
+		var area:Number = 0;
+		var Tris:Vector.<Point> = triangulate(Poly);
+		var n:int = Tris.length;
+		for (var i:int=0; i<n; i+=3)
+		{
+			var bux:Number = Tris[i+1].x-Tris[i].x;
+			var buy:Number = Tris[i+1].y-Tris[i].y;
+			var bvl:Number = Math.sqrt(bux*bux+buy*buy);
+			bux/=bvl; buy/=bvl;
+			
+			var qx:Number = Tris[i+2].x-Tris[i].x;
+			var qy:Number = Tris[i+2].y-Tris[i].y;
+			var ql:Number = Math.sqrt(qx*qx+qy*qy);
+			var proj:Number = qx*bux + qy*buy;
+			var normD:Number = Math.sqrt(ql*ql-proj*proj);
+			
+			area += 0.5*normD*bvl;
+		}
+		
+		return area;
+	}//endfunction
+
+	//=======================================================================================
+	// triangulate by cutting ears off polygon O(n*n)  slow... just so i can find floorarea
+	//=======================================================================================
+	public static function triangulate(Poly:Vector.<Point>):Vector.<Point>
+	{
+		var R:Vector.<Point> = new Vector.<Point>();
+		var P:Vector.<Point> = Poly.slice();
+		
+		while (P.length>3)
+		{
+			do {
+				P.push(P.shift());
+			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P));	// chk cut line is actually in poly
+			R.push(P[0],P[1],P[2]);	// push triangle in result
+			P.splice(1,1);			// remove P[1]
+		}
+		
+		return R;
+	}//endfunction
+
+	//=======================================================================================
+	// test if edge connecting 2 points is entirely in poly
+	//=======================================================================================
+	public static function edgeInPoly(ax:Number,ay:Number,bx:Number,by:Number,Poly:Vector.<Point>):Boolean
+	{
+		var n:int = Poly.length;
+		for (var i:int=n-1; i>0; i--)
+			if (segmentsIntersectPt(Poly[i].x,Poly[i].y,Poly[i-1].x,Poly[i-1].y,ax,ay,bx,by))
+				return false;
+		if (segmentsIntersectPt(Poly[0].x,Poly[0].y,Poly[n-1].x,Poly[n-1].y,ax,ay,bx,by))
+			return false;
+		
+		return pointInPoly(new Point((ax+bx)/2,(ay+by)/2),Poly);
+	}//endfunction
+
+	//=======================================================================================
+	// tests if pt is within polygon
+	//=======================================================================================
+	public static function pointInPoly(pt:Point,Poly:Vector.<Point>):Boolean
+	{
+		// ----- find external point (top left)
+		var n:int = Poly.length;
+		var extPt:Point = new Point(0,0);
+		for (var i:int=n-1; i>-1; i--)
+		{
+			if (Poly[i].x<extPt.x)	extPt.x = Poly[i].x;
+			if (Poly[i].y<extPt.y)	extPt.y = Poly[i].y;
+		}
+		extPt.x-=1;
+		extPt.y-=1;
+		
+		var cnt:int=0;	// count number of intersects
+		for (i=n-1; i>0; i--)
+			if (segmentsIntersectPt(Poly[i].x,Poly[i].y,Poly[i-1].x,Poly[i-1].y,extPt.x,extPt.y,pt.x,pt.y))
+				cnt++;
+		if (segmentsIntersectPt(Poly[0].x,Poly[0].y,Poly[n-1].x,Poly[n-1].y,extPt.x,extPt.y,pt.x,pt.y))
+			cnt++;
+		
+		return (cnt%2)==1;
+	}//endfunction
+
+	//=======================================================================================
 	// find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
 	// returns null for parrallel segs and point segments, does not detect end points
 	//=======================================================================================
 	public static function segmentsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number) : Point
 	{
+		if ((ax==cx && ay==cy) || (ax==dx && ay==dy)) return null;	// false if any endpoints are shared
+		if ((bx==cx && by==cy) || (bx==dx && by==dy)) return null;
+			
 		var avx:Number = bx-ax;
 		var avy:Number = by-ay;
 		var cvx:Number = dx-cx;
 		var cvy:Number = dy-cy;
-		
+				
 		var al:Number = Math.sqrt(avx*avx + avy*avy);	// length of seg A
 		var cl:Number = Math.sqrt(cvx*cvx + cvy*cvy);	// length of seg C
 		
 		if (al==0 || cl==0 || avx/al==cvx/cl || avy/al==cvy/cl)		return null;
 		
-		// ----- optimization, see actual function below -----------------------------
 		var ck:Number = -1;
 		if (avx/al==0)		ck = (ax-cx)/cvx*cl;
 		else	ck = (cy-ay + (ax-cx)*avy/avx) / (cvx/cl*avy/avx - cvy/cl);
@@ -1581,16 +1678,12 @@ class FloorPlan extends Sprite
 		var ak:Number = -1;
 		if (cvx/cl==0)		ak = (cx-ax)/avx*al;
 		else	ak = (ay-cy + (cx-ax)*cvy/cvx) / (avx/al*cvy/cvx - avy/al);
-		
-		//var ck:Number = linesCrossScalar(ax,ay,avx/al,avy/al, cx,cy,cvx/cl,cvy/cl);
-		//var ak:Number = linesCrossScalar(cx,cy,cvx/cl,cvy/cl, ax,ay,avx/al,avy/al);
 			
 		if (ak<=0 || ak>=al || ck<=0 || ck>=cl)	return null;
-		
-		//trace("avx="+avx+"  avy="+avy + "  cvx="+cvx+"  cvy="+cvy);
-		
+			
 		return new Point(ax + avx/al*ak,ay + avy/al*ak);
 	}//endfunction
+		
 }//endclass
 
 class Wall extends Sprite
