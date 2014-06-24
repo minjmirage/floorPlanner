@@ -1502,8 +1502,8 @@ class FloorPlan extends Sprite
 		var uy:Number = wallB[1].y-wallB[0].y;
 		var vl:Number = Math.sqrt(ux*ux+uy*uy);
 		ux/=vl; uy/=vl;
-		drawI(wall,wallB[0].x+uy*3,wallB[0].y-ux*3,wallB[1].x+uy*3,wallB[1].y-ux*3,6,true);
-		drawI(wall,wallB[2].x-uy*3,wallB[2].y+ux*3,wallB[3].x-uy*3,wallB[3].y+ux*3,6,true);
+		drawI(wall,wallB[0].x+uy*5,wallB[0].y-ux*5,wallB[1].x+uy*5,wallB[1].y-ux*5,10,true);
+		drawI(wall,wallB[2].x-uy*5,wallB[2].y+ux*5,wallB[3].x-uy*5,wallB[3].y+ux*5,10,true);
 		
 		// ----- draw all doors
 		for (j=wall.Doors.length-1; j>-1; j--)
@@ -1596,7 +1596,7 @@ class FloorPlan extends Sprite
 			var proj:Number = qx*bux + qy*buy;
 			var normD:Number = Math.sqrt(ql*ql-proj*proj);
 			
-			area += 0.5*normD*bvl;
+			area += (0.5*normD*bvl)/10000;
 		}
 		
 		return area;
