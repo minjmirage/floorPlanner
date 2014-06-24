@@ -1,6 +1,7 @@
 package 
 {
 	import flash.display.Sprite;
+	import flash.display.BitmapData;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
@@ -138,6 +139,28 @@ package
 			var px:int = 0;
 			var py:int = 0;
 			
+			var floorAreas:Sprite = null;
+			function detFloorAreaTest():void
+			{
+				if (floorAreas!=null)
+				{
+					while (floorAreas.numChildren>0)
+						floorAreas.removeChildAt(0);
+				}
+				else
+				{
+					floorAreas = new Sprite();
+					grid.addChild(floorAreas);
+				}
+				
+				var Areas:Vector.<Vector.<Point>> = floorPlan.findIsolatedAreas();
+				for (var i:int=Areas.length-1; i>-1; i--)
+				{
+					var fA:Sprite = floorPlan.drawFloorArea(Areas[i],new BitmapData(1,1,true,0x66336699));
+					floorAreas.addChild(fA);
+				}
+			}
+			
 			// ---------------------------------------------------------------------
 			function showMainMenu():void
 			{
@@ -148,8 +171,8 @@ package
 					py = menu.y;
 				}
 				menu = new ButtonsMenu("EDITING MODE",
-										Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddFurniture]));
+										Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE","DrawFloorArea"]),
+										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddFurniture,detFloorAreaTest]));
 				if (px==0)	px = stage.stageWidth-menu.width;
 				menu.x = px;
 				menu.y = py;
@@ -1573,6 +1596,112 @@ class FloorPlan extends Sprite
 			if (Walls[i].joint1==pt || Walls[i].joint2==pt)
 				W.push(Walls[i]);
 		return W;
+	}//endfunction
+	
+	//=============================================================================================
+	// draws the given floor area poly with calculated area in m sq
+	//=============================================================================================
+	public function drawFloorArea(poly:Vector.<Point>,bmd:BitmapData):Sprite
+	{
+		if (poly==null || poly.length==0)	return null;
+		
+		var s:Sprite = new Sprite();
+		s.graphics.lineStyle(0,0x000000,1);
+		s.graphics.beginBitmapFill(bmd);
+		var i:int=poly.length-1;
+		s.graphics.moveTo(poly[i].x,poly[i].y);
+		for (; i>-1; i--)
+			s.graphics.lineTo(poly[i].x,poly[i].y);
+		i=poly.length-1;
+		s.graphics.lineTo(poly[i].x,poly[i].y);
+		s.graphics.endFill();
+		
+		var bnds:Rectangle = s.getBounds(s);
+		var tf:TextField = new TextField();
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.color = 0x999999;
+		tf.defaultTextFormat = tff;
+		tf.text = int(calculateArea(poly)/100)/100+"m sq.";
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		tf.selectable = false;
+		tf.x = bnds.left+(bnds.width-tf.width)/2;
+		tf.y = bnds.top+(bnds.height-tf.height)/2;
+		s.addChild(tf);
+		
+		return s;
+	}//endfunction
+	
+	//=============================================================================================
+	// find cyclics, i.e. room floor areas
+	//=============================================================================================
+	public function findIsolatedAreas():Vector.<Vector.<Point>>
+	{
+		var R:Vector.<Vector.<Vector3D>> = new Vector.<Vector.<Vector3D>>();	// results
+		
+		//-------------------------------------------------------------------------------
+		function seek(curJoint:Vector3D,path:Vector.<Vector3D>) : void
+		{
+			if (path.indexOf(curJoint)!=-1)
+			{
+				var loop:Vector.<Vector3D> = path.slice(path.indexOf(curJoint));
+				if (loop.length>2)
+				{	
+					// binary insert longest loop at n shortest at 0
+					var p:int = 0;
+					var q:int = R.length-1;
+					while (p<=q)
+					{
+						var m:int = (p+q)/2;
+						if (R[m].length<loop.length)
+							p=m+1;
+						else
+							q=m-1;
+					}
+					R.splice(p,0,loop);	// insert at posn
+				}
+			}
+			else
+			{
+				// walk all edges
+				var edges:Vector.<Wall> = connectedToJoint(curJoint);
+				path.push(curJoint);
+				for (var i:int=0; i<edges.length; i++)
+				{
+					if (edges[i].joint1==curJoint)	
+						seek(edges[i].joint2,path);
+					else
+						seek(edges[i].joint1,path);
+				}
+			}
+		}//endfunction
+		
+		seek(Joints[0],new Vector.<Vector3D>());
+		
+		// ----- extract only the shortest
+		var Visited:Vector.<Vector3D> = new Vector.<Vector3D>();
+		var Rp:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
+		while (R.length>0)
+		{
+			var isNew:Boolean = false;
+			var loop:Vector.<Vector3D> = R.shift();
+			for (var i:int=loop.length-1; i>-1; i--)
+				if (Visited.indexOf(loop[i])==-1)
+				{
+					Visited.push(loop[i]);
+					isNew = true;
+				}
+			
+			if (isNew)
+			{
+				var lp:Vector.<Point> = new Vector.<Point>();
+				for (i=loop.length-1; i>-1; i--)
+					lp.unshift(new Point(loop[i].x,loop[i].y));
+				Rp.push(lp);
+			}
+		}
+		
+		return Rp;
 	}//endfunction
 	
 	//=======================================================================================
