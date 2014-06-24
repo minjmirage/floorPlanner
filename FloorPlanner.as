@@ -1,6 +1,7 @@
 package 
 {
 	import flash.display.Sprite;
+	import flash.display.BitmapData;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
@@ -19,7 +20,17 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
-		private var Items:XML = 
+		private var Copy:XML = 
+		<Copy>
+		<TopBar>
+			<btn ico="" en="NEW" cn="" />
+			<btn ico="" en="OPEN" cn="" />
+			<btn ico="" en="SAVE" cn="" />
+			<btn ico="" en="UNDO" cn="" />
+			<btn ico="" en="REDO" cn="" />
+			<btn ico="" en="UPLOAD DESIGN" cn="" />
+			<btn ico="" en="RULER" cn="" />
+		</TopBar>
 		<Items>
 			<item en="LCD TV" cn="" cls="TVFlat" />
 			<item en="Toilet Bowl" cn="" cls="Toilet" />
@@ -43,13 +54,15 @@ package
 			<item en="Corner Bathtub" cn="" cls="BathTubL" />
 			<item en="Bathtub" cn="" cls="BathTub" />
 			<item en="Armchair" cn="" cls="ArmChair" />
-		</Items>;
+		</Items>
+		</Copy>;
 	
 		private var mouseDownPt:Vector3D = null;
 		private var mouseUpPt:Vector3D= null;
 		private var grid:WireGrid = null;
 		private var floorPlan:FloorPlan = null;
 		
+		private var topBar:Sprite = null;
 		private var menu:Sprite = null;
 		private var scaleSlider:Sprite = null;
 		
@@ -90,20 +103,24 @@ package
 			grid.update();
 			addChild(grid);
 			
+			// ----- drawing sprite
+			floorPlan = new FloorPlan();
+			grid.addChild(floorPlan.overlay);
+			
+			// ----- create top bar
+			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void {});
+			addChild(topBar);
+			
 			// ----- zoom slider
 			scaleSlider = createVSlider(["1x","2x","3x","4x","5x"],function(f:Number):void {grid.zoom(f*4+1);});
 			scaleSlider.x = stage.stageWidth/20;
-			scaleSlider.y = stage.stageHeight/20;
+			scaleSlider.y = stage.stageHeight/20 + topBar.height;
 			addChild(scaleSlider);
-			
-			// ----- drawing sprite
-			floorPlan = new FloorPlan();
-			floorPlan.buttonMode = true;
-			grid.addChild(floorPlan);
-			
+						
 			// ----- enter default editing mode
 			modeDefault();
 			
+			// ----- create default room walls
 			createDefaRoom();
 			
 			// ----- add controls
@@ -136,7 +153,7 @@ package
 		{
 			//prn("modeDefault");
 			var px:int = 0;
-			var py:int = 0;
+			var py:int = topBar.height+5;
 			
 			// ---------------------------------------------------------------------
 			function showMainMenu():void
@@ -285,7 +302,7 @@ package
 			menu.y = py;
 			stage.addChild(menu);
 			
-			var fmenu:Sprite = new AddFurnitureMenu(Items,floorPlan);
+			var fmenu:Sprite = new AddFurnitureMenu(Copy.Items[0],floorPlan);
 			fmenu.y = menu.height+10;
 			menu.addChild(fmenu);
 			
@@ -542,6 +559,7 @@ package
 		//=============================================================================================
 		private function onMouseDown(ev:Event):void
 		{
+			if (topBar!=null && topBar.hitTestPoint(stage.mouseX,stage.mouseY)) return;
 			if (menu!=null && menu.hitTestPoint(stage.mouseX,stage.mouseY)) return;
 			if (scaleSlider!=null && scaleSlider.hitTestPoint(stage.mouseX,stage.mouseY)) return;
 			
@@ -673,6 +691,158 @@ import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
 import flash.utils.getDefinitionByName;
 
+class TopBarMenu extends Sprite
+{
+	private var Btns:Vector.<Sprite> = null;
+	var callBackFn:Function = null;
+		
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function TopBarMenu(labels:XMLList,callBack:Function):void
+	{
+		callBackFn = callBack;
+		
+		// ----- create buttons
+		Btns = new Vector.<Sprite>();
+		var n:int = labels.length();
+		for (var i:int=0; i<n; i++)
+		{
+			var tf:TextField = new TextField();
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			var tff:TextFormat  = tf.defaultTextFormat;
+			tff.font = "arial";
+			tff.size = 14;
+			tff.color = 0x888888;
+			tf.defaultTextFormat = tff;
+			tf.text = labels[i].@en;
+			var b:Sprite = new Sprite();
+			b.addChild(tf);
+			b.buttonMode = true;
+			b.mouseChildren = false;
+			Btns.push(b);
+			addChild(b);
+		}
+		
+		// ----- draw btn bodies
+		for (i=0; i<n; i++)
+		{
+			var btn:Sprite = Btns[i];
+			var cW:int = btn.width;
+			btn.graphics.beginFill(0xEEEEEE,1);
+			btn.graphics.drawRoundRect(0,0,btn.width+10,btn.height,10,10);
+			btn.graphics.endFill();
+			btn.getChildAt(0).x=5;
+		}
+		
+		// ----- aligning btns
+		var offX:int=20;
+		for (i=0; i<n; i++)
+		{
+			var c:DisplayObject = this.getChildAt(i);
+			c.x = offX;
+			c.y = 10;
+			offX += c.width+20;
+			var lin:Sprite = new Sprite();
+			lin.graphics.lineStyle(0,0x888888);
+			lin.graphics.lineTo(0,c.height);
+			lin.x = offX-10;
+			lin.y = c.y;
+			addChild(lin);
+		}
+			
+		var ppp:Sprite = this;
+		function onAddedToStage(ev:Event):void
+		{
+			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+20,0xFFFFFF,0xF6F6F6,0,10);
+			ppp.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
+		}
+		addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
+		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onMouseDown(ev:Event):void
+	{
+		if (stage==null) return;
+		this.startDrag();
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onMouseUp(ev:Event):void
+	{
+		if (stage==null) return;
+		this.stopDrag();
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				callBackFn(i);	// exec callback function
+				return;
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onEnterFrame(ev:Event):void
+	{
+		if (stage==null) return;
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				if (Btns[i].filters==null)
+					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
+			}
+			else
+			{
+				if (Btns[i].filters!=null)
+				{
+					var A:Array = Btns[i].filters;
+					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
+						(GlowFilter)(A[0]).strength-=0.1;
+					else 
+						A = null;
+					Btns[i].filters = A;
+				}
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function onRemove(ev:Event):void
+	{
+		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// draws a striped rectangle in given sprite 
+	//===============================================================================================
+	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	{
+		if (s==null)	s = new Sprite();
+		var mat:Matrix = new Matrix();
+		mat.createGradientBox(sw,sw,rot,0,0);
+		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
+		s.graphics.drawRoundRect(x,y,w,h,rnd,rnd);
+		s.graphics.endFill();
+		
+		return s;
+	}//endfunction 
+	
+}//endfunction
 
 class ButtonsMenu extends Sprite
 {
@@ -691,6 +861,7 @@ class ButtonsMenu extends Sprite
 		titleTf = new TextField();
 		var tff:TextFormat = titleTf.defaultTextFormat;
 		tff.font = "arial";
+		tff.color = 0x888888;
 		tff.bold = true;
 		tff.size = 20;
 		tff.align = "center";
@@ -724,7 +895,7 @@ class ButtonsMenu extends Sprite
 				itf.defaultTextFormat = tff;
 				itf.text = A[1].split("]")[0];
 				itf.border = true;
-				itf.borderColor = 0x333333;
+				itf.borderColor = 0x888888;
 			}
 			tf.text = lab;
 			var b:Sprite = new Sprite();
@@ -760,7 +931,7 @@ class ButtonsMenu extends Sprite
 			c.x = w-c.width+10;
 			offY += c.height+5;
 		}
-		drawStripedRect(this,0,0,w+20,this.height+40,0xAAAAAA,0x999999,20);
+		drawStripedRect(this,0,0,w+20,this.height+40,0xFFFFFF,0xF6F6F6,20,10);
 		
 		this.filters = [new DropShadowFilter(4,45,0x000000,1,4,4,1)];
 		
@@ -915,7 +1086,7 @@ class AddFurnitureMenu extends Sprite
 			addChild(btn);
 		}
 		
-		drawStripedRect(this,0,0,this.width+20,this.height+20,0xAAAAAA,0x999999,20);
+		drawStripedRect(this,0,0,this.width+20,this.height+20,0xFFFFFF,0xF6F6F6,20);
 		
 		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
 		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
@@ -1065,11 +1236,14 @@ class WireGrid extends Sprite
 	
 }//endclass
 
-class FloorPlan extends Sprite
+class FloorPlan
 {
 	public var Joints:Vector.<Vector3D>;
 	public var Walls:Vector.<Wall>;
-	public var Furniture:Vector.<Sprite>;
+	public var Furniture:Vector.<Sprite>;		// list of furniture sprite already on the stage
+	public var floorAreas:Vector.<Sprite>;		// list of floor area sprites already on the stage
+	
+	public var overlay:Sprite = null;			// to add to display list
 	
 	//=============================================================================================
 	//
@@ -1078,7 +1252,12 @@ class FloorPlan extends Sprite
 	{
 		Joints = new Vector.<Vector3D>();
 		Walls = new Vector.<Wall>();
+		
 		Furniture = new Vector.<Sprite>();
+		floorAreas = new Vector.<Sprite>();
+		
+		overlay = new Sprite();
+		overlay.buttonMode = true;
 	}//endfunction
 	
 	//=============================================================================================
@@ -1112,8 +1291,8 @@ class FloorPlan extends Sprite
 		// ----- register new wall
 		var wall:Wall = new Wall(pt1, pt2, width);
 		Walls.push(wall);
-		addChild(wall);
 		drawWall(wall);
+		overlay.addChild(wall);
 		return wall;
 	}//endfunction
 	
@@ -1166,7 +1345,7 @@ class FloorPlan extends Sprite
 			if (Walls[i].joint2==jt)	Walls[i].joint2=njt;
 			if (Walls[i].joint1==Walls[i].joint2)
 			{	// remove any 0 lengthwall
-				this.removeChild(Walls[i]);
+				overlay.removeChild(Walls[i]);
 				Walls.splice(i,1);
 			}
 		}
@@ -1220,8 +1399,22 @@ class FloorPlan extends Sprite
 	//=============================================================================================
 	public function refresh():void
 	{
-		for (var i:int=Walls.length-1; i>-1; i--)	// draw for each wall
+		var i:int=0;
+		for (i=Walls.length-1; i>-1; i--)	// draw for each wall
 			drawWall(Walls[i]);
+		
+		// ----- redraw enclosed floor areas
+		var A:Vector.<Vector.<Point>> = findIsolatedAreas();
+		while (floorAreas.length<A.length) 
+		{
+			var s:Sprite = new Sprite();
+			floorAreas.push(s);
+			overlay.addChildAt(s,0);
+		}
+		while (floorAreas.length>A.length)
+			overlay.removeChild(floorAreas.pop());
+		for (i=A.length-1; i>-1; i--)	// draw for each floorArea
+			drawFloorArea(A[i],new BitmapData(1,1,false,0xDDEEEE),floorAreas[i]);
 	}//endfunction
 	
 	//=============================================================================================
@@ -1230,23 +1423,23 @@ class FloorPlan extends Sprite
 	public function addFurniture(fu:Sprite):void
 	{
 		Furniture.push(fu);
-		addChild(fu);
+		overlay.addChild(fu);
 		
 		// ----- hack to start dragging
-		if (stage!=null)
+		if (overlay.stage!=null)
 		{
 			function enterFrameHandler(ev:Event=null) :void
 			{
-				fu.x = mouseX;
-				fu.y = mouseY;
+				fu.x = overlay.mouseX;
+				fu.y = overlay.mouseY;
 			}
 			function mouseDownHandler(ev:Event=null):void
 			{
 				fu.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-				stage.removeEventListener(MouseEvent.MOUSE_UP,mouseDownHandler);	
+				overlay.stage.removeEventListener(MouseEvent.MOUSE_UP,mouseDownHandler);	
 			}
 			fu.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
 		}
 	}//endfunction
 	
@@ -1256,18 +1449,18 @@ class FloorPlan extends Sprite
 	private var furnitureCtrls:Sprite = null;
 	public function selectFurniture():Boolean
 	{
-		if (furnitureCtrls!=null && furnitureCtrls.hitTestPoint(stage.mouseX,stage.mouseY)) return true;
+		if (furnitureCtrls!=null && furnitureCtrls.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY)) return true;
 		
 		var fu:Sprite = null;
 		for (var i:int=Furniture.length-1; i>-1; i--)
-			if (Furniture[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
 				fu = Furniture[i];
 		
 		if (fu==null) return false;
 		
 		if (furnitureCtrls!=null)	furnitureCtrls.parent.removeChild(furnitureCtrls);
 		furnitureCtrls = furnitureTransformControls(fu);
-		addChild(furnitureCtrls);
+		overlay.addChild(furnitureCtrls);
 		
 		return true;
 	}//endfunction
@@ -1377,13 +1570,13 @@ class FloorPlan extends Sprite
 			ctrls.removeEventListener(Event.REMOVED_FROM_STAGE,removeHandler);
 			ctrls.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
 			ctrls.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			stage.removeEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+			overlay.stage.removeEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
 		}
 		
 		ctrls.addEventListener(Event.REMOVED_FROM_STAGE,removeHandler);
 		ctrls.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
 		ctrls.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-		stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+		overlay.stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
 		
 		return ctrls;
 	}
@@ -1575,6 +1768,121 @@ class FloorPlan extends Sprite
 		return W;
 	}//endfunction
 	
+	//=============================================================================================
+	// draws the given floor area poly with calculated area in m sq
+	//=============================================================================================
+	public function drawFloorArea(poly:Vector.<Point>,bmd:BitmapData,s:Sprite=null):Sprite
+	{
+		if (poly==null || poly.length==0)	return null;
+		
+		if (s==null) s = new Sprite();
+		else 		s.graphics.clear();
+		
+		s.graphics.lineStyle(0,0x000000,1);
+		s.graphics.beginBitmapFill(bmd);
+		var i:int=poly.length-1;
+		s.graphics.moveTo(poly[i].x,poly[i].y);
+		for (; i>-1; i--)
+			s.graphics.lineTo(poly[i].x,poly[i].y);
+		i=poly.length-1;
+		s.graphics.lineTo(poly[i].x,poly[i].y);
+		s.graphics.endFill();
+		
+		var bnds:Rectangle = s.getBounds(s);
+		var tf:TextField = null;
+		if (s.numChildren>0 && s.getChildAt(0) is TextField) 	
+			tf = (TextField)(s.getChildAt(0));
+		else
+		{
+			tf = new TextField();
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.color = 0x999999;
+			tf.defaultTextFormat = tff;
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.selectable = false;
+			s.addChild(tf);
+		}
+		tf.text = int(calculateArea(poly)/100)/100+"m sq.";
+		tf.x = bnds.left+(bnds.width-tf.width)/2;
+		tf.y = bnds.top+(bnds.height-tf.height)/2;
+				
+		return s;
+	}//endfunction
+	
+	//=============================================================================================
+	// find cyclics, i.e. room floor areas
+	//=============================================================================================
+	public function findIsolatedAreas():Vector.<Vector.<Point>>
+	{
+		var R:Vector.<Vector.<Vector3D>> = new Vector.<Vector.<Vector3D>>();	// results
+		
+		//-------------------------------------------------------------------------------
+		function seek(curJoint:Vector3D,path:Vector.<Vector3D>) : void
+		{
+			if (path.indexOf(curJoint)!=-1)
+			{
+				var loop:Vector.<Vector3D> = path.slice(path.indexOf(curJoint));
+				if (loop.length>2)
+				{	
+					// binary insert longest loop at n shortest at 0
+					var p:int = 0;
+					var q:int = R.length-1;
+					while (p<=q)
+					{
+						var m:int = (p+q)/2;
+						if (R[m].length<loop.length)
+							p=m+1;
+						else
+							q=m-1;
+					}
+					R.splice(p,0,loop);	// insert at posn
+				}
+			}
+			else
+			{
+				// walk all edges
+				var edges:Vector.<Wall> = connectedToJoint(curJoint);
+				path = path.slice();	// duplicate
+				path.push(curJoint);
+				for (var i:int=0; i<edges.length; i++)
+				{
+					if (edges[i].joint1==curJoint)	
+						seek(edges[i].joint2,path);
+					else
+						seek(edges[i].joint1,path);
+				}
+			}
+		}//endfunction
+		
+		seek(Joints[0],new Vector.<Vector3D>());
+		
+		// ----- extract only the shortest
+		var Visited:Vector.<Vector3D> = new Vector.<Vector3D>();
+		var Rp:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
+		while (R.length>0)
+		{
+			var isNew:Boolean = false;
+			var loop:Vector.<Vector3D> = R.shift();
+			for (var i:int=loop.length-1; i>-1; i--)
+				if (Visited.indexOf(loop[i])==-1)
+				{
+					Visited.push(loop[i]);
+					isNew = true;
+				}
+			
+			if (isNew)
+			{
+				var lp:Vector.<Point> = new Vector.<Point>();
+				for (i=loop.length-1; i>-1; i--)
+					lp.unshift(new Point(loop[i].x,loop[i].y));
+				Rp.push(lp);
+			}
+		}
+		
+		return Rp;
+	}//endfunction
+	
 	//=======================================================================================
 	// calculates area of poly by triangulating and summing the triangle areas
 	//=======================================================================================
@@ -1596,7 +1904,7 @@ class FloorPlan extends Sprite
 			var proj:Number = qx*bux + qy*buy;
 			var normD:Number = Math.sqrt(ql*ql-proj*proj);
 			
-			area += (0.5*normD*bvl)/10000;
+			area += 0.5*normD*bvl;
 		}
 		
 		return area;
