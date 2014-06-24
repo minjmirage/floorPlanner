@@ -6,11 +6,9 @@ package
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.geom.Vector3D;
-	import flash.geom.Rectangle;
 	import flash.utils.getTimer;
 	import flash.text.TextField;
 	import flash.text.TextFormat;
-	import flash.filters.DropShadowFilter;
 	
 	[SWF(width = "800", height = "600", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -52,7 +50,6 @@ package
 		private var floorPlan:FloorPlan = null;
 		
 		private var menu:Sprite = null;
-		private var scaleSlider:Sprite = null;
 		
 		private var stepFn:Function = null;
 		private var mouseDownFn:Function = null;
@@ -90,12 +87,6 @@ package
 			grid.y = sh/2;
 			grid.update();
 			addChild(grid);
-			
-			// ----- zoom slider
-			scaleSlider = createVSlider(["1x","2x","3x","4x","5x"],function(f:Number):void {grid.zoom(f*4+1);});
-			scaleSlider.x = stage.stageWidth/20;
-			scaleSlider.y = stage.stageHeight/20;
-			addChild(scaleSlider);
 			
 			// ----- drawing sprite
 			floorPlan = new FloorPlan();
@@ -135,7 +126,7 @@ package
 		//=============================================================================================
 		private function modeDefault():void
 		{
-			//prn("modeDefault");
+			prn("modeDefault");
 			var px:int = 0;
 			var py:int = 0;
 			
@@ -361,6 +352,7 @@ package
 					{	// snap to another wall joint
 						if  (snapJ!=wall.joint2)
 						{
+							prn("snap to "+snapJ);
 							floorPlan.replaceJointWith(wall.joint2,snapJ);
 							wall = null;
 						}
@@ -566,8 +558,6 @@ package
 		private function onMouseDown(ev:Event):void
 		{
 			if (menu!=null && menu.hitTestPoint(stage.mouseX,stage.mouseY)) return;
-			if (scaleSlider!=null && scaleSlider.hitTestPoint(stage.mouseX,stage.mouseY)) return;
-			
 			mouseDownPt = new Vector3D(grid.mouseX,grid.mouseY,0,getTimer());
 			if (mouseDownFn!=null) mouseDownFn();
 		}//endfunction
@@ -601,80 +591,6 @@ package
 			}
 		
 			debugTf.appendText(s+"\n");
-		}//endfunction
-		
-		//=============================================================================================
-		// creates a vertical slider bar of wxh dimensions  
-		//=============================================================================================
-		private function createVSlider(markings:Array,callBack:Function):Sprite
-		{
-			var w:int = 5;
-			var h:int = 200;
-			
-			// ----- main sprite
-			var s:Sprite = new Sprite();
-			s.graphics.beginFill(0xCCCCCC,1);
-			s.graphics.drawRect(0,0,w,h);
-			s.graphics.endFill();
-		
-			// ----- slider knob
-			var slider:Sprite = new Sprite();
-			slider.graphics.beginFill(0xEEEEEE,1);
-			slider.graphics.drawCircle(0,0,w);
-			slider.graphics.endFill();
-			slider.graphics.beginFill(0x333333,1);
-			slider.graphics.drawCircle(0,0,w/2);
-			slider.graphics.endFill();
-			slider.buttonMode = true;
-			slider.mouseChildren = false;
-			slider.filters = [new DropShadowFilter(2)];
-			slider.x = w/2;
-			slider.y = h;
-			s.addChild(slider);
-		
-			// ----- draw markings
-			s.graphics.lineStyle(0,0xCCCCCC,1);
-			var n:int = markings.length;
-			for (var i:int=0; i<n; i++)
-			{
-				s.graphics.moveTo(w/2,h/(n-1)*i);
-				s.graphics.lineTo(w*3/2,h/(n-1)*i);
-				var tf:TextField = new TextField();
-				var tff:TextFormat = tf.defaultTextFormat;
-				tff.color = 0x999999;
-				tf.defaultTextFormat = tff;
-				tf.text = markings[i];
-				tf.autoSize = "left";
-				tf.wordWrap = false;
-				tf.selectable = false;
-				tf.x = w*2;
-				tf.y = h/(n-1)*(n-1-i)-tf.height/2;
-				s.addChild(tf);
-			}
-		
-			function updateHandler(ev:Event):void
-			{
-				if (callBack!=null) callBack(1-slider.y/h);
-			}
-			function startDragHandler(ev:Event):void
-			{
-				if (slider.hitTestPoint(stage.mouseX,stage.mouseY))
-					slider.startDrag(false,new Rectangle(slider.x,0,0,h));
-				else
-					s.startDrag();
-				stage.addEventListener(Event.ENTER_FRAME,updateHandler);
-				stage.addEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
-			}
-			function stopDragHandler(ev:Event):void
-			{
-				s.stopDrag();
-				slider.stopDrag();
-				stage.removeEventListener(Event.ENTER_FRAME,updateHandler);
-				stage.removeEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
-			}
-			s.addEventListener(MouseEvent.MOUSE_DOWN,startDragHandler);
-		
-			return s;
 		}//endfunction
 	}//endclass
 }//endpackage
@@ -1025,6 +941,7 @@ class WireGrid extends Sprite
 {
 	public var sw:int = 800;
 	public var sh:int = 600;
+	public var zoomSlider:Sprite = null;
 	
 	//=============================================================================================
 	// constructor for background grid markings sprite
@@ -1033,6 +950,13 @@ class WireGrid extends Sprite
 	{
 		sw = w;
 		sh = h;
+		
+		function draw(f:Number):void 
+		{
+			zoom(f*4+1);
+		}
+		zoomSlider = vSlider(10,100,["1","2","3","4","5"],draw);
+		addChild(zoomSlider);
 		update();
 	}//endfunction
 	
@@ -1062,7 +986,7 @@ class WireGrid extends Sprite
 		
 		// ----- draw bg color
 		graphics.clear();
-		graphics.beginFill(0xEEEEF3,1);
+		graphics.beginFill(0x99AAFF,1);
 		graphics.drawRect(rect.x,rect.y,rect.width,rect.height);
 		graphics.endFill();
 		
@@ -1071,21 +995,87 @@ class WireGrid extends Sprite
 		var a:int = int(rect.left/interval)*interval;
 		for (i=a; i<=rect.right; i+=interval)	
 		{
-			if (i%(interval*10)==0)	graphics.lineStyle(0, 0xCCCCCC, 1);
-			else					graphics.lineStyle(0, 0xE5E5E5, 1);
+			if (i%(interval*10)==0)	graphics.lineStyle(0, 0x666666, 1);
+			else					graphics.lineStyle(0, 0x999999, 1);
 			graphics.moveTo(i,rect.top);
 			graphics.lineTo(i,rect.bottom);
 		}
 		a = int(rect.top/interval)*interval;
 		for (i=a; i<=rect.bottom; i+=interval)	
 		{
-			if (i%(interval*10)==0)	graphics.lineStyle(0, 0xCCCCCC, 1);
-			else					graphics.lineStyle(0, 0xE5E5E5, 1);
+			if (i%(interval*10)==0)	graphics.lineStyle(0, 0x666666, 1);
+			else					graphics.lineStyle(0, 0x999999, 1);
 			graphics.moveTo(rect.left,i);
 			graphics.lineTo(rect.right,i);
 		}
+		
+		// ----- scale and place zoom slider 
+		zoomSlider.scaleX = 1/scaleX;
+		zoomSlider.scaleY = 1/scaleY;
+		zoomSlider.x = rect.left+rect.width*0.9;
+		zoomSlider.y = rect.top+rect.height*0.1;
 	}//endfunction
-	
+		
+	//=============================================================================================
+	// creates a vertical slider bar of wxh dimensions  
+	//=============================================================================================
+	private function vSlider(w:int,h:int,markings:Array,callBack:Function):Sprite
+	{
+		// ----- main sprite
+		var s:Sprite = new Sprite();
+		s.graphics.beginFill(0xCCCCCC,1);
+		s.graphics.drawRect(0,0,w,h);
+		s.graphics.endFill();
+		
+		// ----- slider knob
+		var slider:Sprite = new Sprite();
+		slider.graphics.beginFill(0xEEEEEE,1);
+		slider.graphics.drawRoundRect(-w,-w/2,w*2,w,w,w);
+		slider.graphics.endFill();
+		slider.buttonMode = true;
+		slider.mouseChildren = false;
+		slider.filters = [new DropShadowFilter(2)];
+		slider.x = w/2;
+		s.addChild(slider);
+		
+		// ----- draw markings
+		s.graphics.lineStyle(0,0x000000,1);
+		var n:int = markings.length;
+		for (var i:int=0; i<n; i++)
+		{
+			s.graphics.moveTo(w/2,h/(n-1)*i);
+			s.graphics.lineTo(w*3/2,h/(n-1)*i);
+			var tf:TextField = new TextField();
+			tf.text = markings[i];
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.x = w*2;
+			tf.y = h/(n-1)*i-tf.height/2;
+			s.addChild(tf);
+		}
+		
+		function updateHandler(ev:Event):void
+		{
+			if (callBack!=null) callBack(slider.y/h);
+		}
+		function startDragHandler(ev:Event):void
+		{
+			slider.startDrag(false,new Rectangle(slider.x,0,0,h));
+			stage.addEventListener(Event.ENTER_FRAME,updateHandler);
+			stage.addEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+		}
+		function stopDragHandler(ev:Event):void
+		{
+			slider.stopDrag();
+			stage.removeEventListener(Event.ENTER_FRAME,updateHandler);
+			stage.removeEventListener(MouseEvent.MOUSE_UP,stopDragHandler);
+		}
+		slider.addEventListener(MouseEvent.MOUSE_DOWN,startDragHandler);
+		
+		s.x = 100;
+		s.y=100;
+		return s;
+	}//endfunction
 }//endclass
 
 class FloorPlan extends Sprite
