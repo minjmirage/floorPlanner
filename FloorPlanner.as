@@ -23,13 +23,13 @@ package
 		private var Copy:XML = 
 		<Copy>
 		<TopBar>
-			<btn ico="" en="NEW" cn="" />
-			<btn ico="" en="OPEN" cn="" />
-			<btn ico="" en="SAVE" cn="" />
-			<btn ico="" en="UNDO" cn="" />
-			<btn ico="" en="REDO" cn="" />
-			<btn ico="" en="UPLOAD DESIGN" cn="" />
-			<btn ico="" en="RULER" cn="" />
+			<btn ico="TbIcoNew" en="NEW" cn="" />
+			<btn ico="TbIcoOpen" en="OPEN" cn="" />
+			<btn ico="TbIcoSave" en="SAVE" cn="" />
+			<btn ico="TbIcoUndo" en="UNDO" cn="" />
+			<btn ico="TbIcoRedo" en="REDO" cn="" />
+			<btn ico="TbIcoUpload" en="UPLOAD DESIGN" cn="" />
+			<btn ico="TbIcoRuler" en="RULER" cn="" />
 		</TopBar>
 		<Items>
 			<item en="LCD TV" cn="" cls="TVFlat" />
@@ -757,6 +757,12 @@ class TopBarMenu extends Sprite
 			tf.defaultTextFormat = tff;
 			tf.text = labels[i].@en;
 			var b:Sprite = new Sprite();
+			if (getDefinitionByName(labels[i].@ico)!=null)
+			{
+				var ico:Bitmap = new Bitmap(new (Class(getDefinitionByName(labels[i].@ico)))());
+				tf.x = ico.width+5;
+				b.addChild(ico);
+			}
 			b.addChild(tf);
 			b.buttonMode = true;
 			b.mouseChildren = false;
@@ -772,7 +778,12 @@ class TopBarMenu extends Sprite
 			btn.graphics.beginFill(0xEEEEEE,1);
 			btn.graphics.drawRoundRect(0,0,btn.width+10,btn.height,10,10);
 			btn.graphics.endFill();
-			btn.getChildAt(0).x=5;
+			for (var j:int=btn.numChildren-1; j>-1; j--)
+			{
+				var e:DisplayObject = btn.getChildAt(j);
+				e.y = (btn.height-e.height)/2;
+				e.x+=5;
+			}
 		}
 		
 		// ----- aligning btns
