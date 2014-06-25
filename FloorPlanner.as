@@ -114,7 +114,7 @@ package
 			// ----- create top bar
 			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
 			{
-				prn("TopBarMenu "+i);
+				//prn("TopBarMenu "+i);
 				if (i==0)		// new 
 				{}
 				else if (i==1)	// open
@@ -128,7 +128,7 @@ package
 					if (undoStk.length>0)
 					{
 						redoStk.push(floorPlan.exportData());
-						prn("undo:" +undoStk[undoStk.length-1]);
+						//prn("undo:" +undoStk[undoStk.length-1]);
 						floorPlan.importData(undoStk.pop());
 					}
 				}
@@ -137,7 +137,7 @@ package
 					if (redoStk.length>0)
 					{
 						undoStk.push(floorPlan.exportData());
-						prn("undo:" +redoStk[redoStk.length-1]);
+						//prn("undo:" +redoStk[redoStk.length-1]);
 						floorPlan.importData(redoStk.pop());
 					}
 				}
@@ -405,6 +405,7 @@ package
 			}
 			mouseDownFn = function():void
 			{
+				undoStk.push(floorPlan.exportData());
 				if (wall==null)
 					wall = floorPlan.createWall(new Point(grid.mouseX,grid.mouseY),
 												new Point(grid.mouseX,grid.mouseY),
@@ -418,6 +419,9 @@ package
 					floorPlan.refresh();
 				}
 				wall = null;
+				
+				if (undoStk.length>0 && undoStk[undoStk.length-1]==floorPlan.exportData())
+					undoStk.pop();
 			}
 		}//endfunction
 		
@@ -724,6 +728,7 @@ import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
 import flash.utils.getDefinitionByName;
+import flash.utils.getQualifiedClassName;
 
 class TopBarMenu extends Sprite
 {
@@ -1306,6 +1311,7 @@ class FloorPlan
 		var o:Object = new Object();
 		o.Joints = Joints;
 		o.Walls = Walls;
+		o.Furniture = Furniture;
 		
 		function replacer(k,v):*
 		{
@@ -1317,6 +1323,17 @@ class FloorPlan
 				wo.w = (Wall)(v).thickness;
 				wo.Doors = (Wall)(v).Doors;
 				return wo;
+			}
+			else if (v is Sprite)	// furniture icons properties
+			{
+				var fo:Object = new Object();
+				fo.cls = getQualifiedClassName(v);
+				fo.x = v.x;
+				fo.y = v.y;
+				fo.rot = v.rotation;
+				fo.scX = v.scaleX;
+				fo.scY = v.scaleY;
+				return fo;
 			}
 			else if(v is Point)		// so only x,y vals are converted
 			{
@@ -1336,6 +1353,14 @@ class FloorPlan
 	//=============================================================================================
 	public function importData(dat:String):void
 	{
+		selected = null;		// clear off selection
+		
+		if (furnitureCtrls!=null)
+		{
+			furnitureCtrls.parent.removeChild(furnitureCtrls);		// clear off furniture transform controls
+			furnitureCtrls = null;
+		}
+		
 		var o:Object = JSON.parse(dat);
 		
 		// ----- replace joints
@@ -1356,7 +1381,7 @@ class FloorPlan
 			for (var j:int=wo.Doors.length-1; j>-1; j--)
 			{
 				var d:Object = wo.Doors[j];
-				var door:Door = new Door(Number(d.piv),Number(d.dir));
+				var door:Door = new Door(Number(d.pivot),Number(d.dir));
 				door.angL = Number(d.angL);
 				door.angR = Number(d.angR);
 				door.thickness = d.thickness;
@@ -1364,6 +1389,22 @@ class FloorPlan
 			}
 			overlay.addChild(wall);
 			Walls.unshift(wall);
+		}
+		
+		// ----- replace furniture
+		while (Furniture.length>0)				// clear off prev furniture
+			overlay.removeChild(Furniture.pop());
+		for (i=o.Furniture.length-1; i>-1; i--)		// add in new walls
+		{
+			var fo:Object = o.Furniture[i];
+			var fur:Sprite = new (Class(getDefinitionByName(fo.cls)))() as Sprite;
+			fur.x = fo.x;
+			fur.y = fo.y;
+			fur.rotation = fo.rot;
+			fur.scaleX = fo.scX;
+			fur.scaleY = fo.scY;
+			Furniture.unshift(fur);
+			overlay.addChild(fur);
 		}
 		
 		refresh();
