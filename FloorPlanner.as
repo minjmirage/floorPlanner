@@ -5,12 +5,16 @@ package
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
+	import flash.geom.Matrix;
 	import flash.geom.Vector3D;
 	import flash.geom.Rectangle;
+	import flash.utils.ByteArray;
 	import flash.utils.getTimer;
 	import flash.text.TextField;
 	import flash.text.TextFormat;
 	import flash.filters.DropShadowFilter;
+	import com.adobe.images.JPGEncoder;
+	import flash.net.FileReference;
 	
 	[SWF(width = "800", height = "600", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -30,6 +34,7 @@ package
 			<btn ico="TbIcoRedo" en="REDO" cn="" />
 			<btn ico="TbIcoUpload" en="UPLOAD DESIGN" cn="" />
 			<btn ico="TbIcoRuler" en="RULER" cn="" />
+			<btn ico="TbIcoSave" en="SAVE IMAGE" cn="" />
 		</TopBar>
 		<Items>
 			<item en="LCD TV" cn="" cls="TVFlat" />
@@ -81,6 +86,24 @@ package
 			if (stage) init();
 			else addEventListener(Event.ADDED_TO_STAGE, init);
 		}//
+		
+		//=============================================================================================
+		// takes a 2D snapshot of current floorplan
+		//=============================================================================================
+		public function saveToJpg():void
+		{
+			var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
+			var bmd:BitmapData = new BitmapData(bnds.width+60,bnds.height+60,false,0x00000000);
+			var mat:Matrix = new Matrix(1,0,0,1,-bnds.left+30,-bnds.top+30);
+			bmd.draw(grid,mat);
+			bmd.draw(floorPlan.overlay,mat);
+			
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
+			
+			var fr:FileReference=new FileReference();
+			fr.save(ba, "floorPlan.jpg"); 	
+		}//endfunction
 		
 		//=============================================================================================
 		// Entry point
@@ -143,6 +166,12 @@ package
 				}
 				else if (i==5)	// upload
 				{}
+				else if (i==6)	// ruler
+				{}
+				else if (i==7)	// save o image
+				{
+					saveToJpg();
+				}
 			});
 			addChild(topBar);
 			
