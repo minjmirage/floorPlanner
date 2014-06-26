@@ -16,7 +16,7 @@ package
 	import com.adobe.images.JPGEncoder;
 	import flash.net.FileReference;
 	
-	[SWF(width = "800", height = "600", backgroundColor = "#FFFFFF", frameRate = "30")];
+	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
 	/**
 	 * ...
@@ -103,6 +103,13 @@ package
 			
 			var fr:FileReference=new FileReference();
 			fr.save(ba, "floorPlan.jpg"); 	
+		}//endfunction
+		
+		//=============================================================================================
+		// 
+		//=============================================================================================
+		public function saveToSharedObj():void
+		{
 		}//endfunction
 		
 		//=============================================================================================
@@ -228,9 +235,51 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new ButtonsMenu("EDITING MODE",
-										Vector.<String>(["ADD WALLS","ADD DOORS","ADD WINDOWS","ADD FURNITURE"]),
-										Vector.<Function>([modeAddWalls,modeAddDoors,modeAddWindows,modeAddFurniture]));
+				
+				var Icos:Vector.<Sprite> = Vector.<Sprite>([new MenuIcoFile(),new MenuIcoDrawWall(),new MenuIcoDrawDoor(),new MenuIcoText()]);
+				for (var i:int=0; i<Icos.length; i++)
+				{
+					var s:Sprite = new Sprite();
+					s.graphics.beginFill(0xFFFFFF,1);
+					s.graphics.drawRoundRect(0,0,70,70,20);
+					s.graphics.endFill();
+					Icos[i].x = (s.width-Icos[i].width)/2;
+					Icos[i].y = (s.height-Icos[i].height)/2;
+					s.addChild(Icos[i]);
+					Icos[i] = s;
+				}
+				
+				var secMenu:Sprite = new AddFurnitureMenu(Copy.Items[0],floorPlan);	// creates a furniture menu by default
+									
+				function mainMode(idx:int):void 
+				{
+					if (idx==0)
+					{
+						if (secMenu!=null)
+							secMenu.parent.removeChild(secMenu);
+						secMenu = new SaveLoadMenu(floorPlan);
+						secMenu.y = menu.height+10;
+						secMenu.x = menu.width-secMenu.width;
+						menu.addChild(secMenu);
+					}
+					else if (idx==1)
+					{
+						modeAddWalls();
+					}
+					else if (idx==2)
+					{
+						modeAddDoors();
+					}
+					else if (idx==3)
+					{
+						modeAddWindows();
+					}
+				}
+				menu = new IconsMenu(Icos,1,Icos.length,mainMode);
+				secMenu.y = menu.height+10;
+				secMenu.x = menu.width-secMenu.width;
+				menu.addChild(secMenu);
+				
 				if (px==0)	px = stage.stageWidth-menu.width;
 				menu.x = px;
 				menu.y = py;
@@ -345,36 +394,6 @@ package
 				if (undoStk.length>0 && floorPlan.exportData()==undoStk[undoStk.length-1]) 
 					undoStk.pop();	// if no state change 
 			}
-		}//endfunction
-		
-		//=============================================================================================
-		// go into adding furniture mode
-		//=============================================================================================
-		private function modeAddFurniture():void
-		{
-			var px:int = 0;
-			var py:int = 0;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new ButtonsMenu("ADDING FURNITURE",
-									Vector.<String>(["DONE"]),
-									Vector.<Function>([modeDefault]));
-			menu.x = px;
-			menu.y = py;
-			stage.addChild(menu);
-			
-			var fmenu:Sprite = new AddFurnitureMenu(Copy.Items[0],floorPlan);
-			fmenu.y = menu.height+10;
-			menu.addChild(fmenu);
-			
-			var curItem:Sprite = null;
-			stepFn = function():void	{}
-			mouseDownFn = floorPlan.mouseSelect;
-			mouseUpFn = function():void	{}
 		}//endfunction
 		
 		//=============================================================================================
@@ -744,11 +763,13 @@ package
 import flash.display.DisplayObject;
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.Loader;
 import flash.events.FocusEvent;
 import flash.geom.Point;
 import flash.geom.Vector3D;
 import flash.geom.Matrix;
 import flash.geom.Rectangle;
+import flash.geom.ColorTransform;
 import flash.text.TextField;
 import flash.display.Sprite;
 import flash.events.Event;
@@ -756,14 +777,232 @@ import flash.events.MouseEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
+import flash.utils.ByteArray;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
+import flash.net.SharedObject;
+import com.adobe.images.JPGEncoder;
 
-class TopBarMenu extends Sprite
+class FloatingMenu extends Sprite		// to be extended
 {
-	private var Btns:Vector.<Sprite> = null;
-	var callBackFn:Function = null;
+	protected var Btns:Vector.<Sprite> = null;
+	protected var callBackFn:Function = null;
+	
+	//===============================================================================================
+	// simpleton constructor, subclasses must initialize Btns and callBackFn
+	//===============================================================================================
+	public function FloatingMenu():void
+	{
+		filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onMouseDown(ev:Event):void
+	{
+		if (stage==null) return;
+		this.startDrag();
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onMouseUp(ev:Event):void
+	{
+		if (stage==null) return;
+		this.stopDrag();
 		
+		if (Btns!=null)
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				if  (callBackFn!=null) callBackFn(i);	// exec callback function
+				return;
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onEnterFrame(ev:Event):void
+	{
+		if (stage==null) return;
+		
+		var A:Array = null;
+		
+		if (Btns!=null)
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				A = Btns[i].filters;
+				if (A.length==0)
+					Btns[i].filters=[new GlowFilter(0x000000,1,4,4,1)];
+				else if ((GlowFilter)(A[0]).strength<1)
+					(GlowFilter)(A[0]).strength+=0.1;
+			}
+			else
+			{
+				if (Btns[i].filters.length>0)
+				{
+					A = Btns[i].filters;
+					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
+						(GlowFilter)(A[0]).strength-=0.1;
+					else 
+						A = null;
+					Btns[i].filters = A;
+				}
+			
+		}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onRemove(ev:Event):void
+	{
+		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+	}//endfunction
+	
+	//===============================================================================================
+	// draws a striped rectangle in given sprite 
+	//===============================================================================================
+	protected static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	{
+		if (s==null)	s = new Sprite();
+		var mat:Matrix = new Matrix();
+		mat.createGradientBox(sw,sw,rot,0,0);
+		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
+		s.graphics.drawRoundRect(x,y,w,h,rnd,rnd);
+		s.graphics.endFill();
+		
+		return s;
+	}//endfunction 
+}//endclass
+
+class IconsMenu extends FloatingMenu	// to be extended
+{
+	private var pageIdx:int=0;
+	private var pageBtns:Sprite = null;
+	private var r:int = 1;		// rows
+	private var c:int = 1;		// cols
+	private var bw:int = 50;	// btn width
+	private var bh:int = 50;	// btn height
+	private var marg:int = 10;
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function IconsMenu(Icos:Vector.<Sprite>,rows:int,cols:int,callBack:Function):void
+	{
+		Btns = Icos;
+		callBackFn = callBack;
+	
+		if (rows<1)	rows = 1;
+		if (cols<1) cols = 1;
+		r = rows;
+		c = cols;
+		
+		refresh();
+		
+		function pageBtnsClickHandler(ev:Event) : void
+		{
+			for (var i:int=pageBtns.numChildren-1; i>-1; i--)
+				if (pageBtns.getChildAt(i).hitTestPoint(stage.mouseX,stage.mouseY))
+					pageTo(i);
+		}
+		function pageBtnsRemoveHandler(ev:Event) : void
+		{
+			pageBtns.removeEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
+			pageBtns.removeEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
+		}
+		
+		pageBtns.addEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
+		pageBtns.addEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function refresh():void
+	{
+		var tw:int=0;
+		var th:int=0;
+		for (var i:int=Btns.length-1; i>-1; i--)
+		{
+			tw+=Btns[i].width;
+			th+=Btns[i].height;
+		}
+		if (tw>0)	bw = tw/Btns.length;
+		if (th>0)	bh = th/Btns.length;
+					
+		if (pageBtns!=null && pageBtns.parent!=null)	
+			pageBtns.parent.removeChild(pageBtns);
+		pageBtns = new Sprite();
+		for (i=Math.ceil(Btns.length/(r*c))-1; i>-1; i--)
+		{
+			var sqr:Sprite = new Sprite();
+			sqr.graphics.beginFill(0x666666,1);
+			sqr.graphics.drawRect(0,0,9,9);
+			sqr.graphics.endFill();
+			sqr.x = i*(sqr.width+10);
+			sqr.buttonMode = true;
+			pageBtns.addChildAt(sqr,0);
+		}
+		
+		if (Btns.length>r*c)
+		{
+			addChild(pageBtns);
+			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		else
+			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xFFFFFF,0xF6F6F6,20,10);
+		
+		pageBtns.x = (this.width-pageBtns.width)/2;
+		pageBtns.y =this.height-marg*2-pageBtns.height/2;
+		
+		pageTo(pageIdx);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function pageTo(idx:int):void
+	{
+		while (numChildren>1)	removeChildAt(1);
+				
+		if (idx<0)	idx = 0;
+		if (idx>Math.ceil(Btns.length/(r*c)))	idx = Math.ceil(Btns.length/(r*c));
+		var a:int = idx*r*c;
+		var b:int = Math.min(Btns.length,a+r*c);
+		for (var i:int=a; i<b; i++)
+		{
+			var btn:Sprite = Btns[i];
+			btn.x = marg*2+(i%c)*(bw+marg)+(bw-btn.width)/2;
+			btn.y = marg*2+int((i-a)/c)*(bh+marg)+(bh-btn.height)/2;
+			addChild(btn);
+		}
+		
+		for (i=pageBtns.numChildren-1; i>-1; i--)
+		{
+			if (i==idx)
+				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform(1,1,1,1,70,70,70);
+			else
+				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform();
+		}
+		pageIdx = idx;
+	}//endfunction	
+}//endclass
+
+class TopBarMenu extends FloatingMenu
+{
 	//===============================================================================================
 	// 
 	//===============================================================================================
@@ -835,97 +1074,14 @@ class TopBarMenu extends Sprite
 		function onAddedToStage(ev:Event):void
 		{
 			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+20,0xFFFFFF,0xF6F6F6,0,10);
-			ppp.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
 			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 		}
-		addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
-		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+		ppp.addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onMouseDown(ev:Event):void
-	{
-		if (stage==null) return;
-		this.startDrag();
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onMouseUp(ev:Event):void
-	{
-		if (stage==null) return;
-		this.stopDrag();
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
-			{
-				callBackFn(i);	// exec callback function
-				return;
-			}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onEnterFrame(ev:Event):void
-	{
-		if (stage==null) return;
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
-			{
-				if (Btns[i].filters==null)
-					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
-			}
-			else
-			{
-				if (Btns[i].filters!=null)
-				{
-					var A:Array = Btns[i].filters;
-					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
-						(GlowFilter)(A[0]).strength-=0.1;
-					else 
-						A = null;
-					Btns[i].filters = A;
-				}
-			}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onRemove(ev:Event):void
-	{
-		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
-	}//endfunction
-	
-	//===============================================================================================
-	// draws a striped rectangle in given sprite 
-	//===============================================================================================
-	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
-	{
-		if (s==null)	s = new Sprite();
-		var mat:Matrix = new Matrix();
-		mat.createGradientBox(sw,sw,rot,0,0);
-		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
-		s.graphics.drawRoundRect(x,y,w,h,rnd,rnd);
-		s.graphics.endFill();
-		
-		return s;
-	}//endfunction 
-	
-}//endfunction
+}//endclass
 
-class ButtonsMenu extends Sprite
+class ButtonsMenu extends FloatingMenu
 {
-	private var Btns:Vector.<Sprite> = null;
 	private var Fns:Vector.<Function> = null;
 	private var titleTf:TextField = null;
 
@@ -1012,119 +1168,39 @@ class ButtonsMenu extends Sprite
 		}
 		drawStripedRect(this,0,0,w+20,this.height+40,0xFFFFFF,0xF6F6F6,20,10);
 		
-		this.filters = [new DropShadowFilter(4,45,0x000000,1,4,4,1)];
-		
-		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		addEventListener(Event.ENTER_FRAME,onEnterFrame);
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onMouseDown(ev:Event):void
-	{
-		if (stage==null) return;
-		this.startDrag();
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onMouseUp(ev:Event):void
-	{
-		if (stage==null) return;
-		this.stopDrag();
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+		callBackFn = function(idx:int):void
+		{
+			if (Btns[idx].numChildren>1)
 			{
-				if (Btns[i].numChildren>1)
+				var itf:TextField = (TextField)(Btns[idx].getChildAt(1));
+				itf.type = "input";
+				itf.background = true;
+				if (stage.focus!=itf)
 				{
-					var itf:TextField = (TextField)(Btns[i].getChildAt(1));
-					itf.type = "input";
-					itf.background = true;
-					if (stage.focus!=itf)
+					stage.focus = itf;
+					function onFocusOut(ev:Event):void
 					{
-						stage.focus = itf;
-						function onFocusOut(ev:Event):void
-						{
-							Fns[i](itf.text);
-							itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
-						}
-						itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+						Fns[idx](itf.text);
+						itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
 					}
+					itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
 				}
-				else
-					Fns[i]();	// exec callback function
-				return;
-			}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onEnterFrame(ev:Event):void
-	{
-		if (stage==null) return;
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
-			{
-				if (Btns[i].filters==null)
-					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
 			}
 			else
-			{
-				if (Btns[i].filters!=null)
-				{
-					var A:Array = Btns[i].filters;
-					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
-						(GlowFilter)(A[0]).strength-=0.1;
-					else 
-						A = null;
-					Btns[i].filters = A;
-				}
-			}
+				Fns[idx]();	// exec callback function
+		}//endfunction
 	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onRemove(ev:Event):void
-	{
-		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
-	}//endfunction
-	
-	//===============================================================================================
-	// draws a striped rectangle in given sprite 
-	//===============================================================================================
-	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
-	{
-		if (s==null)	s = new Sprite();
-		var mat:Matrix = new Matrix();
-		mat.createGradientBox(sw,sw,rot,0,0);
-		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
-		s.graphics.drawRoundRect(x,y,w,h,10,10);
-		s.graphics.endFill();
-		
-		return s;
-	}//endfunction 
-		
 }//endclass
 
-class AddFurnitureMenu extends Sprite
+class AddFurnitureMenu extends IconsMenu
 {
-	private var Btns:Vector.<Sprite> = null;
 	private var IcoCls:Vector.<Class> = null;
 	private var floorPlan:FloorPlan = null;
 	
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function AddFurnitureMenu(dat:XML,floorP:FloorPlan,icoW:int=50):void
+	public function AddFurnitureMenu(dat:XML,floorP:FloorPlan,icoW:int=70):void
 	{
 		Btns = new Vector.<Sprite>();
 		IcoCls = new Vector.<Class>();
@@ -1158,93 +1234,144 @@ class AddFurnitureMenu extends Sprite
 			}
 			while (tf.width>icoW);
 			tf.y = btn.height;
+			tf.x = (btn.width-tf.width)/2;
 			btn.addChild(tf);
 			Btns.push(btn);
-			btn.x = 10+(icoW+5)*(i%3);
-			btn.y = 10+(icoW+20)*int(i/3);
-			addChild(btn);
 		}
 		
-		drawStripedRect(this,0,0,this.width+20,this.height+20,0xFFFFFF,0xF6F6F6,20);
+		callBackFn = function(idx:int):void
+		{
+			floorPlan.addFurniture(new IcoCls[idx]());
+		}
 		
-		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
 	}//endfunction
+	
+}//endclass
+
+class SaveLoadMenu extends IconsMenu
+{
+	private var floorPlan:FloorPlan;
+	private var hasInit:Boolean = false;
 	
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	private function onMouseDown(ev:Event):void
+	public function SaveLoadMenu(floorP:FloorPlan):void
 	{
-		if (stage==null) return;
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onMouseUp(ev:Event):void
-	{
-		if (stage==null) return;
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+		floorPlan = floorP;
+				
+		callBackFn = function(idx:int):void
+		{
+			if (idx==0)		// save file!!
 			{
-				floorPlan.addFurniture(new IcoCls[i]());
-				return;
+				saveToSharedObject();
+				updateBtns();
 			}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onEnterFrame(ev:Event):void
-	{
-		if (stage==null) return;
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			else			// load file!!
 			{
-				if (Btns[i].filters==null)
-					Btns[i].filters=[new GlowFilter(0x99AAFF,1,8,8,2)];
+				var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+				var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+				floorPlan.importData(saveDat[(idx-1)*3+2]);
 			}
-			else
-			{
-				if (Btns[i].filters!=null)
-				{
-					var A:Array = Btns[i].filters;
-					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
-						(GlowFilter)(A[0]).strength-=0.1;
-					else 
-						A = null;
-					Btns[i].filters = A;
-				}
-			}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function onRemove(ev:Event):void
-	{
-		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
-	}//endfunction
-	
-	//===============================================================================================
-	// draws a striped rectangle in given sprite 
-	//===============================================================================================
-	private static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
-	{
-		if (s==null)	s = new Sprite();
-		var mat:Matrix = new Matrix();
-		mat.createGradientBox(sw,sw,rot,0,0);
-		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
-		s.graphics.drawRoundRect(x,y,w,h,10,10);
-		s.graphics.endFill();
+		}
 		
-		return s;
+		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+		if (saveDat==null)	saveDat = [];
+		
+		updateBtns();
+		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+		hasInit = true;
+	}//endconstr
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	function updateBtns():void
+	{
+		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+		if (saveDat==null)	saveDat = [];
+		
+		var btn:Sprite = new Sprite();
+		btn.graphics.beginFill(0xFFFFFF,1);
+		btn.graphics.drawRoundRect(0,0,90,90,10);
+		btn.graphics.endFill();
+		var saveIco:Sprite = new MenuIcoSave();
+		saveIco.x = (btn.width-saveIco.width)/2;
+		saveIco.y = (btn.height-saveIco.height)/2;
+		btn.addChild(saveIco);
+		Btns = Vector.<Sprite>([btn]);
+		
+		for (var i:int=0; i<saveDat.length; i+=3)
+		{
+			btn = new Sprite();
+			btn.graphics.beginFill(0xFFFFFF,1);
+			btn.graphics.drawRoundRect(0,0,100,100,10);
+			btn.graphics.endFill();
+			loadTmbIntoSpr(btn,saveDat[i+1]);
+			var tf:TextField = new TextField();
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			do {
+				var tff:TextFormat = tf.defaultTextFormat;
+				tff.color = 0x000000;
+				tff.size = int(tff.size)-1;
+				tf.defaultTextFormat = tff;
+				tf.text = saveDat[i];
+			}
+			while (tf.width>btn.width);
+			tf.y = btn.height;
+			tf.x = (btn.width-tf.width)/2;
+			btn.addChild(tf);
+			Btns.push(btn);
+		}//
+		if (hasInit) 	super.refresh();
+		
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	function saveToSharedObject():void
+	{
+		var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
+		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFFFF);
+		var sc:Number = Math.min(90/bnds.width,90/bnds.height);
+		var mat:Matrix = new Matrix(sc,0,0,sc,-bnds.left*sc+(bmd.width-bnds.width*sc)/2,-bnds.top*sc+(bmd.height-bnds.height*sc)/2);
+		bmd.draw(floorPlan.overlay,mat,null,null,null,true);
+		var jpgEnc:JPGEncoder = new JPGEncoder(80);
+		var ba:ByteArray = jpgEnc.encode(bmd);
+		var M:Array = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+		var dat:Date = new Date();
+		
+		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+		if (saveDat==null) saveDat = [];
+		saveDat.unshift(dat.date+" "+M[dat.month]+" "+dat.fullYear , ba , floorPlan.exportData());
+		if (saveDat.length>20*3) saveDat = saveDat.slice(0,20*3);
+		so.data.savedData = saveDat;
+		so.flush();
+		
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function loadTmbIntoSpr(s:Sprite,ba:ByteArray):void
+	{
+		function imgLoaded(ev:Event):void
+		{
+			var bmp:DisplayObject = ldr.content;
+			bmp.x = (s.width-bmp.width)/2;
+			bmp.y = (s.height-bmp.width)/2;
+			s.addChild(bmp);
+		}
+		
+		var ldr:Loader = new Loader();
+		ldr.loadBytes(ba);
+		ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
 	}//endfunction
 }//endclass
 
