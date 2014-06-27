@@ -27,9 +27,9 @@ package
 		private var Copy:XML = 
 		<Copy>
 		<TopBar>
-			<btn ico="TbIcoNew" en="NEW" cn="" />
-			<btn ico="TbIcoOpen" en="OPEN" cn="" />
-			<btn ico="TbIcoSave" en="SAVE" cn="" />
+			<btn ico="TbIcoNew" en="NEW" cn="新建" />
+			<btn ico="TbIcoOpen" en="OPEN" cn="打开" />
+			<btn ico="TbIcoSave" en="SAVE" cn="保存" />
 			<btn ico="TbIcoUndo" en="UNDO" cn="" />
 			<btn ico="TbIcoRedo" en="REDO" cn="" />
 			<btn ico="TbIcoUpload" en="UPLOAD DESIGN" cn="" />
@@ -37,29 +37,38 @@ package
 			<btn ico="TbIcoSave" en="SAVE IMAGE" cn="" />
 		</TopBar>
 		<Items>
-			<item en="LCD TV" cn="" cls="TVFlat" />
-			<item en="Toilet Bowl" cn="" cls="Toilet" />
-			<item en="Square Table" cn="" cls="TableSquare" />
-			<item en="Round Table" cn="" cls="TableRound" />
-			<item en="Rectangular Table" cn="" cls="TableRect" />
-			<item en="Octagonal Table" cn="" cls="TableOctagon" />
-			<item en="Corner Table" cn="" cls="TableL" />
-			<item en="Stove" cn="" cls="Stove" />
-			<item en="2 Seat Sofa" cn="" cls="Sofa2" />
-			<item en="3 Seat Sofa" cn="" cls="Sofa3" />
-			<item en="4 Seat Sofa" cn="" cls="Sofa4" />
+			<item en="LCD TV" cn="液晶电视" cls="TVFlat" />
+			<item en="Toilet Bowl" cn="马桶" cls="Toilet" />
+			<item en="Square Table" cn="方桌" cls="TableSquare" />
+			<item en="Round Table" cn="f圆桌" cls="TableRound" />
+			<item en="Rectangular Table" cn="长方桌" cls="TableRect" />
+			<item en="Octagonal Table" cn="八方桌" cls="TableOctagon" />
+			<item en="Corner Table" cn="墙角桌" cls="TableL" />
+			<item en="Stove" cn="煤气灶" cls="Stove" />
+			<item en="2 Seat Sofa" cn="2坐沙发" cls="Sofa2" />
+			<item en="3 Seat Sofa" cn="3坐沙发" cls="Sofa3" />
+			<item en="4 Seat Sofa" cn="4坐沙发" cls="Sofa4" />
 			<item en="Round Sink" cn="" cls="SinkRound" />
 			<item en="Kitchen Sink" cn="" cls="SinkKitchen" />
-			<item en="Piano" cn="" cls="Piano" />
-			<item en="Oven" cn="" cls="Oven" />
-			<item en="Chair" cn="" cls="Chair" />
-			<item en="Singale Bed" cn="" cls="BedSingle" />
-			<item en="Double Bed" cn="" cls="BedDouble" />
-			<item en="Round Bathtub" cn="" cls="BathTubRound" />
+			<item en="Piano" cn="钢琴" cls="Piano" />
+			<item en="Oven" cn="烘炉" cls="Oven" />
+			<item en="Chair" cn="椅子" cls="Chair" />
+			<item en="Singale Bed" cn="单人床" cls="BedSingle" />
+			<item en="Double Bed" cn="双人床" cls="BedDouble" />
+			<item en="Round Bathtub" cn="圆浴缸" cls="BathTubRound" />
 			<item en="Corner Bathtub" cn="" cls="BathTubL" />
-			<item en="Bathtub" cn="" cls="BathTub" />
-			<item en="Armchair" cn="" cls="ArmChair" />
+			<item en="Bathtub" cn="浴缸" cls="BathTub" />
+			<item en="Armchair" cn="靠椅" cls="ArmChair" />
 		</Items>
+		<Ports>
+			<port en="Single Door" cn="单门" cls="DoorSingleSwinging" />
+			<port en="Sliding Door" cn="单移门" cls="DoorSingleSliding" />
+			<port en="Double Door" cn="双门" cls="DoorDoubleSwinging" />
+			<port en="Double Sliding Door" cn="双移门" cls="DoorDoubleSliding" />
+			<port en="Small Window" cn="小窗" cls="WindowSingle" />
+			<port en="Medium Window" cn="中窗" cls="WindowDouble" />
+			<port en="Large Window" cn="大窗" cls="WindowTriple" />
+		</Ports>
 		</Copy>;
 	
 		private var mouseDownPt:Vector3D = null;		// point of last mouseDown
@@ -103,13 +112,6 @@ package
 			
 			var fr:FileReference=new FileReference();
 			fr.save(ba, "floorPlan.jpg"); 	
-		}//endfunction
-		
-		//=============================================================================================
-		// 
-		//=============================================================================================
-		public function saveToSharedObj():void
-		{
 		}//endfunction
 		
 		//=============================================================================================
@@ -187,7 +189,7 @@ package
 			scaleSlider.x = stage.stageWidth/20;
 			scaleSlider.y = stage.stageHeight/20 + topBar.height;
 			addChild(scaleSlider);
-						
+			
 			// ----- enter default editing mode
 			modeDefault();
 			
@@ -241,7 +243,7 @@ package
 				{
 					var s:Sprite = new Sprite();
 					s.graphics.beginFill(0xFFFFFF,1);
-					s.graphics.drawRoundRect(0,0,70,70,20);
+					s.graphics.drawRoundRect(0,0,50,50,20);
 					s.graphics.endFill();
 					Icos[i].x = (s.width-Icos[i].width)/2;
 					Icos[i].y = (s.height-Icos[i].height)/2;
@@ -250,7 +252,7 @@ package
 				}
 				
 				var secMenu:Sprite = new AddFurnitureMenu(Copy.Items[0],floorPlan);	// creates a furniture menu by default
-									
+				secMenu.filters = [];
 				function mainMode(idx:int):void 
 				{
 					if (idx==0)
@@ -260,6 +262,7 @@ package
 						secMenu = new SaveLoadMenu(floorPlan);
 						secMenu.y = menu.height+10;
 						secMenu.x = menu.width-secMenu.width;
+						secMenu.filters = [];
 						menu.addChild(secMenu);
 					}
 					else if (idx==1)
@@ -280,7 +283,7 @@ package
 				secMenu.x = menu.width-secMenu.width;
 				menu.addChild(secMenu);
 				
-				if (px==0)	px = stage.stageWidth-menu.width;
+				if (px==0)	px = stage.stageWidth-menu.width-5;
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
@@ -294,7 +297,7 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new ButtonsMenu("PROPERTIES",
+				menu = new DialogMenu("PROPERTIES",
 										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE"]),
 										Vector.<Function>([	function(val:String):void 
 															{
@@ -409,7 +412,7 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new ButtonsMenu("ADDING WALLS",
+			menu = new DialogMenu("ADDING WALLS",
 									Vector.<String>(["DONE"]),
 									Vector.<Function>([modeDefault]));
 			menu.x = px;
@@ -486,7 +489,7 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new ButtonsMenu("ADDING DOORS",
+			menu = new DialogMenu("ADDING DOORS",
 									Vector.<String>(["DONE"]),
 									Vector.<Function>([modeDefault]));
 			menu.x = px;
@@ -549,7 +552,7 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new ButtonsMenu("ADDING WINDOWS",
+			menu = new DialogMenu("ADDING WINDOWS",
 									Vector.<String>(["DONE"]),
 									Vector.<Function>([modeDefault]));
 			menu.x = px;
@@ -887,7 +890,7 @@ class FloatingMenu extends Sprite		// to be extended
 	}//endfunction 
 }//endclass
 
-class IconsMenu extends FloatingMenu	// to be extended
+class IconsMenu extends FloatingMenu	
 {
 	private var pageIdx:int=0;
 	private var pageBtns:Sprite = null;
@@ -909,6 +912,8 @@ class IconsMenu extends FloatingMenu	// to be extended
 		if (cols<1) cols = 1;
 		r = rows;
 		c = cols;
+		pageBtns = new Sprite();
+		addChild(pageBtns);
 		
 		refresh();
 		
@@ -942,11 +947,12 @@ class IconsMenu extends FloatingMenu	// to be extended
 		}
 		if (tw>0)	bw = tw/Btns.length;
 		if (th>0)	bh = th/Btns.length;
-					
-		if (pageBtns!=null && pageBtns.parent!=null)	
-			pageBtns.parent.removeChild(pageBtns);
-		pageBtns = new Sprite();
-		for (i=Math.ceil(Btns.length/(r*c))-1; i>-1; i--)
+		
+		// ----- update pageBtns to show correct pages
+		var pageCnt:int = Math.ceil(Btns.length/(r*c));
+		while (pageBtns.numChildren>pageCnt)	
+			pageBtns.removeChildAt(pageBtns.numChildren-1);
+		for (i=0; i<pageCnt; i++)
 		{
 			var sqr:Sprite = new Sprite();
 			sqr.graphics.beginFill(0x666666,1);
@@ -954,17 +960,19 @@ class IconsMenu extends FloatingMenu	// to be extended
 			sqr.graphics.endFill();
 			sqr.x = i*(sqr.width+10);
 			sqr.buttonMode = true;
-			pageBtns.addChildAt(sqr,0);
+			pageBtns.addChild(sqr);
 		}
 		
-		if (Btns.length>r*c)
+		if (pageCnt>1)
 		{
-			addChild(pageBtns);
+			pageBtns.visible=true;
 			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xFFFFFF,0xF6F6F6,20,10);
 		}
 		else
+		{
+			pageBtns.visible=false;
 			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xFFFFFF,0xF6F6F6,20,10);
-		
+		}
 		pageBtns.x = (this.width-pageBtns.width)/2;
 		pageBtns.y =this.height-marg*2-pageBtns.height/2;
 		
@@ -972,12 +980,12 @@ class IconsMenu extends FloatingMenu	// to be extended
 	}//endfunction
 	
 	//===============================================================================================
-	// 
+	// go to page number
 	//===============================================================================================
 	public function pageTo(idx:int):void
 	{
-		while (numChildren>1)	removeChildAt(1);
-				
+		while (numChildren>1)	removeChildAt(1);	// child 0 is pageBtns
+		
 		if (idx<0)	idx = 0;
 		if (idx>Math.ceil(Btns.length/(r*c)))	idx = Math.ceil(Btns.length/(r*c));
 		var a:int = idx*r*c;
@@ -1080,7 +1088,7 @@ class TopBarMenu extends FloatingMenu
 	}//endfunction
 }//endclass
 
-class ButtonsMenu extends FloatingMenu
+class DialogMenu extends FloatingMenu
 {
 	private var Fns:Vector.<Function> = null;
 	private var titleTf:TextField = null;
@@ -1088,7 +1096,7 @@ class ButtonsMenu extends FloatingMenu
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function ButtonsMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
+	public function DialogMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
 	{
 		Fns = callBacks;
 		
@@ -1821,7 +1829,7 @@ class FloorPlan
 			wall.graphics.lineStyle(0,0x000000,1);
 			var cnt:int = 0;
 			wall.graphics.moveTo(piv.x,piv.y);
-			for (var deg:Number=angL; deg<angR; deg+=Math.PI/32)
+			for (var deg:Number=angL; deg<angR; deg+=Math.PI/32)	// draw the arc
 			{
 				if (cnt%2==0)
 					wall.graphics.lineTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
@@ -1829,6 +1837,7 @@ class FloorPlan
 					wall.graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				cnt++;
 			}
+			drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 		}
@@ -2090,11 +2099,11 @@ class FloorPlan
 	//=============================================================================================
 	// draws a generic rectangle in given sprite s
 	//=============================================================================================
-	private function drawBar(s:Sprite,from:Point,to:Point,thickness:Number):void
+	private function drawBar(s:Sprite,from:Point,to:Point,thickness:Number,color:uint=0xCCCCCC):void
 	{
 		var dir:Point = to.subtract(from);
 		var dv:Point = new Point(dir.x/dir.length*thickness/2,dir.y/dir.length*thickness/2);
-		s.graphics.beginFill(0xCCCCCC,1);
+		s.graphics.beginFill(color,1);
 		s.graphics.moveTo(from.x-dv.y,from.y+dv.x);
 		s.graphics.lineTo(from.x+dv.y,from.y-dv.x);
 		s.graphics.lineTo(to.x+dv.y,to.y-dv.x);
@@ -2272,7 +2281,8 @@ class FloorPlan
 			R.push(P[0],P[1],P[2]);	// push triangle in result
 			P.splice(1,1);			// remove P[1]
 		}
-		
+		if (P.length==3)
+		R.push(P[0],P[1],P[2]);
 		return R;
 	}//endfunction
 
