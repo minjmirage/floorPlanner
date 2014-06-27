@@ -515,7 +515,7 @@ package
 				
 				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
 				var doorP:Point = null;
-				if (near!=null)	doorP = chkPlaceDoor(near, mouseP, 100);	// chk place door of 100 width
+				if (near!=null)	doorP = near.chkPlaceDoor(mouseP, 100);	// chk place door of 100 width
 				// ----- if in position to place door
 				if (near!=null && doorP!=null)
 				{
@@ -577,7 +577,7 @@ package
 				
 				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
 				var doorP:Point = null;
-				if (near!=null)	doorP = chkPlaceDoor(near, mouseP, 60);	// chk place door of 60 width
+				if (near!=null)	doorP = near.chkPlaceDoor(mouseP, 60);	// chk place door of 60 width
 				// ----- if in position to place door
 				if (near!=null && doorP!=null)
 				{
@@ -2452,6 +2452,35 @@ class Wall extends Sprite
 	public function addDoor(door:Door):void
 	{
 		
+	}//endfunction
+	
+	//=======================================================================================
+	//
+	//=======================================================================================
+	public function chkPlaceDoor(pt:Point, width:Number):Point
+	{
+		var wallV:Point = joint2.subtract(joint1);
+		var wallL:Number = wallV.length;
+		wallV.normalize(1);
+		var proj:Number = (pt.x-joint1.x)*wallV.x + (pt.y-joint1.y)*wallV.y;	// ratio along wall where door is at
+		var a:Number = proj/wallL-0.5*width/wallL;	// door span along wallL
+		var b:Number = proj/wallL+0.5*width/wallL;
+		if (a<0 || b>1)	return null;	//exceed wall limit
+		
+		for (var i:int=Doors.length-1; i>-1; i--)		// check if overlap other doors
+		{
+			var c:Number = Doors[i].pivot;
+			var d:Number = Doors[i].dir+c;
+			if (d<c)
+			{
+				var tmp:Number = d;
+				d = c;
+				c = tmp;
+			}
+			if ((a>c && a<d) || (b>c && b<d))
+				return null;
+		}
+		return new Point(a,b);
 	}//endfunction
 	
 	//=======================================================================================
