@@ -243,7 +243,7 @@ package
 				{
 					var s:Sprite = new Sprite();
 					s.graphics.beginFill(0xFFFFFF,1);
-					s.graphics.drawRoundRect(0,0,50,50,20);
+					s.graphics.drawRoundRect(0,0,46,46,20);
 					s.graphics.endFill();
 					Icos[i].x = (s.width-Icos[i].width)/2;
 					Icos[i].y = (s.height-Icos[i].height)/2;
@@ -298,17 +298,19 @@ package
 					py = menu.y;
 				}
 				menu = new DialogMenu("PROPERTIES",
-										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE"]),
+										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE","DONE"]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																wall.thickness = Math.max(5,Math.min(30,Number(val)));
+																floorPlan.refresh();
 															},
 															function():void 
 															{
 																floorPlan.removeWall(wall);
 																floorPlan.refresh();
 																showMainMenu();
-															}]));
+															},
+															showMainMenu]));
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
@@ -790,6 +792,7 @@ class FloatingMenu extends Sprite		// to be extended
 {
 	protected var Btns:Vector.<Sprite> = null;
 	protected var callBackFn:Function = null;
+	protected var overlay:Sprite = null;			// something on top to disable this
 	
 	//===============================================================================================
 	// simpleton constructor, subclasses must initialize Btns and callBackFn
@@ -819,7 +822,7 @@ class FloatingMenu extends Sprite		// to be extended
 	{
 		if (stage==null) return;
 		this.stopDrag();
-		
+		if (overlay!=null) return;
 		if (Btns!=null)
 		for (var i:int=Btns.length-1; i>-1; i--)
 			if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
@@ -834,13 +837,14 @@ class FloatingMenu extends Sprite		// to be extended
 	//===============================================================================================
 	protected function onEnterFrame(ev:Event):void
 	{
+		if (overlay!=null && overlay.parent!=this) overlay=null;
 		if (stage==null) return;
 		
 		var A:Array = null;
 		
 		if (Btns!=null)
 		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			if (overlay==null && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
 			{
 				A = Btns[i].filters;
 				if (A.length==0)
@@ -859,8 +863,7 @@ class FloatingMenu extends Sprite		// to be extended
 						A = null;
 					Btns[i].filters = A;
 				}
-			
-		}
+			}
 	}//endfunction
 	
 	//===============================================================================================
@@ -1106,7 +1109,7 @@ class DialogMenu extends FloatingMenu
 		tff.font = "arial";
 		tff.color = 0x888888;
 		tff.bold = true;
-		tff.size = 20;
+		tff.size = 15;
 		tff.align = "center";
 		titleTf.defaultTextFormat = tff;
 		titleTf.text = title;
@@ -1114,7 +1117,7 @@ class DialogMenu extends FloatingMenu
 		titleTf.wordWrap = false;
 		titleTf.selectable = false;
 		addChild(titleTf);
-		tff.size = 13;
+		tff.size = 12;
 		
 		// ----- create buttons
 		tff.size = 15;
@@ -1137,8 +1140,6 @@ class DialogMenu extends FloatingMenu
 				itf.wordWrap = false;
 				itf.defaultTextFormat = tff;
 				itf.text = A[1].split("]")[0];
-				itf.border = true;
-				itf.borderColor = 0x888888;
 			}
 			tf.text = lab;
 			var b:Sprite = new Sprite();
@@ -1181,17 +1182,20 @@ class DialogMenu extends FloatingMenu
 			if (Btns[idx].numChildren>1)
 			{
 				var itf:TextField = (TextField)(Btns[idx].getChildAt(1));
-				itf.type = "input";
-				itf.background = true;
-				if (stage.focus!=itf)
+				if (itf.type=="input")
 				{
-					stage.focus = itf;
-					function onFocusOut(ev:Event):void
+					itf.type="dynamic"
+					itf.background = false;
+					Fns[idx](itf.text);
+				}
+				else
+				{
+					itf.type = "input";
+					itf.background = true;
+					if (stage.focus!=itf)
 					{
-						Fns[idx](itf.text);
-						itf.removeEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
+						stage.focus = itf;
 					}
-					itf.addEventListener(FocusEvent.FOCUS_OUT,onFocusOut);
 				}
 			}
 			else
@@ -1273,14 +1277,11 @@ class SaveLoadMenu extends IconsMenu
 		{
 			if (idx==0)		// save file!!
 			{
-				saveToSharedObject();
-				updateBtns();
+				askToSave();
 			}
 			else			// load file!!
 			{
-				var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-				var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-				floorPlan.importData(saveDat[(idx-1)*3+2]);
+				askToLoad(idx);
 			}
 		}
 		
@@ -1294,7 +1295,72 @@ class SaveLoadMenu extends IconsMenu
 	}//endconstr
 	
 	//===============================================================================================
-	// 
+	// dialog to confirm save
+	//===============================================================================================
+	function askToSave():void
+	{
+		var askSaveFile:Sprite = new DialogMenu("SAVE THIS FLOORPLAN\nIN A NEW ENTRY?",
+									Vector.<String>(["CONFIRM","CANCEL"]),
+									Vector.<Function>([function():void 
+														{
+															saveToSharedObject();
+															overlay.parent.removeChild(overlay);
+															updateBtns();
+														},
+														function():void 
+														{
+															overlay.parent.removeChild(overlay);
+														}])); 
+		askSaveFile.x = (this.width-askSaveFile.width)/2;
+		askSaveFile.y = (this.height-askSaveFile.height)/2;
+		overlay = new Sprite();
+		overlay.graphics.beginFill(0xFFFFFF,0.5);
+		overlay.graphics.drawRoundRect(0,0,this.width,this.height,20);
+		overlay.graphics.endFill();
+		overlay.addChild(askSaveFile);
+		addChild(overlay);
+	}//endfunction
+	
+	//===============================================================================================
+	// dialog to load data
+	//===============================================================================================
+	function askToLoad(idx:int):void
+	{
+		var askLoadFile:Sprite = new DialogMenu("LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!",
+									Vector.<String>(["CONFIRM","CANCEL","DELETE THIS ENTRY"]),
+									Vector.<Function>([function():void 
+														{	// LOAD
+															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+															floorPlan.importData(saveDat[(idx-1)*3+2]);
+															overlay.parent.removeChild(overlay);
+														},
+														function():void 
+														{	// CANCEL
+															overlay.parent.removeChild(overlay);
+														},
+														function():void 
+														{	// DELETE
+															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+															saveDat.splice((idx-1)*3,3);
+															so.data.savedData = saveDat;
+															so.flush();
+															overlay.parent.removeChild(overlay);
+															updateBtns();
+														}])); 
+		askLoadFile.x = (this.width-askLoadFile.width)/2;
+		askLoadFile.y = (this.height-askLoadFile.height)/2;
+		overlay = new Sprite();
+		overlay.graphics.beginFill(0xFFFFFF,0.5);
+		overlay.graphics.drawRoundRect(0,0,this.width,this.height,20);
+		overlay.graphics.endFill();
+		overlay.addChild(askLoadFile);
+		addChild(overlay);
+	}//endfunction
+	
+	//===============================================================================================
+	// Refresh buttons after save operation etc
 	//===============================================================================================
 	function updateBtns():void
 	{
@@ -1318,7 +1384,7 @@ class SaveLoadMenu extends IconsMenu
 			btn.graphics.beginFill(0xFFFFFF,1);
 			btn.graphics.drawRoundRect(0,0,100,100,10);
 			btn.graphics.endFill();
-			loadTmbIntoSpr(btn,saveDat[i+1]);
+			loadTmbIntoSpr(btn,saveDat[i+1]);	// load thumbnail pic
 			var tf:TextField = new TextField();
 			tf.autoSize = "left";
 			tf.wordWrap = false;
@@ -1340,12 +1406,12 @@ class SaveLoadMenu extends IconsMenu
 	}//endfunction
 	
 	//===============================================================================================
-	// 
+	// write floorplan data to SharedObject
 	//===============================================================================================
 	function saveToSharedObject():void
 	{
 		var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
-		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFFFF);
+		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFF);
 		var sc:Number = Math.min(90/bnds.width,90/bnds.height);
 		var mat:Matrix = new Matrix(sc,0,0,sc,-bnds.left*sc+(bmd.width-bnds.width*sc)/2,-bnds.top*sc+(bmd.height-bnds.height*sc)/2);
 		bmd.draw(floorPlan.overlay,mat,null,null,null,true);
@@ -1365,7 +1431,7 @@ class SaveLoadMenu extends IconsMenu
 	}//endfunction
 	
 	//===============================================================================================
-	// 
+	// load jpg format byteArray into sprite 
 	//===============================================================================================
 	private function loadTmbIntoSpr(s:Sprite,ba:ByteArray):void
 	{
@@ -2143,10 +2209,11 @@ class FloorPlan
 		s.graphics.lineTo(poly[i].x,poly[i].y);
 		s.graphics.endFill();
 		
-		var bnds:Rectangle = s.getBounds(s);
 		var tf:TextField = null;
-		if (s.numChildren>0 && s.getChildAt(0) is TextField) 	
-			tf = (TextField)(s.getChildAt(0));
+		if (s.numChildren>0 && s.getChildAt(0) is TextField) 
+		{
+			tf = (TextField)(s.removeChildAt(0));
+		}
 		else
 		{
 			tf = new TextField();
@@ -2156,12 +2223,12 @@ class FloorPlan
 			tf.autoSize = "left";
 			tf.wordWrap = false;
 			tf.selectable = false;
-			s.addChild(tf);
 		}
+		var bnds:Rectangle = s.getBounds(s);
 		tf.text = int(calculateArea(poly)/100)/100+"m sq.";
 		tf.x = bnds.left+(bnds.width-tf.width)/2;
 		tf.y = bnds.top+(bnds.height-tf.height)/2;
-				
+		s.addChild(tf);
 		return s;
 	}//endfunction
 	
@@ -2378,6 +2445,14 @@ class Wall extends Sprite
 		thickness = thick;
 		Doors = new Vector.<Door>();
 	}//endconstr
+	
+	//=======================================================================================
+	//
+	//=======================================================================================
+	public function addDoor(door:Door):void
+	{
+		
+	}//endfunction
 	
 	//=======================================================================================
 	// returns perpendicular dist ffom posn to wall, return MAX_VAL if not within wall bounds
