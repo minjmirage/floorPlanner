@@ -14,6 +14,8 @@ package
 	import flash.text.TextFormat;
 	import flash.filters.DropShadowFilter;
 	import com.adobe.images.JPGEncoder;
+	import flash.utils.getDefinitionByName;
+	import flash.utils.getQualifiedClassName;
 	import flash.net.FileReference;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
@@ -27,14 +29,15 @@ package
 		private var Copy:XML = 
 		<Copy>
 		<TopBar>
-			<btn ico="TbIcoNew" en="NEW" cn="新建" />
-			<btn ico="TbIcoOpen" en="OPEN" cn="打开" />
-			<btn ico="TbIcoSave" en="SAVE" cn="保存" />
-			<btn ico="TbIcoUndo" en="UNDO" cn="" />
-			<btn ico="TbIcoRedo" en="REDO" cn="" />
-			<btn ico="TbIcoUpload" en="UPLOAD DESIGN" cn="" />
-			<btn ico="TbIcoRuler" en="RULER" cn="" />
-			<btn ico="TbIcoSave" en="SAVE IMAGE" cn="" />
+			<btn ico="MenuIcoFile" en="FILE" cn="文件" />
+			<btn ico="MenuIcoFurniture" en="FURNITURE" cn="" />
+			<btn ico="MenuIcoDrawDoor" en="WINDOWS AND DOORS" cn="" />
+			<btn ico="MenuIcoDrawWall" en="DRAW WALLS" cn="" />
+			<btn ico="MenuIcoText" en="ADD TEXT" cn="" />
+			<btn ico="MenuIcoSave" en="SAVE IMAGE" cn="" />
+			<btn ico="MenuIcoUndo" en="UNDO" cn="" />
+			<btn ico="MenuIcoRedo" en="REDO" cn="" />
+
 		</TopBar>
 		<Items>
 			<item en="LCD TV" cn="液晶电视" cls="TVFlat" />
@@ -146,16 +149,30 @@ package
 			// ----- create top bar
 			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
 			{
-				//prn("TopBarMenu "+i);
-				if (i==0)		// new 
-				{}
-				else if (i==1)	// open
-				{}
-				else if (i==2)	// save
+				prn("TopBarMenu "+i);
+				if (i==0)		// file 
 				{
-					
+					showSaveLoadMenu();
 				}
-				else if (i==3)	// undo
+				else if (i==1)	// furniture
+				{
+					showFurnitureMenu();
+				}
+				else if (i==2)	// doors
+				{
+					showDoorsMenu();
+				}
+				else if (i==3)	// walls
+				{
+					modeAddWalls();
+				}
+				else if (i==4)	// text
+				{}
+				else if (i==5)	// save o image
+				{
+					saveToJpg();
+				}
+				else if (i==6)	// undo
 				{
 					if (undoStk.length>0)
 					{
@@ -164,7 +181,7 @@ package
 						floorPlan.importData(undoStk.pop());
 					}
 				}
-				else if (i==4)	// redo
+				else if (i==7)	// redo
 				{
 					if (redoStk.length>0)
 					{
@@ -172,14 +189,6 @@ package
 						//prn("undo:" +redoStk[redoStk.length-1]);
 						floorPlan.importData(redoStk.pop());
 					}
-				}
-				else if (i==5)	// upload
-				{}
-				else if (i==6)	// ruler
-				{}
-				else if (i==7)	// save o image
-				{
-					saveToJpg();
 				}
 			});
 			addChild(topBar);
@@ -191,6 +200,7 @@ package
 			addChild(scaleSlider);
 			
 			// ----- enter default editing mode
+			showFurnitureMenu();
 			modeDefault();
 			
 			// ----- create default room walls
@@ -220,74 +230,79 @@ package
 		}//endfunction
 		
 		//=============================================================================================
-		// go into defacto mode
+		// 
+		//=============================================================================================
+		private function showSaveLoadMenu():void
+		{
+			var px:int = stage.stageWidth;
+			var py:int = topBar.height+5;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new SaveLoadMenu(floorPlan);
+			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
+			menu.y = py;
+			addChild(menu);
+		}//endfunction
+		
+		//=============================================================================================
+		// 
+		//=============================================================================================
+		private function showFurnitureMenu():void
+		{
+			var px:int = stage.stageWidth;
+			var py:int = topBar.height+5;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new AddFurnitureMenu(Copy.Items[0].item,floorPlan,function(idx:int):void
+			{
+				var IcoCls:Class = Class(getDefinitionByName(Copy.Items[0].item[idx].@cls));
+				floorPlan.addFurniture(new IcoCls());
+			});
+			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
+			menu.y = py;
+			addChild(menu);
+		}//endfunction
+		
+		//=============================================================================================
+		// 
+		//=============================================================================================
+		private function showDoorsMenu():void
+		{
+			var px:int = stage.stageWidth;
+			var py:int = topBar.height+5;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			menu = new AddFurnitureMenu(Copy.Ports[0].port,floorPlan,function(idx:int):void
+			{
+				if (idx<4)	modeAddDoors();
+				else		modeAddWindows();
+			});	
+			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
+			menu.y = py;
+			addChild(menu);
+		}//endfunction
+		
+		//=============================================================================================
+		// go into defacto edit mode
 		//=============================================================================================
 		private function modeDefault():void
 		{
 			//prn("modeDefault");
 			var px:int = 0;
 			var py:int = topBar.height+5;
-			
-			// ---------------------------------------------------------------------
-			function showMainMenu():void
-			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				
-				var Icos:Vector.<Sprite> = Vector.<Sprite>([new MenuIcoFile(),new MenuIcoDrawWall(),new MenuIcoDrawDoor(),new MenuIcoText()]);
-				for (var i:int=0; i<Icos.length; i++)
-				{
-					var s:Sprite = new Sprite();
-					s.graphics.beginFill(0xFFFFFF,1);
-					s.graphics.drawRoundRect(0,0,46,46,20);
-					s.graphics.endFill();
-					Icos[i].x = (s.width-Icos[i].width)/2;
-					Icos[i].y = (s.height-Icos[i].height)/2;
-					s.addChild(Icos[i]);
-					Icos[i] = s;
-				}
-				
-				var secMenu:Sprite = new AddFurnitureMenu(Copy.Items[0],floorPlan);	// creates a furniture menu by default
-				secMenu.filters = [];
-				function mainMode(idx:int):void 
-				{
-					if (idx==0)
-					{
-						if (secMenu!=null)
-							secMenu.parent.removeChild(secMenu);
-						secMenu = new SaveLoadMenu(floorPlan);
-						secMenu.y = menu.height+10;
-						secMenu.x = menu.width-secMenu.width;
-						secMenu.filters = [];
-						menu.addChild(secMenu);
-					}
-					else if (idx==1)
-					{
-						modeAddWalls();
-					}
-					else if (idx==2)
-					{
-						modeAddDoors();
-					}
-					else if (idx==3)
-					{
-						modeAddWindows();
-					}
-				}
-				menu = new IconsMenu(Icos,1,Icos.length,mainMode);
-				secMenu.y = menu.height+10;
-				secMenu.x = menu.width-secMenu.width;
-				menu.addChild(secMenu);
-				
-				if (px==0)	px = stage.stageWidth-menu.width-5;
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
-			}
+						
 			// ---------------------------------------------------------------------
 			function showWallProperties(wall:Wall):void
 			{
@@ -308,17 +323,15 @@ package
 															{
 																floorPlan.removeWall(wall);
 																floorPlan.refresh();
-																showMainMenu();
+																showFurnitureMenu();
 															},
-															showMainMenu]));
+															showFurnitureMenu]));
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
 			}
 			// ---------------------------------------------------------------------
-			
-			showMainMenu();
-			
+						
 			// ----- default editing logic
 			var snapDist:Number = 10;
 			var prevMousePt:Point = new Point(0,0);
@@ -392,7 +405,7 @@ package
 				else if (floorPlan.selected!=null)		// selected a furniture
 				{ 	}
 				else
-					showMainMenu();
+					showFurnitureMenu();
 			}
 			mouseUpFn = function():void
 			{
@@ -416,7 +429,7 @@ package
 			}
 			menu = new DialogMenu("ADDING WALLS",
 									Vector.<String>(["DONE"]),
-									Vector.<Function>([modeDefault]));
+									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
@@ -493,7 +506,7 @@ package
 			}
 			menu = new DialogMenu("ADDING DOORS",
 									Vector.<String>(["DONE"]),
-									Vector.<Function>([modeDefault]));
+									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
@@ -556,7 +569,7 @@ package
 			}
 			menu = new DialogMenu("ADDING WINDOWS",
 									Vector.<String>(["DONE"]),
-									Vector.<Function>([modeDefault]));
+									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
@@ -592,6 +605,7 @@ package
 					
 					near.Doors.push(door);
 					prevWall = near;
+					floorPlan.drawWall(near);
 				}
 				// ----- if not in legal position to show door
 			}//endfunction
@@ -1031,14 +1045,14 @@ class TopBarMenu extends FloatingMenu
 			tf.wordWrap = false;
 			var tff:TextFormat  = tf.defaultTextFormat;
 			tff.font = "arial";
-			tff.size = 14;
+			tff.size = 12;
 			tff.color = 0x888888;
 			tf.defaultTextFormat = tff;
 			tf.text = labels[i].@en;
 			var b:Sprite = new Sprite();
 			if (getDefinitionByName(labels[i].@ico)!=null)
 			{
-				var ico:Bitmap = new Bitmap(new (Class(getDefinitionByName(labels[i].@ico)))());
+				var ico:Sprite = new (Class(getDefinitionByName(labels[i].@ico)))();
 				tf.x = ico.width+5;
 				b.addChild(ico);
 			}
@@ -1212,19 +1226,19 @@ class AddFurnitureMenu extends IconsMenu
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function AddFurnitureMenu(dat:XML,floorP:FloorPlan,icoW:int=70):void
+	public function AddFurnitureMenu(dat:XMLList,floorP:FloorPlan,callBackFn:Function,icoW:int=70):void
 	{
 		Btns = new Vector.<Sprite>();
 		IcoCls = new Vector.<Class>();
 		floorPlan = floorP;
 		
-		for (var i:int=0; i<dat.item.length(); i++)
+		for (var i:int=0; i<dat.length(); i++)
 		{
 			var btn:Sprite = new Sprite();
 			btn.graphics.beginFill(0xFFFFFF,1);
 			btn.graphics.drawRoundRect(0,0,icoW,icoW,icoW/10,icoW/10);
 			btn.graphics.endFill();
-			IcoCls.push(getDefinitionByName(dat.item[i].@cls));
+			IcoCls.push(getDefinitionByName(dat[i].@cls));
 			var ico:Sprite = new IcoCls[i]();
 			var bnds:Rectangle = ico.getBounds(ico);
 			var sc:Number = Math.min(icoW*0.8/ico.width,icoW*0.8/ico.height);
@@ -1242,18 +1256,13 @@ class AddFurnitureMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = dat.item[i].@en;
+				tf.text = dat[i].@en;
 			}
 			while (tf.width>icoW);
 			tf.y = btn.height;
 			tf.x = (btn.width-tf.width)/2;
 			btn.addChild(tf);
 			Btns.push(btn);
-		}
-		
-		callBackFn = function(idx:int):void
-		{
-			floorPlan.addFurniture(new IcoCls[idx]());
 		}
 		
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
@@ -1376,6 +1385,13 @@ class SaveLoadMenu extends IconsMenu
 		saveIco.x = (btn.width-saveIco.width)/2;
 		saveIco.y = (btn.height-saveIco.height)/2;
 		btn.addChild(saveIco);
+		var tf:TextField = new TextField();
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		tf.text = "NEW SAVE";
+		tf.y = btn.height;
+		tf.x = (btn.width-tf.width)/2;
+		btn.addChild(tf);
 		Btns = Vector.<Sprite>([btn]);
 		
 		for (var i:int=0; i<saveDat.length; i+=3)
@@ -1385,7 +1401,7 @@ class SaveLoadMenu extends IconsMenu
 			btn.graphics.drawRoundRect(0,0,100,100,10);
 			btn.graphics.endFill();
 			loadTmbIntoSpr(btn,saveDat[i+1]);	// load thumbnail pic
-			var tf:TextField = new TextField();
+			tf = new TextField();
 			tf.autoSize = "left";
 			tf.wordWrap = false;
 			do {
