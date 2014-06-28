@@ -2342,9 +2342,13 @@ class FloorPlan
 		
 		while (P.length>3)
 		{
+			var limit:int = P.length;
 			do {
 				P.push(P.shift());
-			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P));	// chk cut line is actually in poly
+				limit--;
+			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P) && limit>0);	// chk cut line is actually in poly
+			if (limit<=0) 
+				return new Vector.<Point>();		// error occurred
 			R.push(P[0],P[1],P[2]);	// push triangle in result
 			P.splice(1,1);			// remove P[1]
 		}
