@@ -181,6 +181,7 @@ package
 				{}
 				else if (i==5)	// save o image
 				{
+					//prn(floorPlan.exportData());
 					saveToJpg();
 				}
 				else if (i==6)	// undo
@@ -228,16 +229,7 @@ package
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
-			floorPlan.createWall(new Point( -250, -200), new Point(250, -200),20);
-			floorPlan.createWall(new Point( 250, -200), new Point(250, 180),20);
-			floorPlan.createWall(new Point( 250, 180), new Point( 150, 180),20);
-			floorPlan.createWall(new Point( 150, 180), new Point( 50, 230),10);
-			floorPlan.createWall(new Point( 50, 230), new Point( -50, 230),10);
-			floorPlan.createWall(new Point(-50, 230), new Point(-150, 180),10);
-			floorPlan.createWall(new Point(-150, 180), new Point(-250, 180),20);
-			floorPlan.createWall(new Point( -250, 180), new Point( -250, -200), 20);
-			var IcoCls:Class = Class(getDefinitionByName(Copy.Ports[0].port[0].@cls));
-			floorPlan.Walls[0].addDoor(new Door(0.35, 0.3,new IcoCls as Sprite));
+			floorPlan.importData('{"Furniture":[{"cls":"Toilet","rot":89.70202789452766,"y":-86,"scX":1.2509692700746744,"scY":1.2464523664404727,"x":485},{"cls":"SinkRound","rot":0,"y":-163,"scX":1,"scY":1,"x":451},{"cls":"BathTub","rot":90.4262926392602,"y":37,"scX":1,"scY":1,"x":442},{"cls":"TVFlat","rot":-90.27906677101664,"y":71,"scX":1,"scY":1,"x":-217},{"cls":"TableSquare","rot":0,"y":-117,"scX":1,"scY":1,"x":-164},{"cls":"Sofa4","rot":-89.94349530479464,"y":48,"scX":1,"scY":1,"x":206},{"cls":"Piano","rot":-118.87361735156438,"y":-187,"scX":0.6984775322209045,"scY":0.6855680212976787,"x":-473},{"cls":"BedDouble","rot":-0.14365196037870476,"y":-401,"scX":1,"scY":1,"x":453}],"Walls":[{"j1":2,"Doors":[],"j2":3,"w":20},{"j1":3,"Doors":[{"cls":"WindowSingle","pivot":0.22742261910502903,"dir":0.617154761789942}],"j2":4,"w":10},{"j1":4,"Doors":[{"cls":"WindowSingle","pivot":0.16500000000000004,"dir":0.69}],"j2":5,"w":10},{"j1":5,"Doors":[{"cls":"WindowSingle","pivot":0.15142261910502908,"dir":0.617154761789942}],"j2":6,"w":10},{"j1":6,"Doors":[],"j2":7,"w":20},{"j1":2,"Doors":[],"j2":11,"w":10},{"j1":10,"Doors":[],"j2":11,"w":10},{"j1":1,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.3645320197044335,"dir":0.541871921182266}],"j2":12,"w":10},{"j1":11,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.5444839857651245,"dir":0.3914590747330961}],"j2":12,"w":10},{"j1":14,"Doors":[],"j2":12,"w":10},{"j1":8,"Doors":[],"j2":14,"w":10},{"j1":10,"Doors":[],"j2":14,"w":10},{"j1":0,"Doors":[],"j2":17,"w":10},{"j1":19,"Doors":[{"cls":"DoorSingleSliding","pivot":0.0967153284671533,"dir":0.7846715328467153}],"j2":17,"w":20},{"j1":19,"Doors":[{"cls":"WindowSingle","pivot":0.2247734199204044,"dir":0.5440496786546839}],"j2":21,"w":10},{"j1":21,"Doors":[{"cls":"WindowSingle","pivot":0.27884615384615385,"dir":0.4423076923076923}],"j2":22,"w":10},{"j1":22,"Doors":[{"cls":"WindowSingle","pivot":0.24911822040192444,"dir":0.5231477854550612}],"j2":23,"w":10},{"j1":23,"Doors":[{"cls":"WindowSingle","pivot":0.1859504132231405,"dir":0.5702479338842975}],"j2":24,"w":10},{"j1":24,"Doors":[],"j2":25,"w":10},{"j1":7,"Doors":[],"j2":26,"w":10},{"j1":17,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.0578512396694215,"dir":0.2272727272727273}],"j2":26,"w":10},{"j1":25,"Doors":[{"cls":"WindowDouble","pivot":0.08012820512820518,"dir":0.8269230769230769}],"j2":26,"w":10},{"j1":8,"Doors":[{"cls":"WindowDouble","pivot":0.5289115646258504,"dir":0.4387755102040816}],"j2":27,"w":10},{"j1":1,"Doors":[],"j2":27,"w":10},{"j1":0,"Doors":[{"cls":"DoorDoubleSwinging","pivot":0.25052731917835847,"dir":0.4448862062046374}],"j2":1,"w":10}],"Joints":[{"y":-396,"x":-250},{"y":-394,"x":249},{"y":180,"x":250},{"y":180,"x":150},{"y":230,"x":50},{"y":230,"x":-50},{"y":180,"x":-150},{"y":180,"x":-250},{"y":-517,"x":543},{"y":-394,"x":249},{"y":89,"x":543},{"y":89,"x":249},{"y":-192,"x":249},{"y":-192,"x":249},{"y":-192,"x":543},{"y":-192,"x":249},{"y":-192,"x":543},{"y":-343,"x":-250},{"y":-343,"x":-250},{"y":-343,"x":-524},{"y":-343,"x":-250},{"y":-269,"x":-627},{"y":-113,"x":-627},{"y":-27,"x":-527},{"y":-27,"x":-406},{"y":141,"x":-406},{"y":141,"x":-250},{"y":-517,"x":249},{"y":-394,"x":249}]}');
 			floorPlan.refresh();
 		}//endfunction
 		
@@ -497,7 +489,7 @@ package
 			menu.y = py;
 			stage.addChild(menu);
 		
-			// ----- add walls logic
+			// ----------------------------------------------------------------
 			var wall:Wall = null;
 			stepFn = function():void
 			{
@@ -532,14 +524,18 @@ package
 					floorPlan.refresh();
 				}
 			}
+			// ----------------------------------------------------------------
 			mouseDownFn = function():void
 			{
 				undoStk.push(floorPlan.exportData());
 				if (wall==null)
+				{
 					wall = floorPlan.createWall(new Point(grid.mouseX,grid.mouseY),
 												new Point(grid.mouseX,grid.mouseY),
 												snapDist);
+				}
 			}
+			// ----------------------------------------------------------------
 			mouseUpFn = function():void
 			{
 				if (wall!=null && wall.joint1.subtract(wall.joint2).length<=snapDist)
@@ -692,7 +688,7 @@ package
 				debugTf = new TextField();
 				debugTf.autoSize = "left";
 				debugTf.wordWrap = false;
-				debugTf.mouseEnabled = false;
+				//debugTf.mouseEnabled = false;
 				var tff:TextFormat = debugTf.defaultTextFormat;
 				tff.color = 0x000000;
 				tff.font = "arial";
@@ -1734,19 +1730,34 @@ class FloorPlan
 	//=============================================================================================
 	public function createWall(pt1:Point, pt2:Point, width:Number=10, snapDist:Number=10):Wall
 	{
-		// ----- snap pt1 to existing joint
-		var nearest:Point = null;
-		for (var i:int=Joints.length-1; i>-1;i--)
-			if (nearest==null || Joints[i].subtract(pt1).length<nearest.subtract(pt1).length)
-				nearest=Joints[i];
-		if (nearest!=null && nearest.subtract(pt1).length<snapDist)	
+		function registerWall(wall:Wall):Wall
+		{
+			Walls.push(wall);
+			drawWall(wall);
+			overlay.addChild(wall);
+			return wall;
+		}
+	
+		// ----- snap pt1 to existing joint if near
+		var nearest:Point = nearestJoint(pt1,snapDist);
+		if (nearest!=null)	
 			pt1 = nearest;
 		else
+		{	// snap starting point to nearest wall if approprate
+			var snapW:Wall = nearestWall(pt1, snapDist);
+			if (snapW!=null)	
+			{
+				pt1 = projectedWallPosition(snapW, pt1);
+				removeWall(snapW);
+				registerWall(new Wall(snapW.joint1, pt1));
+				registerWall(new Wall(snapW.joint2, pt1));
+			}
 			Joints.push(pt1);
+		}
 		
 		// ----- snap pt2 to existing joint not pt1
 		nearest = null;
-		for (i=Joints.length-1; i>-1; i--)
+		for (var i:int=Joints.length-1; i>-1; i--)
 			if (Joints[i]!=pt1)
 			{
 				if (nearest==null || Joints[i].subtract(pt2).length<nearest.subtract(pt2).length)
@@ -1758,11 +1769,7 @@ class FloorPlan
 			Joints.push(pt2);
 		
 		// ----- register new wall
-		var wall:Wall = new Wall(pt1, pt2, width);
-		Walls.push(wall);
-		drawWall(wall);
-		overlay.addChild(wall);
-		return wall;
+		return registerWall(new Wall(pt1, pt2, width));
 	}//endfunction
 	
 	//=============================================================================================
