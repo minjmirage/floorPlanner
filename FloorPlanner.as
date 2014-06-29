@@ -26,19 +26,26 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
-		private var Copy:XML = 
+		public static var Copy:XML = 
 		<Copy>
 		<TopBar>
 			<btn ico="MenuIcoFile" en="FILE" cn="文件" />
-			<btn ico="MenuIcoFurniture" en="FURNITURE" cn="" />
-			<btn ico="MenuIcoDrawDoor" en="WINDOWS AND DOORS" cn="" />
-			<btn ico="MenuIcoDrawWall" en="DRAW WALLS" cn="" />
-			<btn ico="MenuIcoText" en="ADD TEXT" cn="" />
-			<btn ico="MenuIcoSave" en="SAVE IMAGE" cn="" />
-			<btn ico="MenuIcoUndo" en="UNDO" cn="" />
-			<btn ico="MenuIcoRedo" en="REDO" cn="" />
-
+			<btn ico="MenuIcoFurniture" en="FURNITURE" cn="家具" />
+			<btn ico="MenuIcoDrawDoor" en="WINDOWS AND DOORS" cn="门窗" />
+			<btn ico="MenuIcoDrawWall" en="DRAW WALLS" cn="画墙壁" />
+			<btn ico="MenuIcoText" en="ADD TEXT" cn="文字" />
+			<btn ico="MenuIcoSave" en="SAVE IMAGE" cn="保存图片" />
+			<btn ico="MenuIcoUndo" en="UNDO" cn="后退" />
+			<btn ico="MenuIcoRedo" en="REDO" cn="重做" />
 		</TopBar>
+		<SaveLoad>
+			<NewSave en="NEW SAVE" cn="新保存" />
+			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="新建记录\n保存蓝图?" />
+			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开蓝图\n现有蓝图会被覆盖！" />
+			<Confirm en="CONFIRM" cn="确认" />
+			<Cancel en="CANCEL" cn="取消" />
+			<DeleteEntry en="DELETE ENTRY" cn="删除这个记录" />
+		</SaveLoad>
 		<Items>
 			<item en="LCD TV" cn="液晶电视" cls="TVFlat" />
 			<item en="Toilet Bowl" cn="马桶" cls="Toilet" />
@@ -51,15 +58,15 @@ package
 			<item en="2 Seat Sofa" cn="2坐沙发" cls="Sofa2" />
 			<item en="3 Seat Sofa" cn="3坐沙发" cls="Sofa3" />
 			<item en="4 Seat Sofa" cn="4坐沙发" cls="Sofa4" />
-			<item en="Round Sink" cn="" cls="SinkRound" />
-			<item en="Kitchen Sink" cn="" cls="SinkKitchen" />
+			<item en="Round Sink" cn="洗脸盆" cls="SinkRound" />
+			<item en="Kitchen Sink" cn="洗手盆" cls="SinkKitchen" />
 			<item en="Piano" cn="钢琴" cls="Piano" />
 			<item en="Oven" cn="烘炉" cls="Oven" />
 			<item en="Chair" cn="椅子" cls="Chair" />
 			<item en="Singale Bed" cn="单人床" cls="BedSingle" />
 			<item en="Double Bed" cn="双人床" cls="BedDouble" />
 			<item en="Round Bathtub" cn="圆浴缸" cls="BathTubRound" />
-			<item en="Corner Bathtub" cn="" cls="BathTubL" />
+			<item en="Corner Bathtub" cn="墙角浴缸" cls="BathTubL" />
 			<item en="Bathtub" cn="浴缸" cls="BathTub" />
 			<item en="Armchair" cn="靠椅" cls="ArmChair" />
 		</Items>
@@ -149,18 +156,21 @@ package
 			// ----- create top bar
 			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
 			{
-				prn("TopBarMenu "+i);
+				//prn("TopBarMenu "+i);
 				if (i==0)		// file 
 				{
 					showSaveLoadMenu();
+					
 				}
 				else if (i==1)	// furniture
 				{
 					showFurnitureMenu();
+					modeDefault();
 				}
 				else if (i==2)	// doors
 				{
 					showDoorsMenu();
+					modeDefault();
 				}
 				else if (i==3)	// walls
 				{
@@ -225,12 +235,13 @@ package
 			floorPlan.createWall(new Point(-50, 230), new Point(-150, 180),10);
 			floorPlan.createWall(new Point(-150, 180), new Point(-250, 180),20);
 			floorPlan.createWall(new Point( -250, 180), new Point( -250, -200), 20);
-			floorPlan.Walls[0].Doors.push(new Door(0.35, 0.3));
+			var IcoCls:Class = Class(getDefinitionByName(Copy.Ports[0].port[0].@cls));
+			floorPlan.Walls[0].addDoor(new Door(0.35, 0.3,new IcoCls as Sprite));
 			floorPlan.refresh();
 		}//endfunction
 		
 		//=============================================================================================
-		// 
+		// show save load selection
 		//=============================================================================================
 		private function showSaveLoadMenu():void
 		{
@@ -249,7 +260,7 @@ package
 		}//endfunction
 		
 		//=============================================================================================
-		// 
+		// show available furniture selection
 		//=============================================================================================
 		private function showFurnitureMenu():void
 		{
@@ -272,7 +283,7 @@ package
 		}//endfunction
 		
 		//=============================================================================================
-		// 
+		// show available doors windows selection
 		//=============================================================================================
 		private function showDoorsMenu():void
 		{
@@ -286,8 +297,8 @@ package
 			}
 			menu = new AddFurnitureMenu(Copy.Ports[0].port,floorPlan,function(idx:int):void
 			{
-				if (idx<4)	modeAddDoors();
-				else		modeAddWindows();
+				var IcoCls:Class = Class(getDefinitionByName(Copy.Ports[0].port[idx].@cls));
+				modeAddDoors(new IcoCls() as Sprite);
 			});	
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
 			menu.y = py;
@@ -351,6 +362,7 @@ package
 							{
 								floorPlan.replaceJointWith(selJ,snapJ);
 								floorPlan.selected = null;
+								floorPlan.refresh();
 							}
 						}
 						else	// joint wall end to existing wall
@@ -494,7 +506,7 @@ package
 		//=============================================================================================
 		// go into adding doors mode
 		//=============================================================================================
-		private function modeAddDoors(snapDist:Number=10):void
+		private function modeAddDoors(ico:Sprite,snapDist:Number=10):void
 		{
 			var px:int = 0;
 			var py:int = 0;
@@ -506,14 +518,16 @@ package
 			}
 			menu = new DialogMenu("ADDING DOORS",
 									Vector.<String>(["DONE"]),
-									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
+									Vector.<Function>([function():void {showDoorsMenu(); modeDefault();}]));
 			menu.x = px;
 			menu.y = py;
 			stage.addChild(menu);
 			
 			// ----- add doors logic
+			var icoW:int = ico.width;
 			var prevWall:Wall = null;
-			var door:Door = null;
+			var door:Door = new Door(0,0.5,ico);	// pivot and dir values to be replaced
+			
 			stepFn = function():void
 			{
 				// ----- remove added display door
@@ -528,96 +542,33 @@ package
 				
 				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
 				var doorP:Point = null;
-				if (near!=null)	doorP = near.chkPlaceDoor(mouseP, 100);	// chk place door of 100 width
+				if (near!=null)	
+				{
+					doorP = near.chkPlaceDoor(mouseP, icoW);	// chk place door of 100 width
+				}
 				// ----- if in position to place door
+				//prn("near="+near+"  doorP="+doorP)
 				if (near!=null && doorP!=null)
 				{
-					if (door==null) 	
-						door = new Door(doorP.x,doorP.y-doorP.x);
-					else
-						door.pivot = doorP.x;
-					
-					near.Doors.push(door);
-					prevWall = near;
+					door.pivot = doorP.x;
+					door.dir = icoW/(near.joint2.subtract(near.joint1).length);	// calculate ratio of occupied wall
+					near.addDoor(door);
 					floorPlan.drawWall(near);
+					prevWall = near;
 				}
-				// ----- if not in legal position to show door
+				
+				// ----- hack to prevent immediate mouseUp
+				mouseUpFn = function():void
+				{
+					modeDefault();
+					showDoorsMenu();
+				}
 			}//endfunction
 			mouseDownFn = function():void
 			{
 				
 			}
-			mouseUpFn = function():void
-			{
-				prevWall = null;	// forget about the last placed door
-				door = null;
-			}
-		}//endfunction
-		
-		//=============================================================================================
-		// go into adding doors mode
-		//=============================================================================================
-		private function modeAddWindows(snapDist:Number=10):void
-		{
-			var px:int = 0;
-			var py:int = 0;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new DialogMenu("ADDING WINDOWS",
-									Vector.<String>(["DONE"]),
-									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
-			menu.x = px;
-			menu.y = py;
-			stage.addChild(menu);
 			
-			// ----- add doors logic
-			var prevWall:Wall = null;
-			var door:Door = null;
-			stepFn = function():void
-			{
-				// ----- remove added display door
-				if (prevWall!=null)
-				{	
-					if (prevWall.Doors.indexOf(door)!=-1)
-						prevWall.Doors.splice(prevWall.Doors.indexOf(door),1);
-				}
-				
-				var mouseP:Point = new Point(grid.mouseX,grid.mouseY);
-				
-				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
-				var doorP:Point = null;
-				if (near!=null)	doorP = near.chkPlaceDoor(mouseP, 60);	// chk place door of 60 width
-				// ----- if in position to place door
-				if (near!=null && doorP!=null)
-				{
-					if (door == null) 
-					{
-						door = new Door(doorP.x, doorP.y - doorP.x);
-						door.angR = 0;
-						door.thickness = 20;
-					}
-					else
-						door.pivot = doorP.x;
-					
-					near.Doors.push(door);
-					prevWall = near;
-					floorPlan.drawWall(near);
-				}
-				// ----- if not in legal position to show door
-			}//endfunction
-			mouseDownFn = function():void
-			{
-				
-			}
-			mouseUpFn = function():void
-			{
-				prevWall = null;	// forget about the last placed door
-				door = null;
-			}
 		}//endfunction
 		
 		//=============================================================================================
@@ -1048,7 +999,7 @@ class TopBarMenu extends FloatingMenu
 			tff.size = 12;
 			tff.color = 0x888888;
 			tf.defaultTextFormat = tff;
-			tf.text = labels[i].@en;
+			tf.text = labels[i].@cn;
 			var b:Sprite = new Sprite();
 			if (getDefinitionByName(labels[i].@ico)!=null)
 			{
@@ -1256,7 +1207,7 @@ class AddFurnitureMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = dat[i].@en;
+				tf.text = dat[i].@cn;
 			}
 			while (tf.width>icoW);
 			tf.y = btn.height;
@@ -1388,7 +1339,8 @@ class SaveLoadMenu extends IconsMenu
 		var tf:TextField = new TextField();
 		tf.autoSize = "left";
 		tf.wordWrap = false;
-		tf.text = "NEW SAVE";
+		//tf.text = "NEW SAVE";
+		tf.text = "新保存";
 		tf.y = btn.height;
 		tf.x = (btn.width-tf.width)/2;
 		btn.addChild(tf);
@@ -1572,7 +1524,15 @@ class FloorPlan
 		
 		function replacer(k,v):*
 		{
-			if (v is Wall)			// joints become indexes
+			if (v is Door)			//
+			{
+				var o:Object = new Object();
+				o.pivot = v.pivot;
+				o.dir = v.dir;
+				o.cls = getQualifiedClassName((Door)(v).icon);
+				return o;
+			}
+			else if (v is Wall)		// joints become indexes
 			{
 				var wo:Object = new Object();
 				wo.j1 = Joints.indexOf((Wall)(v).joint1);
@@ -1638,11 +1598,9 @@ class FloorPlan
 			for (var j:int=wo.Doors.length-1; j>-1; j--)
 			{
 				var d:Object = wo.Doors[j];
-				var door:Door = new Door(Number(d.pivot),Number(d.dir));
-				door.angL = Number(d.angL);
-				door.angR = Number(d.angR);
-				door.thickness = d.thickness;
-				wall.Doors.unshift(door);
+				var doorIco:Sprite = new (Class(getDefinitionByName(d.cls)))() as Sprite;
+				var door:Door = new Door(Number(d.pivot),Number(d.dir),doorIco);
+				wall.addDoor(door);
 			}
 			overlay.addChild(wall);
 			Walls.unshift(wall);
@@ -1906,6 +1864,15 @@ class FloorPlan
 			var dir:Point = new Point(	(wall.joint2.x-wall.joint1.x)*door.dir,
 										(wall.joint2.y-wall.joint1.y)*door.dir);
 			var bearing:Number = Math.atan2(dir.x,-dir.y);
+			drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
+			door.icon.x = piv.x+dir.x/2;
+			door.icon.y = piv.y+dir.y/2;
+			door.icon.rotation = 0;
+			door.icon.width = dir.length;
+			door.icon.scaleY = door.icon.scaleX;
+			door.icon.rotation = bearing*180/Math.PI+90;
+			wall.addChild(door.icon);
+			/*
 			var angL:Number = bearing+door.angL;
 			var angR:Number = bearing+door.angR;
 			wall.graphics.lineStyle(0,0x000000,1);
@@ -1919,9 +1886,9 @@ class FloorPlan
 					wall.graphics.moveTo(piv.x+Math.sin(deg)*dir.length,piv.y-Math.cos(deg)*dir.length);
 				cnt++;
 			}
-			drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
+			*/
 		}
 	}//endfunction
 	
@@ -2471,7 +2438,20 @@ class Wall extends Sprite
 	//=======================================================================================
 	public function addDoor(door:Door):void
 	{
-		
+		Doors.push(door);
+		addChild(door.icon);
+	}//endfunction
+	
+	//=======================================================================================
+	//
+	//=======================================================================================
+	public function removeDoor(door:Door):void
+	{
+		if (Doors.indexOf(door)!=-1)
+		{
+			Doors.splice(Doors.indexOf(door),1);
+			if (door.icon.parent==this) removeChild(door.icon);
+		}
 	}//endfunction
 	
 	//=======================================================================================
@@ -2549,13 +2529,12 @@ class Door
 {
 	public var pivot:Number;	// a ratio from joint1 to joint2 of wall	
 	public var dir:Number;		// an added ratio relative to pivot
-	public var angL:Number=0;
-	public var angR:Number=Math.PI/2;
-	public var thickness:Number=10;
+	public var icon:Sprite=null;
 	
-	public function Door(piv:Number,wid:Number):void
+	public function Door(piv:Number,wid:Number,ico:Sprite):void
 	{
 		pivot = piv;
 		dir = wid;
-	}
-}//endfunction
+		icon = ico;
+	}//endfunction
+}//endclass
