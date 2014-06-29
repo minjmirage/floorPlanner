@@ -39,9 +39,11 @@ package
 			<btn ico="MenuIcoRedo" en="REDO" cn="重做" />
 		</TopBar>
 		<SaveLoad>
-			<NewSave en="NEW SAVE" cn="新保存" />
-			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="新建蓝图保存记录" />
-			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开蓝图。现有蓝图会被覆盖！" />
+			<NewDocument ico="MenuIcoNew" en="NEW" cn="新建" />
+			<NewSave en="SAVE FLOORPLAN" cn="保存户型图" />
+			<AskToNew en="CREATE A NEW DOCUMENT?" cn="新建设计，是否放弃当前设计？" />
+			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="创造新户型图保存记录" />
+			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开户型图。当前设计会被覆盖！" />
 			<Confirm en="CONFIRM" cn="确认" />
 			<Cancel en="CANCEL" cn="取消" />
 			<DeleteEntry en="DELETE ENTRY" cn="删除这个记录" />
@@ -142,25 +144,24 @@ package
 			undoStk = new Vector.<String>();
 			redoStk = new Vector.<String>();
 			
-			// ----- add grid background
+			// ----- add grid background --------------------------------------
 			grid = new WireGrid(sw,sh);
 			grid.x = sw/2;
 			grid.y = sh/2;
 			grid.update();
 			addChild(grid);
 			
-			// ----- drawing sprite
+			// ----- floorplan drawing sprite ---------------------------------
 			floorPlan = new FloorPlan();
 			grid.addChild(floorPlan.overlay);
 			
-			// ----- create top bar
+			// ----- create top bar -------------------------------------------
 			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
 			{
 				//prn("TopBarMenu "+i);
 				if (i==0)		// file 
 				{
 					showSaveLoadMenu();
-					
 				}
 				else if (i==1)	// furniture
 				{
@@ -313,7 +314,40 @@ package
 			//prn("modeDefault");
 			var px:int = 0;
 			var py:int = topBar.height+5;
-						
+			
+			function showDoorProperties(door:Door):void
+			{
+				var wall:Wall = null;
+				for (var i:int=floorPlan.Walls.length-1; i>-1; i--)
+					if (floorPlan.Walls[i].Doors.indexOf(door)!=-1)
+						wall = floorPlan.Walls[i];
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new DialogMenu("PROPERTIES",
+										Vector.<String>(["LENGTH ["+Math.abs(door.dir)+"]","REMOVE","DONE"]),
+										Vector.<Function>([	function(val:String):void 
+															{
+																if (door.dir<0)
+																	door.dir = -Math.min(1,Math.max(0.01,Number(val)));
+																else
+																	door.dir = Math.min(1,Math.max(0.01,Number(val)));
+																floorPlan.refresh();
+															},
+															function():void 
+															{
+																wall.removeDoor(door);
+																floorPlan.drawWall(wall);
+																showFurnitureMenu();
+															},
+															showFurnitureMenu]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}//endfunction
 			// ---------------------------------------------------------------------
 			function showWallProperties(wall:Wall):void
 			{
@@ -340,7 +374,7 @@ package
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
-			}
+			}//endfunction
 			// ---------------------------------------------------------------------
 						
 			// ----- default editing logic
@@ -387,6 +421,10 @@ package
 						selW.joint2.y += grid.mouseY - prevMousePt.y;
 						floorPlan.refresh();
 					}
+					else if (floorPlan.selected is Door)
+					{
+						floorPlan.refresh();
+					}
 					else if (floorPlan.selected!=null)
 					{	// ----- furniture shifting... 
 					}
@@ -400,6 +438,7 @@ package
 					prevMousePt.y = grid.mouseY;
 				}
 			}
+			// ----------------------------------------------------------------
 			mouseDownFn = function():void
 			{
 				prevMousePt.x = grid.mouseX;
@@ -411,14 +450,26 @@ package
 					undoStk.push(floorPlan.exportData());
 				
 				if (floorPlan.selected is Point)		// selected a joint
-				{	}
+				{	
+				}
 				else if (floorPlan.selected is Wall)	// selected a wall
+				{
 					showWallProperties((Wall)(floorPlan.selected));
+				}
+				else if (floorPlan.selected is Door)	// selected a door
+				{
+					showDoorProperties((Door)(floorPlan.selected));
+				}
 				else if (floorPlan.selected!=null)		// selected a furniture
-				{ 	}
+				{
+				}
 				else
+				{
 					showFurnitureMenu();
+					floorPlan.refresh();
+				}
 			}
+			// ----------------------------------------------------------------
 			mouseUpFn = function():void
 			{
 				if (undoStk.length>0 && floorPlan.exportData()==undoStk[undoStk.length-1]) 
@@ -1236,15 +1287,13 @@ class SaveLoadMenu extends IconsMenu
 				
 		callBackFn = function(idx:int):void
 		{
-			if (idx==0)		// save file!!
-			{
+			if (idx==0)			// new document
+				askToNew();
+			else if (idx==1)	// save file
 				askToSave();
-			}
-			else			// load file!!
-			{
-				askToLoad(idx);
-			}
-		}
+			else				// load saved data
+				askToLoad(idx-2);
+		}//endfunction
 		
 		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
@@ -1254,6 +1303,33 @@ class SaveLoadMenu extends IconsMenu
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
 		hasInit = true;
 	}//endconstr
+	
+	//===============================================================================================
+	// dialog to confirm save
+	//===============================================================================================
+	function askToNew():void
+	{
+		var askNew:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToNew.@cn,
+									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
+														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
+									Vector.<Function>([function():void 
+														{
+															floorPlan.clearAll();
+															overlay.parent.removeChild(overlay);
+														},
+														function():void 
+														{
+															overlay.parent.removeChild(overlay);
+														}])); 
+		askNew.x = (this.width-askNew.width)/2;
+		askNew.y = (this.height-askNew.height)/2;
+		overlay = new Sprite();
+		overlay.graphics.beginFill(0xFFFFFF,0.5);
+		overlay.graphics.drawRoundRect(0,0,this.width,this.height,20);
+		overlay.graphics.endFill();
+		overlay.addChild(askNew);
+		addChild(overlay);
+	}//endfunction
 	
 	//===============================================================================================
 	// dialog to confirm save
@@ -1296,7 +1372,7 @@ class SaveLoadMenu extends IconsMenu
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															floorPlan.importData(saveDat[(idx-1)*3+2]);
+															floorPlan.importData(saveDat[(idx)*3+2]);
 															overlay.parent.removeChild(overlay);
 														},
 														function():void 
@@ -1307,7 +1383,7 @@ class SaveLoadMenu extends IconsMenu
 														{	// DELETE
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															saveDat.splice((idx-1)*3,3);
+															saveDat.splice((idx)*3,3);
 															so.data.savedData = saveDat;
 															so.flush();
 															overlay.parent.removeChild(overlay);
@@ -1328,35 +1404,19 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function updateBtns():void
 	{
-		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-		if (saveDat==null)	saveDat = [];
+		Btns = new Vector.<Sprite>();
 		
-		var btn:Sprite = new Sprite();
-		btn.graphics.beginFill(0xFFFFFF,1);
-		btn.graphics.drawRoundRect(0,0,90,90,10);
-		btn.graphics.endFill();
-		var saveIco:Sprite = new MenuIcoSave();
-		saveIco.x = (btn.width-saveIco.width)/2;
-		saveIco.y = (btn.height-saveIco.height)/2;
-		btn.addChild(saveIco);
-		var tf:TextField = new TextField();
-		tf.autoSize = "left";
-		tf.wordWrap = false;
-		tf.text = FloorPlanner.Copy.SaveLoad.NewSave.@cn;
-		tf.y = btn.height;
-		tf.x = (btn.width-tf.width)/2;
-		btn.addChild(tf);
-		Btns = Vector.<Sprite>([btn]);
-		
-		for (var i:int=0; i<saveDat.length; i+=3)
+		// --------------------------------------------------------------------
+		function makeBtn(ico:DisplayObject,txt:String):void
 		{
-			btn = new Sprite();
+			var btn:Sprite = new Sprite();
 			btn.graphics.beginFill(0xFFFFFF,1);
 			btn.graphics.drawRoundRect(0,0,100,100,10);
 			btn.graphics.endFill();
-			loadTmbIntoSpr(btn,saveDat[i+1]);	// load thumbnail pic
-			tf = new TextField();
+			ico.x = (btn.width-ico.width)/2;
+			ico.y = (btn.height-ico.height)/2;
+			btn.addChild(ico);
+			var tf:TextField = new TextField();
 			tf.autoSize = "left";
 			tf.wordWrap = false;
 			do {
@@ -1364,16 +1424,47 @@ class SaveLoadMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = saveDat[i];
+				tf.text = txt;
 			}
 			while (tf.width>btn.width);
 			tf.y = btn.height;
 			tf.x = (btn.width-tf.width)/2;
 			btn.addChild(tf);
 			Btns.push(btn);
-		}//
-		if (hasInit) 	super.refresh();
+		}
+		// --------------------------------------------------------------------
+		function showSaveFiles(saveDat:Array):void
+		{
+			var idx:int=0;
+			
+			function loadNext():void
+			{
+				var ldr:Loader = new Loader();
+				ldr.loadBytes(saveDat[idx+1] as ByteArray);
+				function imgLoaded(ev:Event):void
+				{
+					makeBtn(ldr.content,saveDat[idx]);	// create button with icon and label
+					ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
+					idx+=3;
+					if (idx>=saveDat.length)
+					{
+						if (hasInit) 	refresh();
+					}
+					else
+						loadNext();
+				}
+				ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
+			}
+			if (saveDat.length>idx)	loadNext();
+		}//endfunction
+				
+		makeBtn(new MenuIcoNew(),FloorPlanner.Copy.SaveLoad.NewDocument.@cn);
+		makeBtn(new MenuIcoSave(),FloorPlanner.Copy.SaveLoad.NewSave.@cn);
 		
+		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
+		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+		if (saveDat==null)	saveDat = [];
+		showSaveFiles(saveDat);
 	}//endfunction
 	
 	//===============================================================================================
@@ -1401,23 +1492,6 @@ class SaveLoadMenu extends IconsMenu
 		
 	}//endfunction
 	
-	//===============================================================================================
-	// load jpg format byteArray into sprite 
-	//===============================================================================================
-	private function loadTmbIntoSpr(s:Sprite,ba:ByteArray):void
-	{
-		function imgLoaded(ev:Event):void
-		{
-			var bmp:DisplayObject = ldr.content;
-			bmp.x = (s.width-bmp.width)/2;
-			bmp.y = (s.height-bmp.width)/2;
-			s.addChild(bmp);
-		}
-		
-		var ldr:Loader = new Loader();
-		ldr.loadBytes(ba);
-		ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
-	}//endfunction
 }//endclass
 
 class WireGrid extends Sprite
@@ -1513,6 +1587,33 @@ class FloorPlan
 		jointsOverlay = new Sprite();
 		overlay = new Sprite();
 		overlay.buttonMode = true;
+	}//endfunction
+	
+	//=============================================================================================
+	// removes everything and start from clean slate
+	//=============================================================================================
+	public function clearAll():void
+	{
+		selected = null;		// clear off selection
+		
+		if (furnitureCtrls!=null)
+		{
+			furnitureCtrls.parent.removeChild(furnitureCtrls);		// clear off furniture transform controls
+			furnitureCtrls = null;
+		}
+		
+		// ----- remove joints
+		Joints = new Vector.<Point>();
+		
+		// ----- remove walls
+		while (Walls.length>0)					// clear off prev walls
+			overlay.removeChild(Walls.pop());
+				
+		// ----- remove furniture
+		while (Furniture.length>0)				// clear off prev furniture
+			overlay.removeChild(Furniture.pop());
+		
+		refresh();
 	}//endfunction
 	
 	//=============================================================================================
@@ -1867,7 +1968,10 @@ class FloorPlan
 			var dir:Point = new Point(	(wall.joint2.x-wall.joint1.x)*door.dir,
 										(wall.joint2.y-wall.joint1.y)*door.dir);
 			var bearing:Number = Math.atan2(dir.x,-dir.y);
-			drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
+			if (selected==door)	
+				drawBar(wall,piv,piv.add(dir),wall.thickness,0xFF6600);	
+			else
+				drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
 			door.icon.x = piv.x+dir.x/2;
 			door.icon.y = piv.y+dir.y/2;
 			door.icon.rotation = 0;
@@ -1927,6 +2031,7 @@ class FloorPlan
 	private var furnitureCtrls:Sprite = null;
 	public function mouseSelect():*
 	{
+		var i:int=0;
 		if (furnitureCtrls!=null)
 		{
 			if (furnitureCtrls.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY)) 
@@ -1937,7 +2042,7 @@ class FloorPlan
 		
 		selected = null;	// clear prev selected
 		
-		for (var i:int=Furniture.length-1; i>-1; i--)
+		for (i=Furniture.length-1; i>-1; i--)
 			if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
 				selected = Furniture[i];
 		
@@ -1951,8 +2056,16 @@ class FloorPlan
 			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any joint
 		
 		if (selected==null)
+		{
 			selected = nearestWall(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any wall
-		
+			if (selected!=null)
+			{
+				var wall:Wall = selected as Wall;
+				for (i=wall.Doors.length-1; i>-1; i--)
+					if (wall.Doors[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
+						selected = wall.Doors[i];
+			}
+		}
 	}//endfunction
 		
 	//=============================================================================================
@@ -2224,6 +2337,8 @@ class FloorPlan
 	public function findIsolatedAreas():Vector.<Vector.<Point>>
 	{
 		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
+		
+		if (Joints.length==0)	return R;
 		
 		//-------------------------------------------------------------------------------
 		function seek(curJoint:Point,path:Vector.<Point>) : void
