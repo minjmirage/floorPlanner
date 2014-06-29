@@ -40,8 +40,8 @@ package
 		</TopBar>
 		<SaveLoad>
 			<NewSave en="NEW SAVE" cn="新保存" />
-			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="新建记录\n保存蓝图?" />
-			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开蓝图\n现有蓝图会被覆盖！" />
+			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="新建蓝图保存记录" />
+			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开蓝图。现有蓝图会被覆盖！" />
 			<Confirm en="CONFIRM" cn="确认" />
 			<Cancel en="CANCEL" cn="取消" />
 			<DeleteEntry en="DELETE ENTRY" cn="删除这个记录" />
@@ -1031,25 +1031,26 @@ class TopBarMenu extends FloatingMenu
 		}
 		
 		// ----- aligning btns
+		var hh:int = this.height;
 		var offX:int=20;
 		for (i=0; i<n; i++)
 		{
 			var c:DisplayObject = this.getChildAt(i);
 			c.x = offX;
-			c.y = 10;
+			c.y = (hh+10-c.height)/2;
 			offX += c.width+20;
 			var lin:Sprite = new Sprite();
 			lin.graphics.lineStyle(0,0x888888);
-			lin.graphics.lineTo(0,c.height);
+			lin.graphics.lineTo(0,hh*0.8);
 			lin.x = offX-10;
-			lin.y = c.y;
+			lin.y = (hh+10-lin.height)/2;
 			addChild(lin);
 		}
 			
 		var ppp:Sprite = this;
 		function onAddedToStage(ev:Event):void
 		{
-			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+20,0xFFFFFF,0xF6F6F6,0,10);
+			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
 			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 		}
 		ppp.addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
@@ -1259,8 +1260,9 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToSave():void
 	{
-		var askSaveFile:Sprite = new DialogMenu("SAVE THIS FLOORPLAN\nIN A NEW ENTRY?",
-									Vector.<String>(["CONFIRM","CANCEL"]),
+		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToSave.@cn,
+									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
+														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
 									Vector.<Function>([function():void 
 														{
 															saveToSharedObject();
@@ -1286,8 +1288,10 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToLoad(idx:int):void
 	{
-		var askLoadFile:Sprite = new DialogMenu("LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!",
-									Vector.<String>(["CONFIRM","CANCEL","DELETE THIS ENTRY"]),
+		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToLoad.@cn,
+									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
+														FloorPlanner.Copy.SaveLoad.Cancel.@cn,
+														FloorPlanner.Copy.SaveLoad.DeleteEntry.@cn]),
 									Vector.<Function>([function():void 
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
@@ -1339,8 +1343,7 @@ class SaveLoadMenu extends IconsMenu
 		var tf:TextField = new TextField();
 		tf.autoSize = "left";
 		tf.wordWrap = false;
-		//tf.text = "NEW SAVE";
-		tf.text = "新保存";
+		tf.text = FloorPlanner.Copy.SaveLoad.NewSave.@cn;
 		tf.y = btn.height;
 		tf.x = (btn.width-tf.width)/2;
 		btn.addChild(tf);
