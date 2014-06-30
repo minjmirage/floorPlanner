@@ -145,7 +145,7 @@ package
 			redoStk = new Vector.<String>();
 			
 			// ----- add grid background --------------------------------------
-			grid = new WireGrid(sw,sh);
+			grid = new WireGrid();
 			grid.x = sw/2;
 			grid.y = sh/2;
 			grid.update();
@@ -206,7 +206,7 @@ package
 			addChild(topBar);
 			
 			// ----- zoom slider
-			scaleSlider = createVSlider(["1x","2x","3x","4x","5x"],function(f:Number):void {grid.zoom(f*4+1);});
+			scaleSlider = createVSlider(["0.5x","1x","2x"],function(f:Number):void {grid.zoom(0.5*(1-f)+2*f);});
 			scaleSlider.x = stage.stageWidth/20;
 			scaleSlider.y = stage.stageHeight/20 + topBar.height;
 			addChild(scaleSlider);
@@ -393,7 +393,7 @@ package
 						}
 						else	// joint wall end to existing wall
 						{
-							var snapW:Wall = floorPlan.nearestWall(selJ, snapDist);
+							var snapW:Wall = floorPlan.nearestNonAdjWall(selJ, snapDist);
 							if (snapW!=null && snapW.joint1!=selJ && snapW.joint2!=selJ)
 							{
 								floorPlan.removeWall(snapW);
@@ -587,7 +587,7 @@ package
 				
 				var mouseP:Point = new Point(grid.mouseX,grid.mouseY);
 				
-				var near:Wall = floorPlan.nearestWall(mouseP,snapDist);
+				var near:Wall = floorPlan.nearestNonAdjWall(mouseP,snapDist);
 				var doorP:Point = null;
 				if (near!=null)	
 				{
@@ -727,7 +727,7 @@ package
 			slider.mouseChildren = false;
 			slider.filters = [new DropShadowFilter(2)];
 			slider.x = w/2;
-			slider.y = h;
+			slider.y = h/2;
 			s.addChild(slider);
 		
 			// ----- draw markings
@@ -1095,10 +1095,16 @@ class TopBarMenu extends FloatingMenu
 		}
 			
 		var ppp:Sprite = this;
+		function onResize(ev:Event):void
+		{
+			ppp.graphics.clear();
+			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
+		}
 		function onAddedToStage(ev:Event):void
 		{
 			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
 			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
+			stage.addEventListener(Event.RESIZE,onResize);
 		}
 		ppp.addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 	}//endfunction
@@ -1492,17 +1498,23 @@ class SaveLoadMenu extends IconsMenu
 
 class WireGrid extends Sprite
 {
-	public var sw:int = 800;
-	public var sh:int = 600;
-	
 	//=============================================================================================
 	// constructor for background grid markings sprite
 	//=============================================================================================
-	public function WireGrid(w:int,h:int):void
+	public function WireGrid():void
 	{
-		sw = w;
-		sh = h;
-		update();
+		var ppp:Sprite = this;
+		function onResize(ev:Event):void
+		{
+			update();
+		}
+		function onAddedToStage(ev:Event):void
+		{
+			update();
+			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
+			stage.addEventListener(Event.RESIZE,onResize);
+		}
+		ppp.addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 	}//endfunction
 	
 	//=============================================================================================
@@ -1510,6 +1522,10 @@ class WireGrid extends Sprite
 	//=============================================================================================
 	public function zoom(sc:Number):void
 	{
+		if (stage==null) return;
+		var sw:int = stage.stageWidth;
+		var sh:int = stage.stageHeight;
+		
 		// ----- shift so that zoom is in center
 		var ompt:Point = new Point((-x+sw/2)/scaleX,(-y+sh/2)/scaleY);	// original middle point
 		var nmpt:Point = new Point((-x+sw/2)/sc,(-y+sh/2)/sc);			// new skewed middle point
@@ -1526,6 +1542,10 @@ class WireGrid extends Sprite
 	//=============================================================================================
 	public function update():void
 	{
+		if (stage==null) return;
+		var sw:int = stage.stageWidth;
+		var sh:int = stage.stageHeight;
+		
 		var interval:int = 10;
 		var rect:Rectangle = new Rectangle(-x/scaleX,-y/scaleY,sw/scaleX,sh/scaleY);	// define rectangle to draw
 		
@@ -1744,7 +1764,7 @@ class FloorPlan
 			pt1 = nearest;
 		else
 		{	// snap starting point to nearest wall if approprate
-			var snapW:Wall = nearestWall(pt1, snapDist);
+			var snapW:Wall = nearestNonAdjWall(pt1, snapDist);
 			if (snapW!=null)	
 			{
 				pt1 = projectedWallPosition(snapW, pt1);
@@ -1828,17 +1848,20 @@ class FloorPlan
 	}//endfunction
 	
 	//=============================================================================================
-	// finds the nearest wall to this position
+	// finds the nearest wall to this position, where posn cannot be joint1 or joint2
 	//=============================================================================================
-	public function nearestWall(posn:Point,cutOff:Number):Wall
+	public function nearestNonAdjWall(posn:Point,cutOff:Number):Wall
 	{
 		var wall:Wall = null;
 		for (var i:int=Walls.length-1; i>-1; i--)
-			if (cutOff > Walls[i].perpenticularDist(posn))
+		{
+			var w:Wall = Walls[i];
+			if (w.joint1!=posn && w.joint2!=posn && cutOff>w.perpenticularDist(posn))
 			{
-				wall = Walls[i];
+				wall = w;
 				cutOff = wall.perpenticularDist(posn);
 			}
+		}
 		return wall;
 	}//endfunction
 	
@@ -2064,7 +2087,7 @@ class FloorPlan
 		
 		if (selected==null)
 		{
-			selected = nearestWall(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any wall
+			selected = nearestNonAdjWall(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any wall
 			if (selected!=null)
 			{
 				var wall:Wall = selected as Wall;
