@@ -503,6 +503,7 @@ package
 					{	// snap to another wall joint
 						if  (snapJ!=wall.joint2)
 						{
+							//prn("modeAddWalls replacingJoint");
 							floorPlan.replaceJointWith(wall.joint2,snapJ);
 							wall = null;
 						}
@@ -1793,7 +1794,7 @@ class FloorPlan
 	}//endfunction
 	
 	//=============================================================================================
-	//
+	// cleanly remove wall and its unused joints
 	//=============================================================================================
 	public function removeWall(wall:Wall):void
 	{
@@ -1828,21 +1829,28 @@ class FloorPlan
 	}//endfunction
 	
 	//=============================================================================================
-	//
+	// replace joint with given new joint, used for snapping together wall joints
 	//=============================================================================================
 	public function replaceJointWith(jt:Point,njt:Point):void
 	{
-		if (Joints.indexOf(jt)==-1)	Joints.push(njt);
-		else						Joints[Joints.indexOf(jt)]=njt;
+		if (Joints.indexOf(njt)!=-1)	// njt already exists
+		{	// remove jt
+			if (Joints.indexOf(jt)!=-1)	Joints.splice(Joints.indexOf(jt),1);
+		}
+		else
+		{	// else replace with njt
+			if (Joints.indexOf(jt)==-1)	Joints.push(njt);
+			else						Joints[Joints.indexOf(jt)]=njt;
+		}
 		
 		for (var i:int=Walls.length-1; i>-1; i--)
 		{
-			if (Walls[i].joint1==jt)	Walls[i].joint1=njt;
-			if (Walls[i].joint2==jt)	Walls[i].joint2=njt;
-			if (Walls[i].joint1==Walls[i].joint2)
+			var wall:Wall = Walls[i];
+			if (wall.joint1==jt)	wall.joint1=njt;
+			if (wall.joint2==jt)	wall.joint2=njt;
+			if (wall.joint1==wall.joint2)
 			{	// remove any 0 lengthwall
-				overlay.removeChild(Walls[i]);
-				Walls.splice(i,1);
+				removeWall(wall);
 			}
 		}
 	}//endfunction
