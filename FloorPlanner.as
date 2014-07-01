@@ -368,6 +368,8 @@ package
 				stage.addChild(menu);
 			}//endfunction
 			// ---------------------------------------------------------------------
+			
+			floorPlan.selected = null;
 						
 			// ----- default editing logic
 			var snapDist:Number = 10;
@@ -459,6 +461,7 @@ package
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
+					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -2382,26 +2385,51 @@ class FloorPlan
 		
 		var timr:uint = getTimer();
 		
+		function eqvExists(lop:Vector.<Point>,R:Vector.<Vector.<Point>>):Boolean
+		{
+			for (var i:int=R.length-1; i>-1; i--)
+			{
+				var l:Vector.<Point> = R[i];
+				if (l.length==lop.length)
+				{
+					var iOff:int = lop.indexOf(l[0]);
+					if (iOff!=-1)
+					{
+						var n:int=lop.length;
+						var sameSeq:Boolean=true;
+						for (var j:int=0; j<n; j++)
+							if (lop[(j+iOff)%n]!=l[j])
+								sameSeq = false;
+						if (sameSeq) return true;
+					}
+				}
+			}
+			return false;
+		}//endfunction
+		
 		//-------------------------------------------------------------------------------
 		function seek(curJoint:Point,path:Vector.<Point>) : void
 		{
 			if (path.indexOf(curJoint)!=-1)
 			{
-				var loop:Vector.<Point> = path.slice(path.indexOf(curJoint));
-				if (loop.length>2)
+				var lop:Vector.<Point> = path.slice(path.indexOf(curJoint));
+				if (lop.length>2)
 				{	
-					// binary insert longest loop at n shortest at 0
-					var p:int = 0;
-					var q:int = R.length-1;
-					while (p<=q)
+					if (!eqvExists(lop,R))
 					{
-						var m:int = (p+q)/2;
-						if (R[m].length<loop.length)
-							p=m+1;
-						else
-							q=m-1;
+						// binary insert longest loop at n shortest at 0
+						var p:int = 0;
+						var q:int = R.length-1;
+						while (p<=q)
+						{
+							var m:int = (p+q)/2;
+							if (R[m].length<lop.length)
+								p=m+1;
+							else
+								q=m-1;
+						}
+						R.splice(p,0,lop);	// insert at posn
 					}
-					R.splice(p,0,loop);	// insert at posn
 				}
 			}
 			else
@@ -2466,11 +2494,11 @@ class FloorPlan
 			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P) && limit>0);	// chk cut line is actually in poly
 			if (limit<=0) 
 				return new Vector.<Point>();	// error occurred
-			R.push(new Point(P[0].x+P[1].x+P[2].x,P[0].y+P[1].y+P[2].y));		// push midpoint in result
+			R.push(new Point((P[0].x+P[1].x+P[2].x)/3,(P[0].y+P[1].y+P[2].y)/3));		// push midpoint in result
 			P.splice(1,1);			// remove P[1]
 		}
 		if (P.length==3)
-			R.push(new Point(P[0].x+P[1].x+P[2].x,P[0].y+P[1].y+P[2].y));
+			R.push(new Point((P[0].x+P[1].x+P[2].x)/3,(P[0].y+P[1].y+P[2].y)/3));
 		return R;
 	}//endfunction
 	
