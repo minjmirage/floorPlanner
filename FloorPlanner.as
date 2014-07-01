@@ -2385,51 +2385,45 @@ class FloorPlan
 		
 		var timr:uint = getTimer();
 		
-		function eqvExists(lop:Vector.<Point>,R:Vector.<Vector.<Point>>):Boolean
+		//-------------------------------------------------------------------------------
+		function polyIsIn(poly:Vector.<Point>,bigPoly:Vector.<Point>):Boolean
 		{
-			for (var i:int=R.length-1; i>-1; i--)
-			{
-				var l:Vector.<Point> = R[i];
-				if (l.length==lop.length)
-				{
-					var iOff:int = lop.indexOf(l[0]);
-					if (iOff!=-1)
-					{
-						var n:int=lop.length;
-						var sameSeq:Boolean=true;
-						for (var j:int=0; j<n; j++)
-							if (lop[(j+iOff)%n]!=l[j])
-								sameSeq = false;
-						if (sameSeq) return true;
-					}
-				}
-			}
-			return false;
+			for (var i:int=poly.length-1; i>-1; i--)
+				if (bigPoly.indexOf(poly[i])==-1 && !pointInPoly(poly[i],bigPoly))
+					return false;
+			return true;
 		}//endfunction
 		
 		//-------------------------------------------------------------------------------
 		function seek(curJoint:Point,path:Vector.<Point>) : void
 		{
+			var i:int=0;
 			if (path.indexOf(curJoint)!=-1)
 			{
 				var lop:Vector.<Point> = path.slice(path.indexOf(curJoint));
 				if (lop.length>2)
 				{	
-					if (!eqvExists(lop,R))
+					
+					for (i=R.length-1; i>-1; i--)
 					{
-						// binary insert longest loop at n shortest at 0
-						var p:int = 0;
-						var q:int = R.length-1;
-						while (p<=q)
-						{
-							var m:int = (p+q)/2;
-							if (R[m].length<lop.length)
-								p=m+1;
-							else
-								q=m-1;
-						}
-						R.splice(p,0,lop);	// insert at posn
+						if (polyIsIn(R[i],lop))		// contains another smaller loop
+							return;
+						else if (polyIsIn(lop,R[i]))	// is being contained
+							R.splice(i,1);			// remove bigger loop that contains it
 					}
+					
+					// binary insert longest loop at n shortest at 0
+					var p:int = 0;
+					var q:int = R.length-1;
+					while (p<=q)
+					{
+						var m:int = (p+q)/2;
+						if (R[m].length<lop.length)
+							p=m+1;
+						else
+							q=m-1;
+					}
+					R.splice(p,0,lop);	// insert at posn
 				}
 			}
 			else
@@ -2438,7 +2432,12 @@ class FloorPlan
 				var edges:Vector.<Wall> = connectedToJoint(curJoint);
 				path = path.slice();	// duplicate
 				path.push(curJoint);
-				for (var i:int=0; i<edges.length; i++)
+				
+				for (i=R.length-1; i>-1; i--)
+					if (polyIsIn(R[i],path))	// contains another existing smaller loop
+						return;					// prune off
+				
+				for (i=edges.length-1; i>-1; i--)
 				{
 					if (edges[i].joint1==curJoint)	
 						seek(edges[i].joint2,path);
@@ -2451,54 +2450,7 @@ class FloorPlan
 		seek(Joints[0],new Vector.<Point>());
 		
 		debugStr= "seek t="+(getTimer()-timr)+" R.length="+R.length;
-		timr = getTimer();
 		
-		// ----- extract only the shortest non overlapping
-		var Rp:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
-		while (R.length>0)
-		{
-			var intersect:Boolean = false;
-			var loop:Vector.<Point> = R.shift();	// picking the next shortest
-			var midPts:Vector.<Point> = triangulateAndReturnMidPts(loop);
-			for (var i:int=midPts.length-1; !intersect && i>-1; i--)
-				for (var j:int=Rp.length-1; !intersect && j>-1; j--)
-					intersect = intersect || pointInPoly(midPts[i],Rp[j]);
-			
-			if (!intersect)
-			{
-				var lp:Vector.<Point> = new Vector.<Point>();
-				for (i=loop.length-1; i>-1; i--)
-					lp.unshift(new Point(loop[i].x,loop[i].y));
-				Rp.push(lp);
-			}
-		}
-		
-		debugStr+= "  prune t="+(getTimer()-timr)+" Rp.length="+Rp.length;
-		return Rp;
-	}//endfunction
-	
-	//=======================================================================================
-	// triangulate by cutting ears off polygon O(n*n)  and returns only the midpoints of triangles
-	//=======================================================================================
-	private static function triangulateAndReturnMidPts(Poly:Vector.<Point>):Vector.<Point>
-	{
-		var R:Vector.<Point> = new Vector.<Point>();
-		var P:Vector.<Point> = Poly.slice();
-		
-		while (P.length>3)
-		{
-			var limit:int = P.length;
-			do {
-				P.push(P.shift());
-				limit--;
-			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P) && limit>0);	// chk cut line is actually in poly
-			if (limit<=0) 
-				return new Vector.<Point>();	// error occurred
-			R.push(new Point((P[0].x+P[1].x+P[2].x)/3,(P[0].y+P[1].y+P[2].y)/3));		// push midpoint in result
-			P.splice(1,1);			// remove P[1]
-		}
-		if (P.length==3)
-			R.push(new Point((P[0].x+P[1].x+P[2].x)/3,(P[0].y+P[1].y+P[2].y)/3));
 		return R;
 	}//endfunction
 	
