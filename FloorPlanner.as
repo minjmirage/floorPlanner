@@ -795,6 +795,7 @@ import flash.events.MouseEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
+import flash.utils.getTimer;
 import flash.utils.ByteArray;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
@@ -2372,11 +2373,14 @@ class FloorPlan
 	//=============================================================================================
 	// find cyclics, i.e. room floor areas
 	//=============================================================================================
+	public var debugStr:String = "";
 	public function findIsolatedAreas():Vector.<Vector.<Point>>
 	{
 		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
 		
 		if (Joints.length==0)	return R;
+		
+		var timr:uint = getTimer();
 		
 		//-------------------------------------------------------------------------------
 		function seek(curJoint:Point,path:Vector.<Point>) : void
@@ -2418,21 +2422,21 @@ class FloorPlan
 		
 		seek(Joints[0],new Vector.<Point>());
 		
-		// ----- extract only the shortest
-		var Visited:Vector.<Point> = new Vector.<Point>();
+		debugStr= "seek t="+(getTimer()-timr)+" R.length="+R.length;
+		timr = getTimer();
+		
+		// ----- extract only the shortest non overlapping
 		var Rp:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
 		while (R.length>0)
 		{
-			var isNew:Boolean = false;
-			var loop:Vector.<Point> = R.shift();
-			for (var i:int=loop.length-1; i>-1; i--)
-				if (Visited.indexOf(loop[i])==-1)
-				{
-					Visited.push(loop[i]);
-					isNew = true;
-				}
+			var intersect:Boolean = false;
+			var loop:Vector.<Point> = R.shift();	// picking the next shortest
+			var midPts:Vector.<Point> = triangulateAndReturnMidPts(loop);
+			for (var i:int=midPts.length-1; !intersect && i>-1; i--)
+				for (var j:int=Rp.length-1; !intersect && j>-1; j--)
+					intersect = intersect || pointInPoly(midPts[i],Rp[j]);
 			
-			if (isNew)
+			if (!intersect)
 			{
 				var lp:Vector.<Point> = new Vector.<Point>();
 				for (i=loop.length-1; i>-1; i--)
@@ -2441,7 +2445,33 @@ class FloorPlan
 			}
 		}
 		
+		debugStr+= "  prune t="+(getTimer()-timr)+" Rp.length="+Rp.length;
 		return Rp;
+	}//endfunction
+	
+	//=======================================================================================
+	// triangulate by cutting ears off polygon O(n*n)  and returns only the midpoints of triangles
+	//=======================================================================================
+	private static function triangulateAndReturnMidPts(Poly:Vector.<Point>):Vector.<Point>
+	{
+		var R:Vector.<Point> = new Vector.<Point>();
+		var P:Vector.<Point> = Poly.slice();
+		
+		while (P.length>3)
+		{
+			var limit:int = P.length;
+			do {
+				P.push(P.shift());
+				limit--;
+			} while (!edgeInPoly(P[0].x,P[0].y,P[2].x,P[2].y,P) && limit>0);	// chk cut line is actually in poly
+			if (limit<=0) 
+				return new Vector.<Point>();	// error occurred
+			R.push(new Point(P[0].x+P[1].x+P[2].x,P[0].y+P[1].y+P[2].y));		// push midpoint in result
+			P.splice(1,1);			// remove P[1]
+		}
+		if (P.length==3)
+			R.push(new Point(P[0].x+P[1].x+P[2].x,P[0].y+P[1].y+P[2].y));
+		return R;
 	}//endfunction
 	
 	//=======================================================================================
