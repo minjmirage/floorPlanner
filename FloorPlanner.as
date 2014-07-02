@@ -307,6 +307,27 @@ package
 			var px:int = 0;
 			var py:int = topBar.height+5;
 			
+			function showFurnitureProperties(fur:Sprite):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new DialogMenu("FURNITURE",
+										Vector.<String>(["REMOVE","DONE"]),
+										Vector.<Function>([	function():void 
+															{
+																floorPlan.removeFurniture(fur);
+																showFurnitureMenu();
+															},
+															showFurnitureMenu]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}
+			// ---------------------------------------------------------------------
 			function showDoorProperties(door:Door):void
 			{
 				var wall:Wall = null;
@@ -319,8 +340,8 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("PROPERTIES",
-										Vector.<String>(["LENGTH ["+Math.abs(door.dir)+"]","REMOVE","DONE"]),
+				menu = new DialogMenu("DOOR",
+										Vector.<String>(["LENGTH ["+int(Math.abs(door.dir)*100)/100+"]","REMOVE","DONE"]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																if (door.dir<0)
@@ -349,7 +370,7 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("PROPERTIES",
+				menu = new DialogMenu("WALL",
 										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE","DONE"]),
 										Vector.<Function>([	function(val:String):void 
 															{
@@ -456,12 +477,13 @@ package
 				}
 				else if (floorPlan.selected!=null)		// selected a furniture
 				{
+					showFurnitureProperties(floorPlan.selected);
 				}
 				else
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
-					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
+					//prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -1196,7 +1218,7 @@ class DialogMenu extends FloatingMenu
 		{
 			var c:DisplayObject = this.getChildAt(i);
 			c.y = offY;
-			c.x = w-c.width+10;
+			c.x = (w-c.width)/2+10;
 			offY += c.height+5;
 		}
 		drawStripedRect(this,0,0,w+20,this.height+40,0xFFFFFF,0xF6F6F6,20,10);
@@ -2065,6 +2087,20 @@ class FloorPlan
 			fu.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
 			overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
 		}
+	}//endfunction
+	
+	//=============================================================================================
+	// adds a furniture icon to floorplan
+	//=============================================================================================
+	public function removeFurniture(fu:Sprite):void
+	{
+		if (furnitureCtrls!=null)
+		{
+			furnitureCtrls.parent.removeChild(furnitureCtrls);		// clear off furniture transform controls
+			furnitureCtrls = null;
+		}
+		if (Furniture.indexOf(fu)!=-1)	Furniture.splice(Furniture.indexOf(fu),1);
+		if (fu.parent!=null)			fu.parent.removeChild(fu);
 	}//endfunction
 	
 	//=============================================================================================
