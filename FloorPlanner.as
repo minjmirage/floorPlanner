@@ -178,7 +178,28 @@ package
 					modeAddWalls();
 				}
 				else if (i==4)	// text
-				{}
+				{
+					var csr:Sprite = new Sprite();
+					csr.graphics.lineStyle(0);
+					csr.graphics.beginFill(0xFFFFFF,1);
+					csr.graphics.drawCircle(0,0,5);
+					csr.graphics.endFill();
+					var ico:Sprite = new MenuIcoText();
+					ico.x = 10;
+					ico.y = 10;
+					csr.addChild(ico);
+					csr.x = floorPlan.overlay.mouseX;
+					csr.y = floorPlan.overlay.mouseY;
+					floorPlan.overlay.addChild(csr);
+					csr.startDrag(true);
+					function setLab(ev:Event):void
+					{
+						csr.stopDrag();
+						floorPlan.overlay.removeChild(csr);
+						floorPlan.createLabel(csr.x,csr.y);
+					}
+					csr.addEventListener(MouseEvent.MOUSE_UP,setLab);
+				}
 				else if (i==5)	// save o image
 				{
 					//prn(floorPlan.exportData());
@@ -395,7 +416,34 @@ package
 				stage.addChild(menu);
 			}//endfunction
 			// ---------------------------------------------------------------------
-			
+			function showLabelProperties(tf:TextField):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				
+				menu = new DialogMenu("TEXT LABEL",
+										Vector.<String>(["FONT SIZE ["+tf.defaultTextFormat.size+"]","REMOVE","DONE"]),
+										Vector.<Function>([	function(val:String):void 
+															{
+																var tff:TextFormat = tf.defaultTextFormat;
+																tff.size = Number(val);
+																tf.setTextFormat(tff);
+															},
+															function():void 
+															{
+																floorPlan.removeLabel(tf);
+																showFurnitureMenu();
+															},
+															showFurnitureMenu]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}//endfunction
+						
 			floorPlan.selected = null;
 						
 			// ----- default editing logic
@@ -446,6 +494,11 @@ package
 					{
 						floorPlan.refresh();
 					}
+					else if (floorPlan.selected is TextField)
+					{
+						floorPlan.selected.x += grid.mouseX - prevMousePt.x;
+						floorPlan.selected.y += grid.mouseY - prevMousePt.y;
+					}
 					else if (floorPlan.selected!=null)
 					{	// ----- furniture shifting... 
 					}
@@ -481,6 +534,11 @@ package
 				{
 					showDoorProperties((Door)(floorPlan.selected));
 				}
+				else if (floorPlan.selected is TextField)	// selected a label
+				{
+					(TextField)(floorPlan.selected).background = true;
+					showLabelProperties(floorPlan.selected);
+				}
 				else if (floorPlan.selected!=null)		// selected a furniture
 				{
 					showFurnitureProperties(floorPlan.selected);
@@ -495,6 +553,8 @@ package
 			// ----------------------------------------------------------------
 			mouseUpFn = function():void
 			{
+				if (floorPlan.selected!=null && floorPlan.selected is TextField) 
+					(TextField)(floorPlan.selected).background = false;
 				if (undoStk.length>0 && floorPlan.exportData()==undoStk[undoStk.length-1]) 
 					undoStk.pop();	// if no state change 
 			}
@@ -822,6 +882,7 @@ import flash.geom.ColorTransform;
 import flash.text.TextField;
 import flash.display.Sprite;
 import flash.events.Event;
+import flash.events.TextEvent;
 import flash.events.MouseEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
@@ -925,7 +986,7 @@ class FloatingMenu extends Sprite		// to be extended
 	//===============================================================================================
 	// draws a striped rectangle in given sprite 
 	//===============================================================================================
-	protected static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	public static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
 	{
 		if (s==null)	s = new Sprite();
 		var mat:Matrix = new Matrix();
@@ -1407,7 +1468,7 @@ class SaveLoadMenu extends IconsMenu
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															floorPlan.importData(saveDat[(idx)*3+2]);
+															floorPlan.importData(saveDat[(idx)*3+2]);	// imports the data string
 															overlay.parent.removeChild(overlay);
 														},
 														function():void 
@@ -1491,6 +1552,7 @@ class SaveLoadMenu extends IconsMenu
 				ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
 			}
 			if (saveDat.length>idx)	loadNext();
+			else if (hasInit) refresh();
 		}//endfunction
 				
 		makeBtn(new MenuIcoNew(),FloorPlanner.Copy.SaveLoad.NewDocument.@cn);
@@ -1616,6 +1678,7 @@ class FloorPlan
 	public var Walls:Vector.<Wall>;
 	public var Furniture:Vector.<Sprite>;		// list of furniture sprite already on the stage
 	public var floorAreas:Vector.<Sprite>;		// list of floor area sprites already on the stage
+	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
 	
 	public var selected:* = null;				// of Furniture or Joint or Wall
 	
@@ -1632,6 +1695,7 @@ class FloorPlan
 		
 		Furniture = new Vector.<Sprite>();
 		floorAreas = new Vector.<Sprite>();
+		Labels = new Vector.<TextField>();
 		
 		jointsOverlay = new Sprite();
 		overlay = new Sprite();
@@ -1776,6 +1840,73 @@ class FloorPlan
 		}
 		
 		refresh();
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function createLabel(x:int,y:int):TextField
+	{
+		var base:Sprite = new Sprite();
+		overlay.addChild(base);
+		base.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+		
+		var tf:TextField = new TextField();
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.size = 20;
+		tf.defaultTextFormat = tff;
+		tf.type = "input";
+		tf.background = true;
+		overlay.stage.focus = tf;
+		tf.x = x;
+		tf.y = y;
+		base.addChild(tf);
+		overlay.addChild(base);
+		
+		var downPt:Point = null;
+		function mouseDownHandler(ev:Event=null):void
+		{
+			downPt = new Point(overlay.mouseX,overlay.mouseY);
+		}
+		function changeHandler(ev:Event=null):void
+		{
+			base.graphics.clear();
+			FloatingMenu.drawStripedRect(base,tf.x-10,tf.y-10,tf.width+20,tf.height+20,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		function finalize(ev:Event=null):void
+		{
+			if (tf.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
+				return;
+			if ((overlay.mouseX-downPt.x)*(overlay.mouseX-downPt.x)+(overlay.mouseY-downPt.y)*(overlay.mouseY-downPt.y)>1)
+				return;
+			tf.background = false;
+			tf.htmlText = tf.text;
+			tf.type = "dynamic";
+			tf.selectable = false;
+			overlay.removeChild(base);
+			base.removeChild(tf);
+			Labels.push(tf);
+			overlay.addChild(tf);
+			tf.removeEventListener(Event.ENTER_FRAME,changeHandler);
+			overlay.stage.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			overlay.stage.removeEventListener(MouseEvent.CLICK,finalize);
+		}
+		tf.addEventListener(Event.ENTER_FRAME,changeHandler);
+		overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		overlay.stage.addEventListener(MouseEvent.CLICK,finalize);
+		
+		return tf;
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function removeLabel(tf:TextField):void
+	{
+		if (Labels.indexOf(tf)!=-1)	Labels.splice(Labels.indexOf(tf),1);
+		if (tf.parent!=null)	tf.parent.removeChild(tf);
 	}//endfunction
 	
 	//=============================================================================================
@@ -2151,16 +2282,23 @@ class FloorPlan
 		
 		selected = null;	// clear prev selected
 		
-		for (i=Furniture.length-1; i>-1; i--)
-			if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
-				selected = Furniture[i];
+		for (i=Labels.length-1; i>-1; i--)
+			if (Labels[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+				selected = Labels[i];
 		
-		if (selected!=null)
+		if (selected==null)
 		{
-			furnitureCtrls = furnitureTransformControls(selected);
-			overlay.addChild(furnitureCtrls);
-		}
+			for (i=Furniture.length-1; i>-1; i--)
+				if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+					selected = Furniture[i];
 		
+			if (selected!=null)
+			{
+				furnitureCtrls = furnitureTransformControls(selected);
+				overlay.addChild(furnitureCtrls);
+			}
+		}
+				
 		if (selected==null)
 			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any joint
 		
