@@ -426,12 +426,24 @@ package
 				}
 				
 				menu = new DialogMenu("TEXT LABEL",
-										Vector.<String>(["FONT SIZE ["+tf.defaultTextFormat.size+"]","REMOVE","DONE"]),
+										Vector.<String>(["FONT SIZE ["+tf.defaultTextFormat.size+"]","COLOR "+tf.defaultTextFormat.color.toString(16),"REMOVE","DONE"]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																var tff:TextFormat = tf.defaultTextFormat;
 																tff.size = Number(val);
+																tf.defaultTextFormat = tff;
 																tf.setTextFormat(tff);
+															},
+															function():void 
+															{
+																showColorMenu(function(color:uint):void 
+																{
+																	var tff:TextFormat = tf.defaultTextFormat;
+																	tff.color = color;
+																	tf.defaultTextFormat = tff;
+																	tf.setTextFormat(tff);
+																	showLabelProperties(tf);
+																});
 															},
 															function():void 
 															{
@@ -443,7 +455,21 @@ package
 				menu.y = py;
 				stage.addChild(menu);
 			}//endfunction
-						
+			// ---------------------------------------------------------------------
+			function showColorMenu(callBack:Function):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new ColorMenu(callBack);
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}
+								
 			floorPlan.selected = null;
 						
 			// ----- default editing logic
@@ -1591,6 +1617,27 @@ class SaveLoadMenu extends IconsMenu
 	
 }//endclass
 
+class ColorMenu extends IconsMenu
+{
+	public function ColorMenu(callBack:Function):void
+	{
+		var C:Array = [	0x000000,0xFFFFFF,0xFFFF00,0x00FFFF,0xFF00FF,0xFF0000,0x00FF00,0x0000FF,
+						0x004F9C,0x103749,0x081732,0x51BCEC,0x006B67,0x006B67,0x650B25,0x4B1546,0x692C90,
+						0x68BC43,0x008651,0x004732,0x41515C,0xADBBBB,0xADBBBB,0xEE2D23,0xF4C4DC,0xEC4598,
+						0x8B5A42,0x8B5A42,0x948670,0x948670,0x948670];
+		var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+		for (var i:int=C.length-1; i>-1; i--)
+		{
+			var ico:Sprite = new Sprite();
+			ico.graphics.beginFill(C[i],1);
+			ico.graphics.drawRoundRect(0,0,20,20,5);
+			ico.graphics.endFill();
+			Icos.unshift(ico);
+		}
+		super(Icos,5,5,function (idx:int):void {callBack(C[idx]);});
+	}//endfunction
+}//endclass
+
 class WireGrid extends Sprite
 {
 	//=============================================================================================
@@ -1738,6 +1785,7 @@ class FloorPlan
 		o.Joints = Joints;
 		o.Walls = Walls;
 		o.Furniture = Furniture;
+		o.Labels = Labels;
 		
 		function replacer(k,v):*
 		{
@@ -1776,6 +1824,16 @@ class FloorPlan
 				po.y = v.y;
 				return po;
 			}
+			else if (v is TextField)
+			{
+				var to:Object = new Object();
+				to.x = v.x;
+				to.y = v.y;
+				to.text = v.text;
+				to.size = (TextField)(v).defaultTextFormat.size;
+				to.color = (TextField)(v).defaultTextFormat.color;
+				return to;
+			}
 			
 			return v;
 		}
@@ -1799,6 +1857,7 @@ class FloorPlan
 		
 		// ----- replace joints
 		Joints = new Vector.<Point>();
+		if (o.Joints!=null)
 		for (var i:int=o.Joints.length-1; i>-1; i--)
 		{
 			var po:Object = o.Joints[i];
@@ -1808,6 +1867,7 @@ class FloorPlan
 		// ----- replace walls
 		while (Walls.length>0)					// clear off prev walls
 			overlay.removeChild(Walls.pop());
+		if (o.Walls!=null)
 		for (i=o.Walls.length-1; i>-1; i--)		// add in new walls
 		{
 			var wo:Object = o.Walls[i];
@@ -1826,6 +1886,7 @@ class FloorPlan
 		// ----- replace furniture
 		while (Furniture.length>0)				// clear off prev furniture
 			overlay.removeChild(Furniture.pop());
+		if (o.Furniture!=null)
 		for (i=o.Furniture.length-1; i>-1; i--)		// add in new walls
 		{
 			var fo:Object = o.Furniture[i];
@@ -1839,6 +1900,27 @@ class FloorPlan
 			overlay.addChild(fur);
 		}
 		
+		// ----- replace text labels
+		while (Labels.length>0)
+			overlay.removeChild(Labels.pop());
+		if (o.Labels!=null)
+		for (i=o.Labels.length-1; i>-1; i--)		// add in new walls
+		{
+			var lo:Object = o.Labels[i];
+			var tf:TextField = new TextField();
+			tf.x = lo.x;
+			tf.y = lo.y;
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.selectable = false;
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.size = Number(lo.size);
+			tff.color = uint(lo.color);
+			tf.defaultTextFormat = tff;
+			tf.text = lo.text;
+			Labels.push(tf);
+			overlay.addChild(tf);
+		}
 		refresh();
 	}//endfunction
 	
