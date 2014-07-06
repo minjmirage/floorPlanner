@@ -1,0 +1,162 @@
+<Copy>
+	<EN>
+		<TopBar>
+			<btn ico="MenuIcoFile" txt="FILE" />
+			<btn ico="MenuIcoFurniture" txt="FURNITURE" />
+			<btn ico="MenuIcoDrawDoor" txt="WINDOWS AND DOORS" />
+			<btn ico="MenuIcoDrawWall" txt="DRAW WALLS" />
+			<btn ico="MenuIcoText" txt="ADD TEXT" />
+			<btn ico="MenuIcoSave" txt="SAVE IMAGE" />
+			<btn ico="MenuIcoUndo" txt="UNDO" />
+			<btn ico="MenuIcoRedo" txt="REDO" />
+		</TopBar>
+		<FurnitureProp>
+			<title txt="FURNITURE" />
+			<remove txt="REMOVE" />
+			<done txt="DONE" />
+		</FurnitureProp>
+		<DoorProp>
+			<title txt="DOOR" />
+			<width txt="WIDTH" />
+			<flip txt="FLIP SIDE" />
+			<remove txt="REMOVE" />
+			<done txt="DONE" />
+		</DoorProp>
+		<WallProp>
+			<title txt="WALL" />
+			<thickness txt="THICKNESS" />
+			<remove txt="REMOVE" />
+			<done txt="DONE" />
+		</WallProp>
+		<LabelProp>
+			<title txt="TEXT" />
+			<size txt="FONT SIZE = "/>
+			<color txt="FONT COLOR = "/>
+			<remove txt="REMOVE" />
+			<done txt="DONE" />
+		</LabelProp>
+		<SaveLoad>
+			<NewDocument ico="MenuIcoNew" txt="NEW" />
+			<NewSave ico="MenuIcoSave" txt="SAVE FLOORPLAN" />
+			<AskToNew txt="CREATE A NEW DOCUMENT?" />
+			<AskToSave txt="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" />
+			<AskToLoad txt="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" />
+			<Confirm txt="CONFIRM" />
+			<Cancel txt="CANCEL" />
+			<DeleteEntry txt="DELETE ENTRY" />
+		</SaveLoad>
+		<Items>
+			<item txt="LCD TV" cls="TVFlat" />
+			<item txt="Toilet Bowl" cls="Toilet" />
+			<item txt="Square Table" cls="TableSquare" />
+			<item txt="Round Table" cls="TableRound" />
+			<item txt="Rectangular Table" cls="TableRect" />
+			<item txt="Octagonal Table" cls="TableOctagon" />
+			<item txt="Corner Table" cls="TableL" />
+			<item txt="Stove" cls="Stove" />
+			<item txt="2 Seat Sofa" cls="Sofa2" />
+			<item txt="3 Seat Sofa" cls="Sofa3" />
+			<item txt="4 Seat Sofa" cls="Sofa4" />
+			<item txt="Round Sink" cls="SinkRound" />
+			<item txt="Kitchen Sink" cls="SinkKitchen" />
+			<item txt="Piano" cls="Piano" />
+			<item txt="Oven" cls="Oven" />
+			<item txt="Chair" cls="Chair" />
+			<item txt="Singale Bed" cls="BedSingle" />
+			<item txt="Double Bed" cls="BedDouble" />
+			<item txt="Round Bathtub" cls="BathTubRound" />
+			<item txt="Corner Bathtub" cls="BathTubL" />
+			<item txt="Bathtub" cls="BathTub" />
+			<item txt="Armchair" cls="ArmChair" />
+		</Items>
+		<Ports>
+			<port txt="Single Door" cls="DoorSingleSwinging" />
+			<port txt="Sliding Door" cls="DoorSingleSliding" />
+			<port txt="Double Door" cls="DoorDoubleSwinging" />
+			<port txt="Double Sliding Door" cls="DoorDoubleSliding" />
+			<port txt="Small Window" cls="WindowSingle" />
+			<port txt="Medium Window" cls="WindowDouble" />
+			<port txt="Large Window" cls="WindowTriple" />
+		</Ports>
+	</EN>
+	<CN>
+		<TopBar>
+			<btn ico="MenuIcoFile" txt="文件" />
+			<btn ico="MenuIcoFurniture" txt="家具" />
+			<btn ico="MenuIcoDrawDoor" txt="门窗" />
+			<btn ico="MenuIcoDrawWall" txt="画墙壁" />
+			<btn ico="MenuIcoText" txt="文字" />
+			<btn ico="MenuIcoSave" txt="保存图片" />
+			<btn ico="MenuIcoUndo" txt="后退" />
+			<btn ico="MenuIcoRedo" txt="重做" />
+		</TopBar>
+		<FurnitureProp>
+			<title txt="家具"/>
+			<remove txt="删除"/>
+			<done txt="取消"/>
+		</FurnitureProp>
+		<DoorProp>
+			<title txt="门"/>
+			<width txt="宽度"/>
+			<flip txt="左右调换"/>
+			<remove txt="删除"/>
+			<done txt="取消"/>
+		</DoorProp>
+		<WallProp>
+			<title txt="墙"/>
+			<thickness txt="宽度"/>
+			<remove txt="删除"/>
+			<done txt="取消"/>
+		</WallProp>
+		<LabelProp>
+			<title txt="文字"/>
+			<size txt="字体大小" />
+			<color txt="字体颜色" />
+			<remove txt="删除"/>
+			<done txt="取消"/>
+		</LabelProp>
+		<SaveLoad>
+			<NewDocument ico="MenuIcoNew" txt="新建" />
+			<NewSave ico="MenuIcoSave" txt="保存户型图" />
+			<AskToNew txt="新建设计，是否放弃当前设计？" />
+			<AskToSave txt="创造新户型图保存记录" />
+			<AskToLoad txt="打开户型图。当前设计会被覆盖！" />
+			<Confirm txt="确认" />
+			<Cancel txt="取消" />
+			<DeleteEntry txt="删除这个记录" />
+		</SaveLoad>
+		<Items>
+			<item txt="液晶电视" cls="TVFlat" />
+			<item txt="马桶" cls="Toilet" />
+			<item txt="方桌" cls="TableSquare" />
+			<item txt="f圆桌" cls="TableRound" />
+			<item txt="长方桌" cls="TableRect" />
+			<item txt="八方桌" cls="TableOctagon" />
+			<item txt="墙角桌" cls="TableL" />
+			<item txt="煤气灶" cls="Stove" />
+			<item txt="2坐沙发" cls="Sofa2" />
+			<item txt="3坐沙发" cls="Sofa3" />
+			<item txt="4坐沙发" cls="Sofa4" />
+			<item txt="洗脸盆" cls="SinkRound" />
+			<item txt="洗手盆" cls="SinkKitchen" />
+			<item txt="钢琴" cls="Piano" />
+			<item txt="烘炉" cls="Oven" />
+			<item txt="椅子" cls="Chair" />
+			<item txt="单人床" cls="BedSingle" />
+			<item txt="双人床" cls="BedDouble" />
+			<item txt="圆浴缸" cls="BathTubRound" />
+			<item txt="墙角浴缸" cls="BathTubL" />
+			<item txt="浴缸" cls="BathTub" />
+			<item txt="靠椅" cls="ArmChair" />
+		</Items>
+		<Ports>
+			<port txt="单门" cls="DoorSingleSwinging" />
+			<port txt="单移门" cls="DoorSingleSliding" />
+			<port txt="双门" cls="DoorDoubleSwinging" />
+			<port txt="双移门" cls="DoorDoubleSliding" />
+			<port txt="小窗" cls="WindowSingle" />
+			<port txt="中窗" cls="WindowDouble" />
+			<port txt="大窗" cls="WindowTriple" />
+		</Ports>
+	</CN>
+</Copy>

@@ -17,6 +17,8 @@ package
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
 	import flash.net.FileReference;
+	import flash.net.URLLoader;
+	import flash.net.URLRequest;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -26,62 +28,8 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
-		public static var Copy:XML = 
-		<Copy>
-		<TopBar>
-			<btn ico="MenuIcoFile" en="FILE" cn="文件" />
-			<btn ico="MenuIcoFurniture" en="FURNITURE" cn="家具" />
-			<btn ico="MenuIcoDrawDoor" en="WINDOWS AND DOORS" cn="门窗" />
-			<btn ico="MenuIcoDrawWall" en="DRAW WALLS" cn="画墙壁" />
-			<btn ico="MenuIcoText" en="ADD TEXT" cn="文字" />
-			<btn ico="MenuIcoSave" en="SAVE IMAGE" cn="保存图片" />
-			<btn ico="MenuIcoUndo" en="UNDO" cn="后退" />
-			<btn ico="MenuIcoRedo" en="REDO" cn="重做" />
-		</TopBar>
-		<SaveLoad>
-			<NewDocument ico="MenuIcoNew" en="NEW" cn="新建" />
-			<NewSave en="SAVE FLOORPLAN" cn="保存户型图" />
-			<AskToNew en="CREATE A NEW DOCUMENT?" cn="新建设计，是否放弃当前设计？" />
-			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="创造新户型图保存记录" />
-			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开户型图。当前设计会被覆盖！" />
-			<Confirm en="CONFIRM" cn="确认" />
-			<Cancel en="CANCEL" cn="取消" />
-			<DeleteEntry en="DELETE ENTRY" cn="删除这个记录" />
-		</SaveLoad>
-		<Items>
-			<item en="LCD TV" cn="液晶电视" cls="TVFlat" />
-			<item en="Toilet Bowl" cn="马桶" cls="Toilet" />
-			<item en="Square Table" cn="方桌" cls="TableSquare" />
-			<item en="Round Table" cn="f圆桌" cls="TableRound" />
-			<item en="Rectangular Table" cn="长方桌" cls="TableRect" />
-			<item en="Octagonal Table" cn="八方桌" cls="TableOctagon" />
-			<item en="Corner Table" cn="墙角桌" cls="TableL" />
-			<item en="Stove" cn="煤气灶" cls="Stove" />
-			<item en="2 Seat Sofa" cn="2坐沙发" cls="Sofa2" />
-			<item en="3 Seat Sofa" cn="3坐沙发" cls="Sofa3" />
-			<item en="4 Seat Sofa" cn="4坐沙发" cls="Sofa4" />
-			<item en="Round Sink" cn="洗脸盆" cls="SinkRound" />
-			<item en="Kitchen Sink" cn="洗手盆" cls="SinkKitchen" />
-			<item en="Piano" cn="钢琴" cls="Piano" />
-			<item en="Oven" cn="烘炉" cls="Oven" />
-			<item en="Chair" cn="椅子" cls="Chair" />
-			<item en="Singale Bed" cn="单人床" cls="BedSingle" />
-			<item en="Double Bed" cn="双人床" cls="BedDouble" />
-			<item en="Round Bathtub" cn="圆浴缸" cls="BathTubRound" />
-			<item en="Corner Bathtub" cn="墙角浴缸" cls="BathTubL" />
-			<item en="Bathtub" cn="浴缸" cls="BathTub" />
-			<item en="Armchair" cn="靠椅" cls="ArmChair" />
-		</Items>
-		<Ports>
-			<port en="Single Door" cn="单门" cls="DoorSingleSwinging" />
-			<port en="Sliding Door" cn="单移门" cls="DoorSingleSliding" />
-			<port en="Double Door" cn="双门" cls="DoorDoubleSwinging" />
-			<port en="Double Sliding Door" cn="双移门" cls="DoorDoubleSliding" />
-			<port en="Small Window" cn="小窗" cls="WindowSingle" />
-			<port en="Medium Window" cn="中窗" cls="WindowDouble" />
-			<port en="Large Window" cn="大窗" cls="WindowTriple" />
-		</Ports>
-		</Copy>;
+		public static var Copy:XML = null;				// copy of all languages
+		public static var Lang:XML = null;				// copy of current language
 	
 		private var mouseDownPt:Vector3D = null;		// point of last mouseDown
 		private var mouseUpPt:Vector3D= null;			// point of last mouseUp
@@ -104,8 +52,17 @@ package
 		//=============================================================================================
 		public function FloorPlanner():void 
 		{
-			if (stage) init();
-			else addEventListener(Event.ADDED_TO_STAGE, init);
+			function processXML(ev:Event):void
+			{
+				Copy = new XML(ev.target.data);
+				Lang = Copy.CN[0];
+				if (stage) init();
+				else addEventListener(Event.ADDED_TO_STAGE, init);
+			}
+		
+			var ldr:URLLoader = new URLLoader();
+			ldr.load(new URLRequest("copy.xml"));
+			ldr.addEventListener(Event.COMPLETE, processXML);
 		}//
 		
 		//=============================================================================================
@@ -156,7 +113,7 @@ package
 			grid.addChild(floorPlan.overlay);
 			
 			// ----- create top bar -------------------------------------------
-			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
+			topBar = new TopBarMenu(Lang.TopBar.btn,function (i:int):void 
 			{
 				//prn("TopBarMenu "+i);
 				if (i==0)		// file 
@@ -286,9 +243,9 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new AddFurnitureMenu(Copy.Items[0].item,floorPlan,function(idx:int):void
+			menu = new AddFurnitureMenu(Lang.Items[0].item,floorPlan,function(idx:int):void
 			{
-				var IcoCls:Class = Class(getDefinitionByName(Copy.Items[0].item[idx].@cls));
+				var IcoCls:Class = Class(getDefinitionByName(Lang.Items[0].item[idx].@cls));
 				floorPlan.addFurniture(new IcoCls());
 			});
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
@@ -309,9 +266,9 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new AddFurnitureMenu(Copy.Ports[0].port,floorPlan,function(idx:int):void
+			menu = new AddFurnitureMenu(Lang.Ports[0].port,floorPlan,function(idx:int):void
 			{
-				var IcoCls:Class = Class(getDefinitionByName(Copy.Ports[0].port[idx].@cls));
+				var IcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@cls));
 				modeAddDoors(new IcoCls() as Sprite);
 			});	
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
@@ -336,8 +293,9 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("FURNITURE",
-										Vector.<String>(["REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(fur),
+										Vector.<String>([	Lang.FurnitureProp.remove.@txt,
+															Lang.FurnitureProp.done.@txt]),
 										Vector.<Function>([	function():void 
 															{
 																floorPlan.removeFurniture(fur);
@@ -361,8 +319,11 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("DOOR",
-										Vector.<String>(["LENGTH ["+int(Math.abs(door.dir)*100)/100+"]","FLIP SIDE","REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
+										Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*100)/100+"]",
+															Lang.DoorProp.flip.@txt,
+															Lang.DoorProp.remove.@txt,
+															Lang.DoorProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																if (door.dir<0)
@@ -397,8 +358,10 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("WALL",
-										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.WallProp.title.@txt,
+										Vector.<String>([	Lang.WallProp.thickness.@txt +" = ["+wall.thickness+"]",
+															Lang.WallProp.remove.@txt,
+															Lang.WallProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																wall.thickness = Math.max(5,Math.min(30,Number(val)));
@@ -425,8 +388,11 @@ package
 					py = menu.y;
 				}
 				
-				menu = new DialogMenu("TEXT LABEL",
-										Vector.<String>(["FONT SIZE ["+tf.defaultTextFormat.size+"]","COLOR "+tf.defaultTextFormat.color.toString(16),"REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.LabelProp.title.@txt,
+										Vector.<String>([Lang.LabelProp.size.@txt+" = ["+tf.defaultTextFormat.size+"]",
+														Lang.LabelProp.color.@txt+" = "+tf.defaultTextFormat.color.toString(16),
+														Lang.LabelProp.remove.@txt,
+														Lang.LabelProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																var tff:TextFormat = tf.defaultTextFormat;
@@ -1166,7 +1132,7 @@ class TopBarMenu extends FloatingMenu
 			tff.size = 12;
 			tff.color = 0x888888;
 			tf.defaultTextFormat = tff;
-			tf.text = labels[i].@cn;
+			tf.text = labels[i].@txt;
 			var b:Sprite = new Sprite();
 			if (getDefinitionByName(labels[i].@ico)!=null)
 			{
@@ -1381,7 +1347,7 @@ class AddFurnitureMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = dat[i].@cn;
+				tf.text = dat[i].@txt;
 			}
 			while (tf.width>icoW);
 			tf.y = btn.height;
@@ -1431,9 +1397,9 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToNew():void
 	{
-		var askNew:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToNew.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
+		var askNew:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToNew.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
 									Vector.<Function>([function():void 
 														{
 															floorPlan.clearAll();
@@ -1458,9 +1424,9 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToSave():void
 	{
-		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToSave.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
+		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToSave.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
 									Vector.<Function>([function():void 
 														{
 															saveToSharedObject();
@@ -1486,10 +1452,10 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToLoad(idx:int):void
 	{
-		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToLoad.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn,
-														FloorPlanner.Copy.SaveLoad.DeleteEntry.@cn]),
+		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToLoad.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt,
+														FloorPlanner.Lang.SaveLoad.DeleteEntry.@txt]),
 									Vector.<Function>([function():void 
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
@@ -1580,9 +1546,11 @@ class SaveLoadMenu extends IconsMenu
 			if (saveDat.length>idx)	loadNext();
 			else if (hasInit) refresh();
 		}//endfunction
-				
-		makeBtn(new MenuIcoNew(),FloorPlanner.Copy.SaveLoad.NewDocument.@cn);
-		makeBtn(new MenuIcoSave(),FloorPlanner.Copy.SaveLoad.NewSave.@cn);
+		
+		var ico:DisplayObject = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewDocument.@ico)))());
+		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewDocument.@txt);
+		ico = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewSave.@ico)))());
+		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewSave.@txt);
 		
 		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
