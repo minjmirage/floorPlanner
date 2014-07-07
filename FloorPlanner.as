@@ -17,6 +17,8 @@ package
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
 	import flash.net.FileReference;
+	import flash.net.URLLoader;
+	import flash.net.URLRequest;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -26,62 +28,8 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
-		public static var Copy:XML = 
-		<Copy>
-		<TopBar>
-			<btn ico="MenuIcoFile" en="FILE" cn="文件" />
-			<btn ico="MenuIcoFurniture" en="FURNITURE" cn="家具" />
-			<btn ico="MenuIcoDrawDoor" en="WINDOWS AND DOORS" cn="门窗" />
-			<btn ico="MenuIcoDrawWall" en="DRAW WALLS" cn="画墙壁" />
-			<btn ico="MenuIcoText" en="ADD TEXT" cn="文字" />
-			<btn ico="MenuIcoSave" en="SAVE IMAGE" cn="保存图片" />
-			<btn ico="MenuIcoUndo" en="UNDO" cn="后退" />
-			<btn ico="MenuIcoRedo" en="REDO" cn="重做" />
-		</TopBar>
-		<SaveLoad>
-			<NewDocument ico="MenuIcoNew" en="NEW" cn="新建" />
-			<NewSave en="SAVE FLOORPLAN" cn="保存户型图" />
-			<AskToNew en="CREATE A NEW DOCUMENT?" cn="新建设计，是否放弃当前设计？" />
-			<AskToSave en="SAVE THIS FLOORPLAN\nIN A NEW ENTRY?" cn="创造新户型图保存记录" />
-			<AskToLoad en="LOAD FLOORPLAN?\nYOUR UNSAVED WORK\nWILL BE LOST!" cn="打开户型图。当前设计会被覆盖！" />
-			<Confirm en="CONFIRM" cn="确认" />
-			<Cancel en="CANCEL" cn="取消" />
-			<DeleteEntry en="DELETE ENTRY" cn="删除这个记录" />
-		</SaveLoad>
-		<Items>
-			<item en="LCD TV" cn="液晶电视" cls="TVFlat" />
-			<item en="Toilet Bowl" cn="马桶" cls="Toilet" />
-			<item en="Square Table" cn="方桌" cls="TableSquare" />
-			<item en="Round Table" cn="f圆桌" cls="TableRound" />
-			<item en="Rectangular Table" cn="长方桌" cls="TableRect" />
-			<item en="Octagonal Table" cn="八方桌" cls="TableOctagon" />
-			<item en="Corner Table" cn="墙角桌" cls="TableL" />
-			<item en="Stove" cn="煤气灶" cls="Stove" />
-			<item en="2 Seat Sofa" cn="2坐沙发" cls="Sofa2" />
-			<item en="3 Seat Sofa" cn="3坐沙发" cls="Sofa3" />
-			<item en="4 Seat Sofa" cn="4坐沙发" cls="Sofa4" />
-			<item en="Round Sink" cn="洗脸盆" cls="SinkRound" />
-			<item en="Kitchen Sink" cn="洗手盆" cls="SinkKitchen" />
-			<item en="Piano" cn="钢琴" cls="Piano" />
-			<item en="Oven" cn="烘炉" cls="Oven" />
-			<item en="Chair" cn="椅子" cls="Chair" />
-			<item en="Singale Bed" cn="单人床" cls="BedSingle" />
-			<item en="Double Bed" cn="双人床" cls="BedDouble" />
-			<item en="Round Bathtub" cn="圆浴缸" cls="BathTubRound" />
-			<item en="Corner Bathtub" cn="墙角浴缸" cls="BathTubL" />
-			<item en="Bathtub" cn="浴缸" cls="BathTub" />
-			<item en="Armchair" cn="靠椅" cls="ArmChair" />
-		</Items>
-		<Ports>
-			<port en="Single Door" cn="单门" cls="DoorSingleSwinging" />
-			<port en="Sliding Door" cn="单移门" cls="DoorSingleSliding" />
-			<port en="Double Door" cn="双门" cls="DoorDoubleSwinging" />
-			<port en="Double Sliding Door" cn="双移门" cls="DoorDoubleSliding" />
-			<port en="Small Window" cn="小窗" cls="WindowSingle" />
-			<port en="Medium Window" cn="中窗" cls="WindowDouble" />
-			<port en="Large Window" cn="大窗" cls="WindowTriple" />
-		</Ports>
-		</Copy>;
+		public static var Copy:XML = null;				// copy of all languages
+		public static var Lang:XML = null;				// copy of current language
 	
 		private var mouseDownPt:Vector3D = null;		// point of last mouseDown
 		private var mouseUpPt:Vector3D= null;			// point of last mouseUp
@@ -104,8 +52,17 @@ package
 		//=============================================================================================
 		public function FloorPlanner():void 
 		{
-			if (stage) init();
-			else addEventListener(Event.ADDED_TO_STAGE, init);
+			function processXML(ev:Event):void
+			{
+				Copy = new XML(ev.target.data);
+				Lang = Copy.CN[0];
+				if (stage) init();
+				else addEventListener(Event.ADDED_TO_STAGE, init);
+			}
+		
+			var ldr:URLLoader = new URLLoader();
+			ldr.load(new URLRequest("copy.xml"));
+			ldr.addEventListener(Event.COMPLETE, processXML);
 		}//
 		
 		//=============================================================================================
@@ -156,7 +113,7 @@ package
 			grid.addChild(floorPlan.overlay);
 			
 			// ----- create top bar -------------------------------------------
-			topBar = new TopBarMenu(Copy.TopBar.btn,function (i:int):void 
+			topBar = new TopBarMenu(Lang.TopBar.btn,function (i:int):void 
 			{
 				//prn("TopBarMenu "+i);
 				if (i==0)		// file 
@@ -178,7 +135,28 @@ package
 					modeAddWalls();
 				}
 				else if (i==4)	// text
-				{}
+				{
+					var csr:Sprite = new Sprite();
+					csr.graphics.lineStyle(0);
+					csr.graphics.beginFill(0xFFFFFF,1);
+					csr.graphics.drawCircle(0,0,5);
+					csr.graphics.endFill();
+					var ico:Sprite = new MenuIcoText();
+					ico.x = 10;
+					ico.y = 10;
+					csr.addChild(ico);
+					csr.x = floorPlan.overlay.mouseX;
+					csr.y = floorPlan.overlay.mouseY;
+					floorPlan.overlay.addChild(csr);
+					csr.startDrag(true);
+					function setLab(ev:Event):void
+					{
+						csr.stopDrag();
+						floorPlan.overlay.removeChild(csr);
+						floorPlan.createLabel(csr.x,csr.y);
+					}
+					csr.addEventListener(MouseEvent.MOUSE_UP,setLab);
+				}
 				else if (i==5)	// save o image
 				{
 					//prn(floorPlan.exportData());
@@ -265,9 +243,9 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new AddFurnitureMenu(Copy.Items[0].item,floorPlan,function(idx:int):void
+			menu = new AddFurnitureMenu(Lang.Items[0].item,floorPlan,function(idx:int):void
 			{
-				var IcoCls:Class = Class(getDefinitionByName(Copy.Items[0].item[idx].@cls));
+				var IcoCls:Class = Class(getDefinitionByName(Lang.Items[0].item[idx].@cls));
 				floorPlan.addFurniture(new IcoCls());
 			});
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
@@ -288,9 +266,9 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			menu = new AddFurnitureMenu(Copy.Ports[0].port,floorPlan,function(idx:int):void
+			menu = new AddFurnitureMenu(Lang.Ports[0].port,floorPlan,function(idx:int):void
 			{
-				var IcoCls:Class = Class(getDefinitionByName(Copy.Ports[0].port[idx].@cls));
+				var IcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@cls));
 				modeAddDoors(new IcoCls() as Sprite);
 			});	
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
@@ -315,8 +293,9 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("FURNITURE",
-										Vector.<String>(["REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(fur),
+										Vector.<String>([	Lang.FurnitureProp.remove.@txt,
+															Lang.FurnitureProp.done.@txt]),
 										Vector.<Function>([	function():void 
 															{
 																floorPlan.removeFurniture(fur);
@@ -340,8 +319,11 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("DOOR",
-										Vector.<String>(["LENGTH ["+int(Math.abs(door.dir)*100)/100+"]","REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
+										Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*100)/100+"]",
+															Lang.DoorProp.flip.@txt,
+															Lang.DoorProp.remove.@txt,
+															Lang.DoorProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																if (door.dir<0)
@@ -370,8 +352,10 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu("WALL",
-										Vector.<String>(["THICKNESS ["+wall.thickness+"]","REMOVE","DONE"]),
+				menu = new DialogMenu(Lang.WallProp.title.@txt,
+										Vector.<String>([	Lang.WallProp.thickness.@txt +" = ["+wall.thickness+"]",
+															Lang.WallProp.remove.@txt,
+															Lang.WallProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void 
 															{
 																wall.thickness = Math.max(5,Math.min(30,Number(val)));
@@ -389,7 +373,63 @@ package
 				stage.addChild(menu);
 			}//endfunction
 			// ---------------------------------------------------------------------
-			
+			function showLabelProperties(tf:TextField):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				
+				menu = new DialogMenu(Lang.LabelProp.title.@txt,
+										Vector.<String>([Lang.LabelProp.size.@txt+" = ["+tf.defaultTextFormat.size+"]",
+														Lang.LabelProp.color.@txt+" = "+tf.defaultTextFormat.color.toString(16),
+														Lang.LabelProp.remove.@txt,
+														Lang.LabelProp.done.@txt]),
+										Vector.<Function>([	function(val:String):void 
+															{
+																var tff:TextFormat = tf.defaultTextFormat;
+																tff.size = Number(val);
+																tf.defaultTextFormat = tff;
+																tf.setTextFormat(tff);
+															},
+															function():void 
+															{
+																showColorMenu(function(color:uint):void 
+																{
+																	var tff:TextFormat = tf.defaultTextFormat;
+																	tff.color = color;
+																	tf.defaultTextFormat = tff;
+																	tf.setTextFormat(tff);
+																	showLabelProperties(tf);
+																});
+															},
+															function():void 
+															{
+																floorPlan.removeLabel(tf);
+																showFurnitureMenu();
+															},
+															showFurnitureMenu]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}//endfunction
+			// ---------------------------------------------------------------------
+			function showColorMenu(callBack:Function):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new ColorMenu(callBack);
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}
+								
 			floorPlan.selected = null;
 						
 			// ----- default editing logic
@@ -440,6 +480,11 @@ package
 					{
 						floorPlan.refresh();
 					}
+					else if (floorPlan.selected is TextField)
+					{
+						floorPlan.selected.x += grid.mouseX - prevMousePt.x;
+						floorPlan.selected.y += grid.mouseY - prevMousePt.y;
+					}
 					else if (floorPlan.selected!=null)
 					{	// ----- furniture shifting... 
 					}
@@ -475,6 +520,11 @@ package
 				{
 					showDoorProperties((Door)(floorPlan.selected));
 				}
+				else if (floorPlan.selected is TextField)	// selected a label
+				{
+					(TextField)(floorPlan.selected).background = true;
+					showLabelProperties(floorPlan.selected);
+				}
 				else if (floorPlan.selected!=null)		// selected a furniture
 				{
 					showFurnitureProperties(floorPlan.selected);
@@ -489,6 +539,8 @@ package
 			// ----------------------------------------------------------------
 			mouseUpFn = function():void
 			{
+				if (floorPlan.selected!=null && floorPlan.selected is TextField) 
+					(TextField)(floorPlan.selected).background = false;
 				if (undoStk.length>0 && floorPlan.exportData()==undoStk[undoStk.length-1]) 
 					undoStk.pop();	// if no state change 
 			}
@@ -816,6 +868,7 @@ import flash.geom.ColorTransform;
 import flash.text.TextField;
 import flash.display.Sprite;
 import flash.events.Event;
+import flash.events.TextEvent;
 import flash.events.MouseEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
@@ -919,7 +972,7 @@ class FloatingMenu extends Sprite		// to be extended
 	//===============================================================================================
 	// draws a striped rectangle in given sprite 
 	//===============================================================================================
-	protected static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
+	public static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
 	{
 		if (s==null)	s = new Sprite();
 		var mat:Matrix = new Matrix();
@@ -1073,7 +1126,7 @@ class TopBarMenu extends FloatingMenu
 			tff.size = 12;
 			tff.color = 0x888888;
 			tf.defaultTextFormat = tff;
-			tf.text = labels[i].@cn;
+			tf.text = labels[i].@txt;
 			var b:Sprite = new Sprite();
 			if (getDefinitionByName(labels[i].@ico)!=null)
 			{
@@ -1288,7 +1341,7 @@ class AddFurnitureMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = dat[i].@cn;
+				tf.text = dat[i].@txt;
 			}
 			while (tf.width>icoW);
 			tf.y = btn.height;
@@ -1338,9 +1391,9 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToNew():void
 	{
-		var askNew:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToNew.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
+		var askNew:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToNew.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
 									Vector.<Function>([function():void 
 														{
 															floorPlan.clearAll();
@@ -1365,9 +1418,9 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToSave():void
 	{
-		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToSave.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn]),
+		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToSave.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
 									Vector.<Function>([function():void 
 														{
 															saveToSharedObject();
@@ -1393,15 +1446,15 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	function askToLoad(idx:int):void
 	{
-		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Copy.SaveLoad.AskToLoad.@cn,
-									Vector.<String>([	FloorPlanner.Copy.SaveLoad.Confirm.@cn,
-														FloorPlanner.Copy.SaveLoad.Cancel.@cn,
-														FloorPlanner.Copy.SaveLoad.DeleteEntry.@cn]),
+		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToLoad.@txt,
+									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt,
+														FloorPlanner.Lang.SaveLoad.DeleteEntry.@txt]),
 									Vector.<Function>([function():void 
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															floorPlan.importData(saveDat[(idx)*3+2]);
+															floorPlan.importData(saveDat[(idx)*3+2]);	// imports the data string
 															overlay.parent.removeChild(overlay);
 														},
 														function():void 
@@ -1486,10 +1539,13 @@ class SaveLoadMenu extends IconsMenu
 				ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
 			}
 			if (saveDat.length>idx)	loadNext();
+			else if (hasInit) refresh();
 		}//endfunction
-				
-		makeBtn(new MenuIcoNew(),FloorPlanner.Copy.SaveLoad.NewDocument.@cn);
-		makeBtn(new MenuIcoSave(),FloorPlanner.Copy.SaveLoad.NewSave.@cn);
+		
+		var ico:DisplayObject = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewDocument.@ico)))());
+		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewDocument.@txt);
+		ico = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewSave.@ico)))());
+		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewSave.@txt);
 		
 		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
@@ -1522,6 +1578,27 @@ class SaveLoadMenu extends IconsMenu
 		
 	}//endfunction
 	
+}//endclass
+
+class ColorMenu extends IconsMenu
+{
+	public function ColorMenu(callBack:Function):void
+	{
+		var C:Array = [	0x000000,0xFFFFFF,0xFFFF00,0x00FFFF,0xFF00FF,0xFF0000,0x00FF00,0x0000FF,
+						0x004F9C,0x103749,0x081732,0x51BCEC,0x006B67,0x006B67,0x650B25,0x4B1546,0x692C90,
+						0x68BC43,0x008651,0x004732,0x41515C,0xADBBBB,0xADBBBB,0xEE2D23,0xF4C4DC,0xEC4598,
+						0x8B5A42,0x8B5A42,0x948670,0x948670,0x948670];
+		var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+		for (var i:int=C.length-1; i>-1; i--)
+		{
+			var ico:Sprite = new Sprite();
+			ico.graphics.beginFill(C[i],1);
+			ico.graphics.drawRoundRect(0,0,20,20,5);
+			ico.graphics.endFill();
+			Icos.unshift(ico);
+		}
+		super(Icos,5,5,function (idx:int):void {callBack(C[idx]);});
+	}//endfunction
 }//endclass
 
 class WireGrid extends Sprite
@@ -1611,6 +1688,7 @@ class FloorPlan
 	public var Walls:Vector.<Wall>;
 	public var Furniture:Vector.<Sprite>;		// list of furniture sprite already on the stage
 	public var floorAreas:Vector.<Sprite>;		// list of floor area sprites already on the stage
+	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
 	
 	public var selected:* = null;				// of Furniture or Joint or Wall
 	
@@ -1627,6 +1705,7 @@ class FloorPlan
 		
 		Furniture = new Vector.<Sprite>();
 		floorAreas = new Vector.<Sprite>();
+		Labels = new Vector.<TextField>();
 		
 		jointsOverlay = new Sprite();
 		overlay = new Sprite();
@@ -1669,6 +1748,7 @@ class FloorPlan
 		o.Joints = Joints;
 		o.Walls = Walls;
 		o.Furniture = Furniture;
+		o.Labels = Labels;
 		
 		function replacer(k,v):*
 		{
@@ -1707,6 +1787,16 @@ class FloorPlan
 				po.y = v.y;
 				return po;
 			}
+			else if (v is TextField)
+			{
+				var to:Object = new Object();
+				to.x = v.x;
+				to.y = v.y;
+				to.text = v.text;
+				to.size = (TextField)(v).defaultTextFormat.size;
+				to.color = (TextField)(v).defaultTextFormat.color;
+				return to;
+			}
 			
 			return v;
 		}
@@ -1730,6 +1820,7 @@ class FloorPlan
 		
 		// ----- replace joints
 		Joints = new Vector.<Point>();
+		if (o.Joints!=null)
 		for (var i:int=o.Joints.length-1; i>-1; i--)
 		{
 			var po:Object = o.Joints[i];
@@ -1739,6 +1830,7 @@ class FloorPlan
 		// ----- replace walls
 		while (Walls.length>0)					// clear off prev walls
 			overlay.removeChild(Walls.pop());
+		if (o.Walls!=null)
 		for (i=o.Walls.length-1; i>-1; i--)		// add in new walls
 		{
 			var wo:Object = o.Walls[i];
@@ -1757,6 +1849,7 @@ class FloorPlan
 		// ----- replace furniture
 		while (Furniture.length>0)				// clear off prev furniture
 			overlay.removeChild(Furniture.pop());
+		if (o.Furniture!=null)
 		for (i=o.Furniture.length-1; i>-1; i--)		// add in new walls
 		{
 			var fo:Object = o.Furniture[i];
@@ -1770,7 +1863,95 @@ class FloorPlan
 			overlay.addChild(fur);
 		}
 		
+		// ----- replace text labels
+		while (Labels.length>0)
+			overlay.removeChild(Labels.pop());
+		if (o.Labels!=null)
+		for (i=o.Labels.length-1; i>-1; i--)		// add in new walls
+		{
+			var lo:Object = o.Labels[i];
+			var tf:TextField = new TextField();
+			tf.x = lo.x;
+			tf.y = lo.y;
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			tf.selectable = false;
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.size = Number(lo.size);
+			tff.color = uint(lo.color);
+			tf.defaultTextFormat = tff;
+			tf.text = lo.text;
+			Labels.push(tf);
+			overlay.addChild(tf);
+		}
 		refresh();
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function createLabel(x:int,y:int):TextField
+	{
+		var base:Sprite = new Sprite();
+		overlay.addChild(base);
+		base.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+		
+		var tf:TextField = new TextField();
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.size = 20;
+		tf.defaultTextFormat = tff;
+		tf.type = "input";
+		tf.background = true;
+		overlay.stage.focus = tf;
+		tf.x = x;
+		tf.y = y;
+		base.addChild(tf);
+		overlay.addChild(base);
+		
+		var downPt:Point = null;
+		function mouseDownHandler(ev:Event=null):void
+		{
+			downPt = new Point(overlay.mouseX,overlay.mouseY);
+		}
+		function changeHandler(ev:Event=null):void
+		{
+			base.graphics.clear();
+			FloatingMenu.drawStripedRect(base,tf.x-10,tf.y-10,tf.width+20,tf.height+20,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		function finalize(ev:Event=null):void
+		{
+			if (tf.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
+				return;
+			if ((overlay.mouseX-downPt.x)*(overlay.mouseX-downPt.x)+(overlay.mouseY-downPt.y)*(overlay.mouseY-downPt.y)>1)
+				return;
+			tf.background = false;
+			tf.htmlText = tf.text;
+			tf.type = "dynamic";
+			tf.selectable = false;
+			overlay.removeChild(base);
+			base.removeChild(tf);
+			Labels.push(tf);
+			overlay.addChild(tf);
+			tf.removeEventListener(Event.ENTER_FRAME,changeHandler);
+			overlay.stage.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			overlay.stage.removeEventListener(MouseEvent.CLICK,finalize);
+		}
+		tf.addEventListener(Event.ENTER_FRAME,changeHandler);
+		overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		overlay.stage.addEventListener(MouseEvent.CLICK,finalize);
+		
+		return tf;
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function removeLabel(tf:TextField):void
+	{
+		if (Labels.indexOf(tf)!=-1)	Labels.splice(Labels.indexOf(tf),1);
+		if (tf.parent!=null)	tf.parent.removeChild(tf);
 	}//endfunction
 	
 	//=============================================================================================
@@ -2121,16 +2302,23 @@ class FloorPlan
 		
 		selected = null;	// clear prev selected
 		
-		for (i=Furniture.length-1; i>-1; i--)
-			if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
-				selected = Furniture[i];
+		for (i=Labels.length-1; i>-1; i--)
+			if (Labels[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+				selected = Labels[i];
 		
-		if (selected!=null)
+		if (selected==null)
 		{
-			furnitureCtrls = furnitureTransformControls(selected);
-			overlay.addChild(furnitureCtrls);
-		}
+			for (i=Furniture.length-1; i>-1; i--)
+				if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+					selected = Furniture[i];
 		
+			if (selected!=null)
+			{
+				furnitureCtrls = furnitureTransformControls(selected);
+				overlay.addChild(furnitureCtrls);
+			}
+		}
+				
 		if (selected==null)
 			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any joint
 		
