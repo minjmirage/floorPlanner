@@ -1415,12 +1415,13 @@ class SaveLoadMenu extends IconsMenu
 															saveDat.splice((idx)*3,3);
 															so.data.savedData = saveDat;
 															so.flush();
+															so.close();
 															overlay.parent.removeChild(overlay);
 															updateBtns();
 														}])); 
 		askLoadFile.x = (this.width-askLoadFile.width)/2;
 		askLoadFile.y = (this.height-askLoadFile.height)/2;
-		overlay = new Sprite();
+		overlay = new Sprite();							// overlay to cover the entire menu 
 		overlay.graphics.beginFill(0xFFFFFF,0.5);
 		overlay.graphics.drawRoundRect(0,0,this.width,this.height,20);
 		overlay.graphics.endFill();
