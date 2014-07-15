@@ -332,12 +332,6 @@ package
 																	door.dir = Math.min(1,Math.max(0.01,Number(val)));
 																floorPlan.refresh();
 															},
-															function():void
-															{
-																door.pivot += door.dir;
-																door.dir*=-1;
-																floorPlan.refresh();
-															},
 															function():void 
 															{
 																wall.removeDoor(door);
@@ -1474,12 +1468,13 @@ class SaveLoadMenu extends IconsMenu
 															saveDat.splice((idx)*3,3);
 															so.data.savedData = saveDat;
 															so.flush();
+															so.close();
 															overlay.parent.removeChild(overlay);
 															updateBtns();
 														}])); 
 		askLoadFile.x = (this.width-askLoadFile.width)/2;
 		askLoadFile.y = (this.height-askLoadFile.height)/2;
-		overlay = new Sprite();
+		overlay = new Sprite();							// overlay to cover the entire menu 
 		overlay.graphics.beginFill(0xFFFFFF,0.5);
 		overlay.graphics.drawRoundRect(0,0,this.width,this.height,20);
 		overlay.graphics.endFill();
@@ -2174,26 +2169,9 @@ class FloorPlan
 	//=============================================================================================
 	public function drawWall(wall:Wall):void
 	{
-		function extendBnds(B:Vector.<Point>,ext:Number=20):void
-		{
-			var pvx:Number = B[1].x-B[0].x;
-			var pvy:Number = B[1].y-B[0].y;
-			var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
-			pvx*=ext/pvl; pvy*=ext/pvl;
-			B[0].x-=pvx;
-			B[0].y-=pvy;
-			B[1].x+=pvx;
-			B[1].y+=pvy;
-			B[2].x+=pvx;
-			B[2].y+=pvy;
-			B[3].x-=pvx;
-			B[3].y-=pvy;
-		}//endfunction
-		
 		// ----- draw wall bounds
 		var wallB:Vector.<Point> = wall.wallBounds(false);
-		extendBnds(wallB);
-		var flags:uint=0;
+				
 		var ipt:Point = null;
 		var j:int=0;
 		var wb:Vector.<Point>=null;
@@ -2203,11 +2181,11 @@ class FloorPlan
 			wb = null;
 			if (Adj[j].joint2==wall.joint2)		wb = Adj[j].wallBounds(true);	// ensure point ordering is correct
 			else								wb = Adj[j].wallBounds(false);
-			extendBnds(wb);
-			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
-			if (ipt!=null)	{wallB[1] = ipt;	flags = flags | 1<<1;}
-			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
-			if (ipt!=null)	{wallB[2] = ipt;	flags = flags | 1<<2;}
+			
+			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			if (ipt!=null)	wallB[1] = ipt;
+			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			if (ipt!=null)	wallB[2] = ipt;
 		}
 		
 		Adj = connectedToJoint(wall.joint1);
@@ -2216,19 +2194,12 @@ class FloorPlan
 			wb = null;
 			if (Adj[j].joint2==wall.joint1)		wb = Adj[j].wallBounds(false);	// ensure point ordering is correct
 			else								wb = Adj[j].wallBounds(true);
-			extendBnds(wb);
-			ipt = segmentsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
-			if (ipt!=null)	{wallB[0] = ipt;	flags = flags | 1<<0;}
-			ipt = segmentsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
-			if (ipt!=null)	{wallB[3] = ipt;	flags = flags | 1<<3;}
+			
+			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			if (ipt!=null)	wallB[0] = ipt;
+			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			if (ipt!=null)	wallB[3] = ipt;
 		}
-		
-		// ----- restore original wall points for non intersecting bounds
-		var owB:Vector.<Point> = wall.wallBounds(false);
-		for (j=0; j<4; j++)
-			if ((flags&(1<<j)) == 0)
-				wallB[j] = owB[j];
-		
 		// ----- draws the calculated wallB
 		wall.graphics.clear();
 		while (wall.numChildren>0)	wall.removeChildAt(0);
@@ -2236,10 +2207,9 @@ class FloorPlan
 		else					wall.graphics.beginFill(0x000000,1);
 		wall.graphics.moveTo(wallB[0].x,wallB[0].y);
 		wall.graphics.lineTo(wallB[1].x,wallB[1].y);
-		wall.graphics.lineTo(wall.joint2.x,wall.joint2.y);
 		wall.graphics.lineTo(wallB[2].x,wallB[2].y);
 		wall.graphics.lineTo(wallB[3].x,wallB[3].y);
-		wall.graphics.lineTo(wall.joint1.x,wall.joint1.y);
+		wall.graphics.lineTo(wallB[0].x,wallB[0].y);
 		wall.graphics.endFill();
 		
 		// ----- draw wall length info
@@ -2555,6 +2525,22 @@ class FloorPlan
 			s.graphics.moveTo(ax,ay);
 			s.graphics.lineTo(bx,by);
 		}
+	}//endfunction
+	
+	//=============================================================================================
+	// convenience function to extend wall ends so they intersect nicely at acute angles
+	//=============================================================================================
+	private function extendedSegsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number,ext:Number=100):Point
+	{
+		var pvx:Number = bx-ax;
+		var pvy:Number = by-ay;
+		var pvl:Number = Math.sqrt(pvx*pvx+pvy*pvy);
+		pvx*=ext/pvl; pvy*=ext/pvl;
+		var qvx:Number = dx-cx;
+		var qvy:Number = dy-cy;
+		var qvl:Number = Math.sqrt(qvx*qvx+qvy*qvy);
+		qvx*=ext/qvl; qvy*=ext/qvl;
+		return segmentsIntersectPt(ax-pvx,ay-pvy,bx+pvx,by+pvy,cx-qvx,cy-qvy,dx+qvx,dy+qvy);
 	}//endfunction
 	
 	//=============================================================================================
