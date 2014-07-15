@@ -305,7 +305,7 @@ package
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
-			}
+			}//endfunction
 			// ---------------------------------------------------------------------
 			function showDoorProperties(door:Door):void
 			{
@@ -434,7 +434,7 @@ package
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
-			}
+			}//endfunction
 								
 			floorPlan.selected = null;
 						
@@ -1699,6 +1699,7 @@ class FloorPlan
 	
 	private var jointsOverlay:Sprite = null;	// to draw all the joint positions in
 	public var overlay:Sprite = null;			// to add to display list
+	public var FloorPatterns:Vector.<BitmapData> = null;
 	
 	//=============================================================================================
 	//
@@ -1715,6 +1716,20 @@ class FloorPlan
 		jointsOverlay = new Sprite();
 		overlay = new Sprite();
 		overlay.buttonMode = true;
+		
+		FloorPatterns =  Vector.<BitmapData>([new Floor1(),
+												new Floor2(),
+												new Floor3(),
+												new Floor4(),
+												new Floor5(),
+												new Floor6(),
+												new Floor7(),
+												new Floor8(),
+												new Floor9(),
+												new Floor10(),
+												new Floor11(),
+												new Floor12(),
+												new Floor13()]);
 	}//endfunction
 	
 	//=============================================================================================
@@ -2135,7 +2150,7 @@ class FloorPlan
 		while (floorAreas.length>A.length)
 			overlay.removeChild(floorAreas.pop());
 		for (i=A.length-1; i>-1; i--)	// draw for each floorArea
-			drawFloorArea(A[i],new BitmapData(1,1,false,0xDDEEEE),floorAreas[i]);
+			drawFloorArea(A[i],FloorPatterns[i%FloorPatterns.length],floorAreas[i]);
 		
 		// ----- redraw wall joint positions ----------------------------------
 		jointsOverlay.graphics.clear();
