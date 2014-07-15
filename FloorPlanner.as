@@ -86,7 +86,7 @@ package
 		//=============================================================================================
 		// Entry point
 		//=============================================================================================
-		private function init(e:Event=null):void 
+		private function init(e:Event=null):void
 		{
 			stage.scaleMode = "noScale";
 			stage.align = "topLeft";
@@ -533,7 +533,7 @@ package
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
-					//prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
+					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -2613,8 +2613,97 @@ class FloorPlan
 		return s;
 	}//endfunction
 	
+	
 	//=============================================================================================
-	// find cyclics, i.e. room floor areas
+	// find cyclics, i.e. room floor areas using breath first search
+	//=============================================================================================
+	public function findIsolatedAreasN():Vector.<Vector.<Point>>
+	{
+		var timr:uint = getTimer();
+		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
+		
+		//-------------------------------------------------------------------------------
+		var Adj:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
+		for (var j:int=0; j<Joints.length; j++)
+		{
+			var curJoint:Point = Joints[j];
+			var l:Vector.<Point> = new Vector.<Point>();
+			var edges:Vector.<Wall> = connectedToJoint(curJoint);
+			for (var i:int=edges.length-1; i>-1; i--)
+			{
+				if (edges[i].joint1==curJoint)	
+					l.push(edges[i].joint2);
+				else
+					l.push(edges[i].joint1);
+			}
+			Adj.push(l);
+		}
+		
+		// ----- init search from all vertices
+		var CA:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
+		for (i=Joints.length-1; i>-1; i--)
+			CA.push(Vector.<Point>([Joints[i]]));
+		
+		// ----- start breath first search from all vertices
+		while (CA.length>0)
+		{
+			var path:Vector.<Point> = CA.shift();
+			curJoint = path[path.length-1];
+			var nxts:Vector.<Point> = Adj[Joints.indexOf(curJoint)];
+			for (i=nxts.length-1; i>-1; i--)
+			{
+				var npt:Point = nxts[i];
+				var nidx:int=path.indexOf(npt);
+				if (nidx==-1)			// unvisited point, add to back of Q 
+				{
+					var npath:Vector.<Point> = path.slice();
+					npath.push(npt);
+					var hasEqv:Boolean = false;
+					for (var c:int=CA.length-1; c>-1; c--)
+					{
+						var pp:Vector.<Point> = CA[c];
+						if (pp.length<npath.length)
+							c=-1;
+						else
+						{
+							hasEqv=true;
+							for (j=npath.length-1; j>-1; j--)
+								if (pp.indexOf(npath[j])==-1)
+								{
+									hasEqv=false;
+									j=-1;
+								}
+							if (hasEqv) c=-1;
+						}
+					}
+					if (!hasEqv)	CA.push(npath);	// push back for next iteration
+				}
+				else if (nidx!=0)		// gone back to a not first point, discard
+				{}
+				else if (path.length>2)	// is a complete non trivial loop
+				{
+					var toAdd:Boolean = true;
+					for (j=R.length-1; j>-1; j--)
+						if (polyIsIn(path,R[j]))
+						{
+							R[j] = path;
+							toAdd = false;
+						}
+						else if (polyIsIn(R[j],path))
+						{
+							toAdd = false;
+						}
+					if (toAdd)	R.push(path);
+				}
+			}//endfor
+		}//endwhile
+		
+		debugStr= "seek t="+(getTimer()-timr)+" R.length="+R.length;
+		return R;
+	}//endfunction
+	
+	//=============================================================================================
+	// find cyclics, i.e. room floor areas 
 	//=============================================================================================
 	public var debugStr:String = "";
 	public function findIsolatedAreas():Vector.<Vector.<Point>>
@@ -2626,63 +2715,42 @@ class FloorPlan
 		var timr:uint = getTimer();
 		
 		//-------------------------------------------------------------------------------
-		function polyIsIn(poly:Vector.<Point>,bigPoly:Vector.<Point>):Boolean
-		{
-			for (var i:int=poly.length-1; i>-1; i--)
-				if (bigPoly.indexOf(poly[i])==-1 && !pointInPoly(poly[i],bigPoly))
-					return false;
-			return true;
-		}//endfunction
-		
-		//-------------------------------------------------------------------------------
+		var EdgeWalkCnts:Vector.<int> = new Vector.<int>();
+		for (var j:int=0; j<Walls.length; j++)
+			EdgeWalkCnts.push(0);
 		function seek(curJoint:Point,path:Vector.<Point>) : void
 		{
 			var i:int=0;
-			if (path.indexOf(curJoint)!=-1)
-			{
+			if (path.indexOf(curJoint)!=-1)	// if there is loop
+			{	
 				var lop:Vector.<Point> = path.slice(path.indexOf(curJoint));
 				if (lop.length>2)
 				{	
-					
 					for (i=R.length-1; i>-1; i--)
 					{
-						if (polyIsIn(R[i],lop))		// contains another smaller loop
-							return;
-						else if (polyIsIn(lop,R[i]))	// is being contained
+						if (polyIsIn(R[i],lop))		// has another smaller loop as result
+							return;					// discard this result
+						else if (polyIsIn(lop,R[i]))// is being contained
 							R.splice(i,1);			// remove bigger loop that contains it
 					}
-					
-					// binary insert longest loop at n shortest at 0
-					var p:int = 0;
-					var q:int = R.length-1;
-					while (p<=q)
-					{
-						var m:int = (p+q)/2;
-						if (R[m].length<lop.length)
-							p=m+1;
-						else
-							q=m-1;
-					}
-					R.splice(p,0,lop);	// insert at posn
+					R.push(lop);		// insert into results
 				}
 			}
-			else
+			else 
 			{
-				// walk all edges
-				var edges:Vector.<Wall> = connectedToJoint(curJoint);
 				path = path.slice();	// duplicate
 				path.push(curJoint);
 				
-				for (i=R.length-1; i>-1; i--)
-					if (polyIsIn(R[i],path))	// contains another existing smaller loop
-						return;					// prune off
-				
+				var edges:Vector.<Wall> = connectedToJoint(curJoint);
 				for (i=edges.length-1; i>-1; i--)
 				{
-					if (edges[i].joint1==curJoint)	
-						seek(edges[i].joint2,path);
-					else
-						seek(edges[i].joint1,path);
+					//if (EdgeWalkCnts[Walls.indexOf(edges[i])]<2)
+					{
+						if (edges[i].joint1==curJoint)
+							seek(edges[i].joint2,path);
+						else
+							seek(edges[i].joint1,path);
+					}
 				}
 			}
 		}//endfunction
@@ -2745,7 +2813,30 @@ class FloorPlan
 		R.push(P[0],P[1],P[2]);
 		return R;
 	}//endfunction
-
+	
+	//=======================================================================================
+	// test if poly is entirely within bigPoly
+	//=======================================================================================
+	public static function polyIsIn(poly:Vector.<Point>,bigPoly:Vector.<Point>):Boolean
+	{
+		// ----- test points within or on poly
+		for (var i:int=poly.length-1; i>-1; i--)
+			if (bigPoly.indexOf(poly[i])==-1 && !pointInPoly(poly[i],bigPoly))
+				return false;
+		
+		// ----- test edges within or on poly
+		for (i=poly.length-1; i>-1; i--)
+		{
+			var b:Point = poly[(i+1)%poly.length];
+			var a:Point = poly[i];
+			var isEdge:Boolean= bigPoly.indexOf(b)==(bigPoly.indexOf(a)+1)%bigPoly.length || 
+								bigPoly.indexOf(a)==(bigPoly.indexOf(b)+1)%bigPoly.length;
+			if (!isEdge && !edgeInPoly(a.x,a.y,b.x,b.y,bigPoly))
+				return false;
+		}
+		return true;
+	}//endfunction
+	
 	//=======================================================================================
 	// test if edge connecting 2 points is entirely in poly
 	//=======================================================================================
