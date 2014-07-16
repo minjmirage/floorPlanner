@@ -207,7 +207,7 @@ package
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
-			floorPlan.importData('{"Joints":[{"x":-250,"y":-395},{"x":249,"y":-396},{"x":250,"y":180},{"x":150,"y":180},{"x":50,"y":230},{"x":-50,"y":230},{"x":-150,"y":180},{"x":-250,"y":180},{"x":543,"y":-517},{"x":543,"y":89},{"x":249,"y":89},{"x":249,"y":-192},{"x":249,"y":-192},{"x":543,"y":-193},{"x":249,"y":-192},{"x":-250,"y":-343},{"x":-250,"y":-343},{"x":-524,"y":-343},{"x":-250,"y":-343},{"x":-627,"y":-269},{"x":-627,"y":-113},{"x":-527,"y":-27},{"x":-406,"y":-27},{"x":-406,"y":141},{"x":-250,"y":141},{"x":249,"y":-517},{"x":543,"y":-378},{"x":701,"y":-378},{"x":701,"y":-97},{"x":543,"y":-97},{"x":543,"y":89},{"x":701,"y":-97},{"x":-138.00000000000003,"y":-396},{"x":-138,"y":-707},{"x":-524,"y":-707},{"x":-524,"y":-343},{"x":-524,"y":-707}],"Walls":[{"j1":2,"w":20,"Doors":[],"j2":3},{"j1":3,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.22742261910502903,"dir":0.617154761789942}],"j2":4},{"j1":4,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.16500000000000004,"dir":0.69}],"j2":5},{"j1":5,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.15142261910502908,"dir":0.617154761789942}],"j2":6},{"j1":6,"w":20,"Doors":[],"j2":7},{"j1":2,"w":10,"Doors":[],"j2":10},{"j1":9,"w":10,"Doors":[],"j2":10},{"j1":1,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.3645320197044335,"dir":0.541871921182266}],"j2":11},{"j1":10,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.5444839857651245,"dir":0.3914590747330961}],"j2":11},{"j1":13,"w":10,"Doors":[],"j2":11},{"j1":0,"w":10,"Doors":[],"j2":15},{"j1":17,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.2247734199204044,"dir":0.5440496786546839}],"j2":19},{"j1":19,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.27884615384615385,"dir":0.4423076923076923}],"j2":20},{"j1":20,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.24911822040192444,"dir":0.5231477854550612}],"j2":21},{"j1":21,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.1859504132231405,"dir":0.5702479338842975}],"j2":22},{"j1":22,"w":10,"Doors":[],"j2":23},{"j1":7,"w":10,"Doors":[],"j2":24},{"j1":15,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.0578512396694215,"dir":0.2272727272727273}],"j2":24},{"j1":23,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.08012820512820518,"dir":0.8269230769230769}],"j2":24},{"j1":8,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.5289115646258504,"dir":0.4387755102040816}],"j2":25},{"j1":1,"w":10,"Doors":[],"j2":25},{"j1":8,"w":10,"Doors":[],"j2":26},{"j1":26,"w":10,"Doors":[],"j2":27},{"j1":27,"w":10,"Doors":[],"j2":28},{"j1":9,"w":10,"Doors":[],"j2":29},{"j1":13,"w":10,"Doors":[],"j2":29},{"j1":28,"w":10,"Doors":[],"j2":29},{"j1":0,"w":10,"Doors":[],"j2":32},{"j1":1,"w":10,"Doors":[],"j2":32},{"j1":32,"w":10,"Doors":[],"j2":33},{"j1":33,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.09974093264248704,"dir":0.33419689119170987},{"cls":"WindowDouble","pivot":0.5582901554404145,"dir":0.33419689119170987}],"j2":34},{"j1":18,"w":10,"Doors":[{"cls":"DoorSingleSliding","pivot":0.0967153284671533,"dir":0.7846715328467153}],"j2":17},{"j1":34,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.6112637362637362,"dir":0.3543956043956044}],"j2":17}],"Labels":[],"Furniture":[{"x":485,"scY":1.2464523664404727,"color":0,"y":-86,"cls":"Toilet","rot":89.70202789452766,"scX":1.2509692700746744},{"x":451,"scY":1,"color":0,"y":-163,"cls":"SinkRound","rot":0,"scX":1},{"x":442,"scY":1,"color":0,"y":37,"cls":"BathTub","rot":90.4262926392602,"scX":1},{"x":-217,"scY":1,"color":0,"y":71,"cls":"TVFlat","rot":-90.27906677101664,"scX":1},{"x":-164,"scY":1,"color":0,"y":-117,"cls":"TableSquare","rot":0,"scX":1},{"x":206,"scY":1,"color":0,"y":48,"cls":"Sofa4","rot":-89.94349530479464,"scX":1},{"x":-473,"scY":0.6855680212976787,"color":0,"y":-187,"cls":"Piano","rot":-118.87361735156438,"scX":0.6984775322209045},{"x":457,"scY":1,"color":0,"y":-410,"cls":"BedDouble","rot":-0.14365196037870476,"scX":1},{"x":634,"scY":1,"color":0,"y":-311,"cls":"TableL","rot":-179.86341913948408,"scX":1},{"x":54,"scY":1,"color":0,"y":-204,"cls":"TableOctagon","rot":0,"scX":1},{"x":-361,"scY":1,"color":0,"y":-285,"cls":"ArmChair","rot":0,"scX":1},{"x":-191,"scY":1,"color":0,"y":-462,"cls":"SinkKitchen","rot":90.04634954861659,"scX":1},{"x":-200,"scY":1,"color":0,"y":-645,"cls":"Stove","rot":89.86412658886046,"scX":1},{"x":-449,"scY":1,"color":0,"y":-592,"cls":"TableRect","rot":89.96651083627482,"scX":1}]}');
+			floorPlan.importData('{"Joints":[{"y":-395,"x":-250},{"y":-396,"x":249},{"y":180,"x":250},{"y":180,"x":150},{"y":230,"x":50},{"y":230,"x":-50},{"y":180,"x":-150},{"y":180,"x":-250},{"y":-517,"x":543},{"y":89,"x":543},{"y":89,"x":249},{"y":-192,"x":249},{"y":-192,"x":249},{"y":-193,"x":543},{"y":-192,"x":249},{"y":-343,"x":-250},{"y":-343,"x":-524},{"y":-269,"x":-627},{"y":-113,"x":-627},{"y":-27,"x":-527},{"y":-27,"x":-406},{"y":141,"x":-406},{"y":141,"x":-250},{"y":-517,"x":249},{"y":-378,"x":543},{"y":-378,"x":701},{"y":-97,"x":701},{"y":-97,"x":543},{"y":89,"x":543},{"y":-97,"x":701},{"y":-396,"x":-138.00000000000003},{"y":-707,"x":-138},{"y":-707,"x":-524},{"y":-343,"x":-524},{"y":-707,"x":-524}],"Furniture":[{"x":485,"scX":1.2509692700746744,"color":0,"scY":1.2464523664404727,"cls":"Toilet","y":-86,"rot":89.70202789452766},{"x":451,"scX":1,"color":0,"scY":1,"cls":"SinkRound","y":-163,"rot":0},{"x":442,"scX":1,"color":0,"scY":1,"cls":"BathTub","y":37,"rot":90.4262926392602},{"x":-217,"scX":1,"color":0,"scY":1,"cls":"TVFlat","y":71,"rot":-90.27906677101664},{"x":-164,"scX":1,"color":0,"scY":1,"cls":"TableSquare","y":-117,"rot":0},{"x":206,"scX":1,"color":0,"scY":1,"cls":"Sofa4","y":48,"rot":-89.94349530479464},{"x":-473,"scX":0.6984775322209045,"color":0,"scY":0.6855680212976787,"cls":"Piano","y":-187,"rot":-118.87361735156438},{"x":457,"scX":1,"color":0,"scY":1,"cls":"BedDouble","y":-410,"rot":-0.14365196037870476},{"x":634,"scX":1,"color":0,"scY":1,"cls":"TableL","y":-311,"rot":-179.86341913948408},{"x":54,"scX":1,"color":0,"scY":1,"cls":"TableOctagon","y":-204,"rot":0},{"x":-361,"scX":1,"color":0,"scY":1,"cls":"ArmChair","y":-285,"rot":0},{"x":-191,"scX":1,"color":0,"scY":1,"cls":"SinkKitchen","y":-462,"rot":90.04634954861659},{"x":-200,"scX":1,"color":0,"scY":1,"cls":"Stove","y":-645,"rot":89.86412658886046},{"x":-449,"scX":1,"color":0,"scY":1,"cls":"TableRect","y":-592,"rot":89.96651083627482}],"Labels":[],"Walls":[{"j2":3,"Doors":[],"j1":2,"w":20},{"j2":4,"Doors":[{"dir":0.617154761789942,"pivot":0.22742261910502903,"cls":"WindowSingle"}],"j1":3,"w":10},{"j2":5,"Doors":[{"dir":0.69,"pivot":0.16500000000000004,"cls":"WindowSingle"}],"j1":4,"w":10},{"j2":6,"Doors":[{"dir":0.617154761789942,"pivot":0.15142261910502908,"cls":"WindowSingle"}],"j1":5,"w":10},{"j2":7,"Doors":[],"j1":6,"w":20},{"j2":10,"Doors":[],"j1":2,"w":10},{"j2":10,"Doors":[],"j1":9,"w":10},{"j2":11,"Doors":[{"dir":0.541871921182266,"pivot":0.3645320197044335,"cls":"DoorSingleSwinging"}],"j1":1,"w":10},{"j2":11,"Doors":[{"dir":0.3914590747330961,"pivot":0.5444839857651245,"cls":"DoorSingleSwinging"}],"j1":10,"w":10},{"j2":11,"Doors":[],"j1":13,"w":10},{"j2":15,"Doors":[],"j1":0,"w":10},{"j2":17,"Doors":[{"dir":0.5440496786546839,"pivot":0.2247734199204044,"cls":"WindowSingle"}],"j1":16,"w":10},{"j2":18,"Doors":[{"dir":0.4423076923076923,"pivot":0.27884615384615385,"cls":"WindowSingle"}],"j1":17,"w":10},{"j2":19,"Doors":[{"dir":0.5231477854550612,"pivot":0.24911822040192444,"cls":"WindowSingle"}],"j1":18,"w":10},{"j2":20,"Doors":[{"dir":0.5702479338842975,"pivot":0.1859504132231405,"cls":"WindowSingle"}],"j1":19,"w":10},{"j2":21,"Doors":[],"j1":20,"w":10},{"j2":22,"Doors":[],"j1":7,"w":10},{"j2":22,"Doors":[{"dir":0.2272727272727273,"pivot":0.0578512396694215,"cls":"DoorSingleSwinging"}],"j1":15,"w":10},{"j2":22,"Doors":[{"dir":0.8269230769230769,"pivot":0.08012820512820518,"cls":"WindowDouble"}],"j1":21,"w":10},{"j2":23,"Doors":[{"dir":0.4387755102040816,"pivot":0.5289115646258504,"cls":"WindowDouble"}],"j1":8,"w":10},{"j2":23,"Doors":[],"j1":1,"w":10},{"j2":24,"Doors":[],"j1":8,"w":10},{"j2":25,"Doors":[],"j1":24,"w":10},{"j2":26,"Doors":[],"j1":25,"w":10},{"j2":27,"Doors":[],"j1":9,"w":10},{"j2":27,"Doors":[],"j1":13,"w":10},{"j2":27,"Doors":[],"j1":26,"w":10},{"j2":30,"Doors":[],"j1":0,"w":10},{"j2":30,"Doors":[],"j1":1,"w":10},{"j2":31,"Doors":[],"j1":30,"w":10},{"j2":32,"Doors":[{"dir":0.33419689119170987,"pivot":0.5582901554404145,"cls":"WindowDouble"},{"dir":0.33419689119170987,"pivot":0.09974093264248704,"cls":"WindowDouble"}],"j1":31,"w":10},{"j2":16,"Doors":[{"dir":0.7846715328467153,"pivot":0.0967153284671533,"cls":"DoorSingleSliding"}],"j1":15,"w":10},{"j2":16,"Doors":[{"dir":0.3543956043956044,"pivot":0.6112637362637362,"cls":"WindowDouble"}],"j1":32,"w":10}]}');
 			floorPlan.refresh();
 		}//endfunction
 		
@@ -540,7 +540,7 @@ package
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
-					//prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
+					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -2613,7 +2613,7 @@ class FloorPlan
 		{
 			tf = new TextField();
 			var tff:TextFormat = tf.defaultTextFormat;
-			tff.color = 0x999999;
+			tff.color = 0x000000;
 			tf.defaultTextFormat = tff;
 			tf.autoSize = "left";
 			tf.wordWrap = false;
@@ -2628,10 +2628,124 @@ class FloorPlan
 	}//endfunction
 	
 	//=============================================================================================
+	// find cyclics, by walking in tightest possible circles
+	//=============================================================================================
+	public function findIsolatedAreas():Vector.<Vector.<Point>>
+	{
+		var timr:uint = getTimer();
+		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
+		if (Walls.length==0)	return R;
+		
+		// ----- build adjacency list
+		var Adj:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
+		for (var j:int=0; j<Joints.length; j++)
+		{
+			var curJoint:Point = Joints[j];
+			var l:Vector.<Point> = new Vector.<Point>();
+			var edges:Vector.<Wall> = connectedToJoint(curJoint);
+			for (var i:int=edges.length-1; i>-1; i--)
+			{
+				if (edges[i].joint1==curJoint)	
+					l.push(edges[i].joint2);
+				else
+					l.push(edges[i].joint1);
+			}
+			Adj.push(l);
+		}
+		
+		// ----- function to register result iff unique
+		function addIfUnique(poly:Vector.<Point>):void
+		{
+			for (var i:int=R.length-1; i>-1; i--)
+			{
+				var r:Vector.<Point> = R[i];
+				if (r.length==poly.length)
+				{
+					var same:Boolean = true;
+					for (var j:int=poly.length-1; j>-1 && same; j--)
+						if (r.indexOf(poly[j])==-1)
+							same=false;
+					if (same) return;
+				}
+			}
+			
+			R.push(poly);
+		}//endfunction
+		
+		var s:String = "";
+		// ----- function to walk circle from edge, assume path.length>=2
+		function walkCircle(pathL:Vector.<Point>,pathR:Vector.<Point>):void
+		{
+			s+="pathL:"+pathL.length+"  pathR:"+pathR.length+"\n";
+			var hasL:Boolean = _walkStep(pathL,true);	// modifys pathL!
+			var hasR:Boolean = _walkStep(pathR,false);	// modifys pathR!
+			
+			if (!hasL && !hasR)	// no path
+			{}
+			else if (pathL[0]==pathL[pathL.length-1])	// left turn loop found
+			{
+				pathL.pop();
+				addIfUnique(pathL);	// push to result
+			}
+			else if (pathR[0]==pathR[pathR.length-1])	// right turn loop found
+			{
+				pathR.pop();
+				addIfUnique(pathR);	// push to result
+			}
+			else
+			{
+				walkCircle(pathL,pathR);	// continue walking L and R turns
+			}
+		}//endfunction
+		
+		function _walkStep(path:Vector.<Point>,turnLeft:Boolean=true):Boolean
+		{
+			var a:Point = path[path.length-2];	// prev walk point
+			var b:Point = path[path.length-1];	// current walk point
+			
+			if (Joints.indexOf(b)==-1)	return false;	// ERROR~~
+			var nxts:Vector.<Point> = Adj[Joints.indexOf(b)];
+			
+			if (nxts.length<=1)	return false;	// is a dead end
+			
+			var tightestTurn:Point = null;
+			for (var i:int=nxts.length-1; i>-1; i--)
+				if (nxts[i]!=a)					// prevent walking backwards
+				{
+					if (turnLeft)
+					{
+						if (tightestTurn==null ||
+							turnAngle(a,b,nxts[i])<turnAngle(a,b,tightestTurn))
+							tightestTurn = nxts[i];
+					}
+					else
+					{
+						if (tightestTurn==null ||
+							turnAngle(a,b,nxts[i])>turnAngle(a,b,tightestTurn))
+							tightestTurn = nxts[i];
+					}
+				}
+			path.push(tightestTurn);
+			return true;
+		}//endfunction
+		
+		// ----- walk all walls!
+		for (j=0; j<Walls.length; j++)
+		{
+			var wall:Wall = Walls[j];
+			walkCircle(Vector.<Point>([wall.joint1,wall.joint2]),Vector.<Point>([wall.joint1,wall.joint2]));
+		}
+		// so how to find isolated islands???
+		
+		debugStr= "seek t="+(getTimer()-timr)+" R.length="+R.length;
+		return R;
+	}//endfunction
+	
+	//=============================================================================================
 	// find cyclics, i.e. room floor areas 
 	//=============================================================================================
 	public var debugStr:String = "";
-	public function findIsolatedAreas():Vector.<Vector.<Point>>
+	public function findIsolatedAreasO():Vector.<Vector.<Point>>
 	{
 		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
 		
@@ -2800,6 +2914,27 @@ class FloorPlan
 	}//endfunction
 
 	//=======================================================================================
+	// returns angle of turn form by the 3 points
+	//=======================================================================================
+	public static function turnAngle(a:Point,b:Point,c:Point) : Number
+	{
+		var px:Number = b.x-a.x;
+		var py:Number = b.y-a.y;
+		var qx:Number = c.x-b.x;
+		var qy:Number = c.y-b.y;
+		var pl:Number = Math.sqrt(px*px+py*py);
+		px/=pl; py/=pl;
+		var ql:Number = Math.sqrt(qx*qx+qy*qy);
+		qx/=ql; qy/=ql;
+		var dp:Number = px*qx+py*qy;
+		if (dp<-1) 	dp =-1;
+		if (dp>1)	dp = 1;
+		var ang:Number = +Math.acos(dp); // in radians
+		if (px*qy-py*qx<0)	ang*=-1;
+		return ang;
+	}
+	
+	//=======================================================================================
 	// find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
 	// returns null for parrallel segs and point segments, does not detect end points
 	//=======================================================================================
@@ -2945,8 +3080,8 @@ class Wall extends Sprite
 
 class Item
 {
-	public var color:uint=0;
-	public var icon:Sprite=null;
+	public var color:uint=0;		// tint color
+	public var icon:Sprite=null;	// furniture icon mc
 	
 	public function Item(ico:Sprite):void
 	{
