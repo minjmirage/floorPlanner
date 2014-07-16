@@ -2086,8 +2086,19 @@ class FloorPlan
 			if (wall.joint1==jt)	wall.joint1=njt;
 			if (wall.joint2==jt)	wall.joint2=njt;
 			if (wall.joint1==wall.joint2)
-			{	// remove any 0 lengthwall
+			{	// remove any 0 length wall
 				removeWall(wall);
+			}
+			else
+			{	// remove duplicate wall
+				for (var j:int=Walls.length-1; j>-1; j--)
+					if (Walls[j]!=wall && 
+						(Walls[j].joint1==wall.joint1 && Walls[j].joint2==wall.joint2) || 
+						(Walls[j].joint1==wall.joint1 && Walls[j].joint2==wall.joint2))
+					{
+						j=-1;
+						removeWall(wall);
+					}
 			}
 		}
 	}//endfunction
