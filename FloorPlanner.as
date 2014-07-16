@@ -1,6 +1,7 @@
 package 
 {
 	import flash.display.Sprite;
+	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
@@ -285,6 +286,32 @@ package
 			var px:int = 0;
 			var py:int = topBar.height+5;
 			
+			function showFloorAreaProperties(area:FloorArea):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				menu = new DialogMenu(Lang.FloorProp.title.@txt+":"+int(area.area/100)/100+"m sq",
+										Vector.<String>([	Lang.FloorProp.flooring.@txt,
+															Lang.FloorProp.done.@txt]),
+										Vector.<Function>([	function():void 
+															{
+																showFloorTexMenu(function(f:int):void 
+																{
+																	area.flooring=f;
+																	floorPlan.refresh();
+																	showFloorAreaProperties(area);
+																});
+															},
+															showFurnitureMenu]));
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+			}//endfunction
+			// ---------------------------------------------------------------------
 			function showFurnitureProperties(itm:Item):void
 			{
 				if (menu!=null)
@@ -429,7 +456,29 @@ package
 				menu.y = py;
 				stage.addChild(menu);
 			}//endfunction
-								
+			// ---------------------------------------------------------------------
+			function showFloorTexMenu(callBack:Function):void
+			{
+				if (menu!=null)
+				{
+					if (menu.parent!=null) menu.parent.removeChild(menu);
+					px = menu.x;
+					py = menu.y;
+				}
+				var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+				for (var i:int=0; i<floorPlan.FloorPatterns.length; i++)
+				{
+					var s:Sprite = new Sprite();
+					s.addChild(new Bitmap(floorPlan.FloorPatterns[i]));
+					Icos.push(s);
+				}
+				menu = new IconsMenu(Icos,5,2,callBack);
+				menu.x = px;
+				menu.y = py;
+				stage.addChild(menu);
+				
+			}//endfunction
+			
 			floorPlan.selected = null;
 						
 			// ----- default editing logic
@@ -488,7 +537,7 @@ package
 					else if (floorPlan.selected is Item)
 					{	// ----- furniture shifting... 
 					}
-					else if (floorPlan.selected!=null)
+					else if (floorPlan.selected is FloorArea)
 					{	// ----- floor area selected
 					}
 					else 
@@ -532,9 +581,9 @@ package
 				{
 					showFurnitureProperties((Item)(floorPlan.selected));
 				}
-				else if (floorPlan.selected!=null)		// selected floor area
+				else if (floorPlan.selected is FloorArea)		// selected floor area
 				{
-					
+					showFloorAreaProperties((FloorArea)(floorPlan.selected));
 				}
 				else
 				{
@@ -892,6 +941,7 @@ class FloatingMenu extends Sprite		// to be extended
 	protected var Btns:Vector.<Sprite> = null;
 	protected var callBackFn:Function = null;
 	protected var overlay:Sprite = null;			// something on top to disable this
+	protected var mouseDownPt:Point = null;
 	
 	//===============================================================================================
 	// simpleton constructor, subclasses must initialize Btns and callBackFn
@@ -911,6 +961,7 @@ class FloatingMenu extends Sprite		// to be extended
 	protected function onMouseDown(ev:Event):void
 	{
 		if (stage==null) return;
+		mouseDownPt = new Point(this.mouseX,this.mouseY);
 		this.startDrag();
 	}//endfunction
 	
@@ -922,6 +973,9 @@ class FloatingMenu extends Sprite		// to be extended
 		if (stage==null) return;
 		this.stopDrag();
 		if (overlay!=null) return;
+		if (mouseDownPt==null)	return;	// mousedown somewhere else
+		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;
+		mouseDownPt = null;
 		if (Btns!=null)
 		for (var i:int=Btns.length-1; i>-1; i--)
 			if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
@@ -1694,7 +1748,7 @@ class FloorPlan
 	public var Joints:Vector.<Point>;
 	public var Walls:Vector.<Wall>;
 	public var Furniture:Vector.<Item>;			// list of furniture items already on the stage
-	public var floorAreas:Vector.<Sprite>;		// list of floor area sprites already on the stage
+	public var floorAreas:Vector.<FloorArea>;	// list of floor area sprites already on the stage
 	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
 	
 	public var selected:* = null;				// of Furniture or Joint or Wall
@@ -1712,7 +1766,7 @@ class FloorPlan
 		Walls = new Vector.<Wall>();
 		
 		Furniture = new Vector.<Item>();
-		floorAreas = new Vector.<Sprite>();
+		floorAreas = new Vector.<FloorArea>();
 		Labels = new Vector.<TextField>();
 		
 		jointsOverlay = new Sprite();
@@ -1773,6 +1827,7 @@ class FloorPlan
 		o.Walls = Walls;
 		o.Furniture = Furniture;
 		o.Labels = Labels;
+		o.floorAreas = floorAreas;
 		
 		function replacer(k,v):*
 		{
@@ -1792,6 +1847,12 @@ class FloorPlan
 				wo.w = (Wall)(v).thickness;
 				wo.Doors = (Wall)(v).Doors;
 				return wo;
+			}
+			else if (v is FloorArea)	// floor type
+			{
+				var flo:Object = new Object();
+				flo.flooring = (FloorArea)(v).flooring;
+				return flo;
 			}
 			else if (v is Item)	// furniture icons properties
 			{
@@ -1843,7 +1904,7 @@ class FloorPlan
 		
 		var o:Object = JSON.parse(dat);
 		
-		// ----- replace joints
+		// ----- replace joints -------------------------------------
 		Joints = new Vector.<Point>();
 		if (o.Joints!=null)
 		for (var i:int=o.Joints.length-1; i>-1; i--)
@@ -1852,7 +1913,7 @@ class FloorPlan
 			Joints.unshift(new Point(po.x,po.y));
 		}
 		
-		// ----- replace walls
+		// ----- replace walls --------------------------------------
 		while (Walls.length>0)					// clear off prev walls
 			overlay.removeChild(Walls.pop());
 		if (o.Walls!=null)
@@ -1871,7 +1932,7 @@ class FloorPlan
 			Walls.unshift(wall);
 		}
 		
-		// ----- replace furniture
+		// ----- replace furniture ----------------------------------
 		while (Furniture.length>0)				// clear off prev furniture
 		{
 			var itm:Item = Furniture.pop();
@@ -1892,7 +1953,7 @@ class FloorPlan
 			overlay.addChild(fur);
 		}
 		
-		// ----- replace text labels
+		// ----- replace text labels --------------------------------
 		while (Labels.length>0)
 			overlay.removeChild(Labels.pop());
 		if (o.Labels!=null)
@@ -1913,6 +1974,18 @@ class FloorPlan
 			Labels.push(tf);
 			overlay.addChild(tf);
 		}
+		// ----- replace flooring -----------------------------------
+		while (floorAreas.length>0)
+			overlay.removeChild(floorAreas.pop().icon);
+		if (o.floorAreas!=null)
+		for (i=o.floorAreas.length-1; i>-1; i--)	// add in new flooring
+		{
+			var flo:Object = o.floorAreas[i];
+			var fa:FloorArea = new FloorArea(flo.flooring);
+			floorAreas.push(fa);
+			overlay.addChildAt(fa.icon,0);
+		}
+		
 		refresh();
 	}//endfunction
 	
@@ -2169,14 +2242,14 @@ class FloorPlan
 		var A:Vector.<Vector.<Point>> = findIsolatedAreas();
 		while (floorAreas.length<A.length) 
 		{
-			var s:Sprite = new Sprite();
-			floorAreas.push(s);
-			overlay.addChildAt(s,0);
+			var fa:FloorArea = new FloorArea(floorAreas.length%FloorPatterns.length);
+			floorAreas.push(fa);
+			overlay.addChildAt(fa.icon,0);
 		}
 		while (floorAreas.length>A.length)
-			overlay.removeChild(floorAreas.pop());
+			overlay.removeChild(floorAreas.pop().icon);
 		for (i=A.length-1; i>-1; i--)	// draw for each floorArea
-			drawFloorArea(A[i],FloorPatterns[i%FloorPatterns.length],floorAreas[i]);
+			drawFloorArea(A[i],floorAreas[i]);
 		
 		// ----- redraw wall joint positions ----------------------------------
 		jointsOverlay.graphics.clear();
@@ -2379,6 +2452,14 @@ class FloorPlan
 					if (wall.Doors[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
 						selected = wall.Doors[i];
 			}
+		}
+		// ----- chk if floor area selected -----------------------------------
+		if (selected==null)
+		{
+			for (i=floorAreas.length-1; i>-1; i--)
+				if (floorAreas[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY) &&
+					floorAreas[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY,true))	// 
+					selected = floorAreas[i];
 		}
 	}//endfunction
 		
@@ -2605,28 +2686,23 @@ class FloorPlan
 	//=============================================================================================
 	// draws the given floor area poly with calculated area in m sq
 	//=============================================================================================
-	public function drawFloorArea(poly:Vector.<Point>,bmd:BitmapData,s:Sprite=null):Sprite
+	public function drawFloorArea(poly:Vector.<Point>,flr:FloorArea):void
 	{
-		if (poly==null || poly.length==0)	return null;
+		if (poly==null || poly.length==0)	return;
 		
-		if (s==null) s = new Sprite();
-		else 		s.graphics.clear();
-		
-		s.graphics.lineStyle(0,0x000000,1);
-		s.graphics.beginBitmapFill(bmd);
+		flr.icon.graphics.clear();
+		flr.icon.graphics.beginBitmapFill(FloorPatterns[flr.flooring]);
 		var i:int=poly.length-1;
-		s.graphics.moveTo(poly[i].x,poly[i].y);
+		flr.icon.graphics.moveTo(poly[i].x,poly[i].y);
 		for (; i>-1; i--)
-			s.graphics.lineTo(poly[i].x,poly[i].y);
+			flr.icon.graphics.lineTo(poly[i].x,poly[i].y);
 		i=poly.length-1;
-		s.graphics.lineTo(poly[i].x,poly[i].y);
-		s.graphics.endFill();
+		flr.icon.graphics.lineTo(poly[i].x,poly[i].y);
+		flr.icon.graphics.endFill();
 		
 		var tf:TextField = null;
-		if (s.numChildren>0 && s.getChildAt(0) is TextField) 
-		{
-			tf = (TextField)(s.removeChildAt(0));
-		}
+		if (flr.icon.numChildren>0 && flr.icon.getChildAt(0) is TextField) 
+			tf = (TextField)(flr.icon.removeChildAt(0));
 		else
 		{
 			tf = new TextField();
@@ -2637,12 +2713,12 @@ class FloorPlan
 			tf.wordWrap = false;
 			tf.selectable = false;
 		}
-		var bnds:Rectangle = s.getBounds(s);
-		tf.text = int(calculateArea(poly)/100)/100+"m sq.";
+		var bnds:Rectangle = flr.icon.getBounds(flr.icon);
+		flr.area = calculateArea(poly);
+		tf.text = int(flr.area/100)/100+"m sq.";
 		tf.x = bnds.left+(bnds.width-tf.width)/2;
 		tf.y = bnds.top+(bnds.height-tf.height)/2;
-		s.addChild(tf);
-		return s;
+		flr.icon.addChild(tf);
 	}//endfunction
 	
 	//=============================================================================================
@@ -3106,6 +3182,20 @@ class Wall extends Sprite
 								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
 								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
 	}//endfunction
+}//endclass
+
+class FloorArea
+{
+	public var label:String = "";	// the floor area label
+	public var area:Number = 0;		// area in m sq
+	public var flooring:int=0;		// the floor texture 
+	public var icon:Sprite=null;	// floor area icon mc
+	
+	public function FloorArea(floorType:int=0):void
+	{
+		icon = new Sprite();
+		flooring = floorType;
+	}
 }//endclass
 
 class Item

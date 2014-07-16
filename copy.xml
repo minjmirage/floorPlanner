@@ -10,6 +10,11 @@
 			<btn ico="MenuIcoUndo" txt="UNDO" />
 			<btn ico="MenuIcoRedo" txt="REDO" />
 		</TopBar>
+		<FloorProp>
+			<title txt="FLOOR AREA"/>
+			<flooring txt="CHANGE FLOORING"/>
+			<done txt="DONE"/>
+		</FloorProp>
 		<FurnitureProp>
 			<title txt="FURNITURE" />
 			<remove txt="REMOVE" />
@@ -90,6 +95,11 @@
 			<btn ico="MenuIcoUndo" txt="后退" />
 			<btn ico="MenuIcoRedo" txt="重做" />
 		</TopBar>
+		<FloorProp>
+			<title txt="面积"/>
+			<flooring txt="替换地面"/>
+			<done txt="取消"/>
+		</FloorProp>
 		<FurnitureProp>
 			<title txt="家具"/>
 			<remove txt="删除"/>
