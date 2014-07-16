@@ -540,7 +540,7 @@ package
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
-					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
+					//prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -2070,6 +2070,7 @@ class FloorPlan
 	//=============================================================================================
 	public function replaceJointWith(jt:Point,njt:Point):void
 	{
+		// ----- register joints
 		if (Joints.indexOf(njt)!=-1)	// njt already exists
 		{	// remove jt
 			if (Joints.indexOf(jt)!=-1)	Joints.splice(Joints.indexOf(jt),1);
@@ -2080,23 +2081,28 @@ class FloorPlan
 			else						Joints[Joints.indexOf(jt)]=njt;
 		}
 		
+		// ----- replace with new joint
 		for (var i:int=Walls.length-1; i>-1; i--)
 		{
 			var wall:Wall = Walls[i];
 			if (wall.joint1==jt)	wall.joint1=njt;
 			if (wall.joint2==jt)	wall.joint2=njt;
+		}
+		
+		// ----- remove 0 length and duplicates
+		for (i=Walls.length-1; i>-1; i--)
+		{
+			wall = Walls[i];
 			if (wall.joint1==wall.joint2)
 			{	// remove any 0 length wall
 				removeWall(wall);
 			}
 			else
 			{	// remove duplicate wall
-				for (var j:int=Walls.length-1; j>-1; j--)
-					if (Walls[j]!=wall && 
-						(Walls[j].joint1==wall.joint1 && Walls[j].joint2==wall.joint2) || 
-						(Walls[j].joint1==wall.joint1 && Walls[j].joint2==wall.joint2))
+				for (var j:int=i-1; j>-1; j--)
+					if ((Walls[j].joint1==wall.joint1 && Walls[j].joint2==wall.joint2) || 
+						(Walls[j].joint1==wall.joint2 && Walls[j].joint2==wall.joint1))
 					{
-						j=-1;
 						removeWall(wall);
 					}
 			}
@@ -2342,14 +2348,15 @@ class FloorPlan
 		
 		selected = null;	// clear prev selected
 		
+		// ----- chk if textfield selected ------------------------------------
 		for (i=Labels.length-1; i>-1; i--)
-			if (Labels[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+			if (Labels[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	
 				selected = Labels[i];
-		
+		// ----- chk if furniture selected ------------------------------------
 		if (selected==null)
 		{
 			for (i=Furniture.length-1; i>-1; i--)
-				if (Furniture[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+				if (Furniture[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// 
 					selected = Furniture[i];
 		
 			if (selected!=null)
@@ -2358,13 +2365,13 @@ class FloorPlan
 				overlay.addChild(furnitureCtrls);
 			}
 		}
-				
+		// ----- chk if near any joint ----------------------------------------
 		if (selected==null)
-			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any joint
-		
+			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);	
+		// ----- chk if near any wall -----------------------------------------
 		if (selected==null)
 		{
-			selected = nearestNonAdjWall(new Point(overlay.mouseX,overlay.mouseY), 10);		// chk if near any wall
+			selected = nearestNonAdjWall(new Point(overlay.mouseX,overlay.mouseY), 10);		
 			if (selected!=null)
 			{
 				var wall:Wall = selected as Wall;
@@ -2647,22 +2654,32 @@ class FloorPlan
 		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
 		if (Walls.length==0)	return R;
 		
-		// ----- build adjacency list
+		// ----- build adjacency list	(list of list of points)
 		var Adj:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
-		for (var j:int=0; j<Joints.length; j++)
+		for (var i:int=Joints.length-1; i>-1; i--)
+			Adj.push(new Vector.<Point>());		// init vectors
+		for (var j:int=0; j<Walls.length; j++)
 		{
-			var curJoint:Point = Joints[j];
-			var l:Vector.<Point> = new Vector.<Point>();
-			var edges:Vector.<Wall> = connectedToJoint(curJoint);
-			for (var i:int=edges.length-1; i>-1; i--)
-			{
-				if (edges[i].joint1==curJoint)	
-					l.push(edges[i].joint2);
-				else
-					l.push(edges[i].joint1);
-			}
-			Adj.push(l);
+			var wall:Wall = Walls[j];			// register adjacency
+			Adj[Joints.indexOf(wall.joint1)].push(wall.joint2);
+			Adj[Joints.indexOf(wall.joint2)].push(wall.joint1);
 		}
+		
+		// ----- remove hair from adj list
+		do {
+			var hair:Point = null;
+			for (j=Adj.length-1; j>-1 && hair==null; j--)
+				if (Adj[j].length==1)	// is hair if only one connection
+					hair=Joints[j];
+			if (hair!=null)
+			{
+				for (j=Adj.length-1; j>-1; j--)
+					if (Adj[j].indexOf(hair)!=-1)
+						Adj[j].splice(Adj[j].indexOf(hair),1);
+				if (Adj[Joints.indexOf(hair)].length>0)
+					Adj[Joints.indexOf(hair)].pop();
+			}
+		} while (hair!=null);
 		
 		// ----- function to register result iff unique
 		function addIfUnique(poly:Vector.<Point>):void
@@ -2743,7 +2760,9 @@ class FloorPlan
 		// ----- walk all walls!
 		for (j=0; j<Walls.length; j++)
 		{
-			var wall:Wall = Walls[j];
+			wall = Walls[j];
+			if (Adj[Joints.indexOf(wall.joint1)].indexOf(wall.joint2)!=-1 && // if can reach (not deleted hair)
+				Adj[Joints.indexOf(wall.joint2)].indexOf(wall.joint1)!=-1)
 			walkCircle(Vector.<Point>([wall.joint1,wall.joint2]),Vector.<Point>([wall.joint1,wall.joint2]));
 		}
 		// so how to find isolated islands???
