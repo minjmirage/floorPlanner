@@ -159,7 +159,7 @@ package
 				}
 				else if (i==5)	// save o image
 				{
-					//prn(floorPlan.exportData());
+					prn(floorPlan.exportData());
 					saveToJpg();
 				}
 				else if (i==6)	// undo
@@ -207,7 +207,7 @@ package
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
-			floorPlan.importData('{"Furniture":[{"cls":"Toilet","rot":89.70202789452766,"y":-86,"scX":1.2509692700746744,"scY":1.2464523664404727,"x":485},{"cls":"SinkRound","rot":0,"y":-163,"scX":1,"scY":1,"x":451},{"cls":"BathTub","rot":90.4262926392602,"y":37,"scX":1,"scY":1,"x":442},{"cls":"TVFlat","rot":-90.27906677101664,"y":71,"scX":1,"scY":1,"x":-217},{"cls":"TableSquare","rot":0,"y":-117,"scX":1,"scY":1,"x":-164},{"cls":"Sofa4","rot":-89.94349530479464,"y":48,"scX":1,"scY":1,"x":206},{"cls":"Piano","rot":-118.87361735156438,"y":-187,"scX":0.6984775322209045,"scY":0.6855680212976787,"x":-473},{"cls":"BedDouble","rot":-0.14365196037870476,"y":-401,"scX":1,"scY":1,"x":453}],"Walls":[{"j1":2,"Doors":[],"j2":3,"w":20},{"j1":3,"Doors":[{"cls":"WindowSingle","pivot":0.22742261910502903,"dir":0.617154761789942}],"j2":4,"w":10},{"j1":4,"Doors":[{"cls":"WindowSingle","pivot":0.16500000000000004,"dir":0.69}],"j2":5,"w":10},{"j1":5,"Doors":[{"cls":"WindowSingle","pivot":0.15142261910502908,"dir":0.617154761789942}],"j2":6,"w":10},{"j1":6,"Doors":[],"j2":7,"w":20},{"j1":2,"Doors":[],"j2":11,"w":10},{"j1":10,"Doors":[],"j2":11,"w":10},{"j1":1,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.3645320197044335,"dir":0.541871921182266}],"j2":12,"w":10},{"j1":11,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.5444839857651245,"dir":0.3914590747330961}],"j2":12,"w":10},{"j1":14,"Doors":[],"j2":12,"w":10},{"j1":8,"Doors":[],"j2":14,"w":10},{"j1":10,"Doors":[],"j2":14,"w":10},{"j1":0,"Doors":[],"j2":17,"w":10},{"j1":19,"Doors":[{"cls":"DoorSingleSliding","pivot":0.0967153284671533,"dir":0.7846715328467153}],"j2":17,"w":20},{"j1":19,"Doors":[{"cls":"WindowSingle","pivot":0.2247734199204044,"dir":0.5440496786546839}],"j2":21,"w":10},{"j1":21,"Doors":[{"cls":"WindowSingle","pivot":0.27884615384615385,"dir":0.4423076923076923}],"j2":22,"w":10},{"j1":22,"Doors":[{"cls":"WindowSingle","pivot":0.24911822040192444,"dir":0.5231477854550612}],"j2":23,"w":10},{"j1":23,"Doors":[{"cls":"WindowSingle","pivot":0.1859504132231405,"dir":0.5702479338842975}],"j2":24,"w":10},{"j1":24,"Doors":[],"j2":25,"w":10},{"j1":7,"Doors":[],"j2":26,"w":10},{"j1":17,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.0578512396694215,"dir":0.2272727272727273}],"j2":26,"w":10},{"j1":25,"Doors":[{"cls":"WindowDouble","pivot":0.08012820512820518,"dir":0.8269230769230769}],"j2":26,"w":10},{"j1":8,"Doors":[{"cls":"WindowDouble","pivot":0.5289115646258504,"dir":0.4387755102040816}],"j2":27,"w":10},{"j1":1,"Doors":[],"j2":27,"w":10},{"j1":0,"Doors":[{"cls":"DoorDoubleSwinging","pivot":0.25052731917835847,"dir":0.4448862062046374}],"j2":1,"w":10}],"Joints":[{"y":-396,"x":-250},{"y":-394,"x":249},{"y":180,"x":250},{"y":180,"x":150},{"y":230,"x":50},{"y":230,"x":-50},{"y":180,"x":-150},{"y":180,"x":-250},{"y":-517,"x":543},{"y":-394,"x":249},{"y":89,"x":543},{"y":89,"x":249},{"y":-192,"x":249},{"y":-192,"x":249},{"y":-192,"x":543},{"y":-192,"x":249},{"y":-192,"x":543},{"y":-343,"x":-250},{"y":-343,"x":-250},{"y":-343,"x":-524},{"y":-343,"x":-250},{"y":-269,"x":-627},{"y":-113,"x":-627},{"y":-27,"x":-527},{"y":-27,"x":-406},{"y":141,"x":-406},{"y":141,"x":-250},{"y":-517,"x":249},{"y":-394,"x":249}]}');
+			floorPlan.importData('{"Joints":[{"x":-250,"y":-395},{"x":249,"y":-396},{"x":250,"y":180},{"x":150,"y":180},{"x":50,"y":230},{"x":-50,"y":230},{"x":-150,"y":180},{"x":-250,"y":180},{"x":543,"y":-517},{"x":543,"y":89},{"x":249,"y":89},{"x":249,"y":-192},{"x":249,"y":-192},{"x":543,"y":-193},{"x":249,"y":-192},{"x":-250,"y":-343},{"x":-250,"y":-343},{"x":-524,"y":-343},{"x":-250,"y":-343},{"x":-627,"y":-269},{"x":-627,"y":-113},{"x":-527,"y":-27},{"x":-406,"y":-27},{"x":-406,"y":141},{"x":-250,"y":141},{"x":249,"y":-517},{"x":543,"y":-378},{"x":701,"y":-378},{"x":701,"y":-97},{"x":543,"y":-97},{"x":543,"y":89},{"x":701,"y":-97},{"x":-138.00000000000003,"y":-396},{"x":-138,"y":-707},{"x":-524,"y":-707},{"x":-524,"y":-343},{"x":-524,"y":-707}],"Walls":[{"j1":2,"w":20,"Doors":[],"j2":3},{"j1":3,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.22742261910502903,"dir":0.617154761789942}],"j2":4},{"j1":4,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.16500000000000004,"dir":0.69}],"j2":5},{"j1":5,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.15142261910502908,"dir":0.617154761789942}],"j2":6},{"j1":6,"w":20,"Doors":[],"j2":7},{"j1":2,"w":10,"Doors":[],"j2":10},{"j1":9,"w":10,"Doors":[],"j2":10},{"j1":1,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.3645320197044335,"dir":0.541871921182266}],"j2":11},{"j1":10,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.5444839857651245,"dir":0.3914590747330961}],"j2":11},{"j1":13,"w":10,"Doors":[],"j2":11},{"j1":0,"w":10,"Doors":[],"j2":15},{"j1":17,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.2247734199204044,"dir":0.5440496786546839}],"j2":19},{"j1":19,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.27884615384615385,"dir":0.4423076923076923}],"j2":20},{"j1":20,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.24911822040192444,"dir":0.5231477854550612}],"j2":21},{"j1":21,"w":10,"Doors":[{"cls":"WindowSingle","pivot":0.1859504132231405,"dir":0.5702479338842975}],"j2":22},{"j1":22,"w":10,"Doors":[],"j2":23},{"j1":7,"w":10,"Doors":[],"j2":24},{"j1":15,"w":10,"Doors":[{"cls":"DoorSingleSwinging","pivot":0.0578512396694215,"dir":0.2272727272727273}],"j2":24},{"j1":23,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.08012820512820518,"dir":0.8269230769230769}],"j2":24},{"j1":8,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.5289115646258504,"dir":0.4387755102040816}],"j2":25},{"j1":1,"w":10,"Doors":[],"j2":25},{"j1":8,"w":10,"Doors":[],"j2":26},{"j1":26,"w":10,"Doors":[],"j2":27},{"j1":27,"w":10,"Doors":[],"j2":28},{"j1":9,"w":10,"Doors":[],"j2":29},{"j1":13,"w":10,"Doors":[],"j2":29},{"j1":28,"w":10,"Doors":[],"j2":29},{"j1":0,"w":10,"Doors":[],"j2":32},{"j1":1,"w":10,"Doors":[],"j2":32},{"j1":32,"w":10,"Doors":[],"j2":33},{"j1":33,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.09974093264248704,"dir":0.33419689119170987},{"cls":"WindowDouble","pivot":0.5582901554404145,"dir":0.33419689119170987}],"j2":34},{"j1":18,"w":10,"Doors":[{"cls":"DoorSingleSliding","pivot":0.0967153284671533,"dir":0.7846715328467153}],"j2":17},{"j1":34,"w":10,"Doors":[{"cls":"WindowDouble","pivot":0.6112637362637362,"dir":0.3543956043956044}],"j2":17}],"Labels":[],"Furniture":[{"x":485,"scY":1.2464523664404727,"color":0,"y":-86,"cls":"Toilet","rot":89.70202789452766,"scX":1.2509692700746744},{"x":451,"scY":1,"color":0,"y":-163,"cls":"SinkRound","rot":0,"scX":1},{"x":442,"scY":1,"color":0,"y":37,"cls":"BathTub","rot":90.4262926392602,"scX":1},{"x":-217,"scY":1,"color":0,"y":71,"cls":"TVFlat","rot":-90.27906677101664,"scX":1},{"x":-164,"scY":1,"color":0,"y":-117,"cls":"TableSquare","rot":0,"scX":1},{"x":206,"scY":1,"color":0,"y":48,"cls":"Sofa4","rot":-89.94349530479464,"scX":1},{"x":-473,"scY":0.6855680212976787,"color":0,"y":-187,"cls":"Piano","rot":-118.87361735156438,"scX":0.6984775322209045},{"x":457,"scY":1,"color":0,"y":-410,"cls":"BedDouble","rot":-0.14365196037870476,"scX":1},{"x":634,"scY":1,"color":0,"y":-311,"cls":"TableL","rot":-179.86341913948408,"scX":1},{"x":54,"scY":1,"color":0,"y":-204,"cls":"TableOctagon","rot":0,"scX":1},{"x":-361,"scY":1,"color":0,"y":-285,"cls":"ArmChair","rot":0,"scX":1},{"x":-191,"scY":1,"color":0,"y":-462,"cls":"SinkKitchen","rot":90.04634954861659,"scX":1},{"x":-200,"scY":1,"color":0,"y":-645,"cls":"Stove","rot":89.86412658886046,"scX":1},{"x":-449,"scY":1,"color":0,"y":-592,"cls":"TableRect","rot":89.96651083627482,"scX":1}]}');
 			floorPlan.refresh();
 		}//endfunction
 		
@@ -285,7 +285,7 @@ package
 			var px:int = 0;
 			var py:int = topBar.height+5;
 			
-			function showFurnitureProperties(fur:Sprite):void
+			function showFurnitureProperties(itm:Item):void
 			{
 				if (menu!=null)
 				{
@@ -293,12 +293,12 @@ package
 					px = menu.x;
 					py = menu.y;
 				}
-				menu = new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(fur),
+				menu = new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(itm.icon),
 										Vector.<String>([	Lang.FurnitureProp.remove.@txt,
 															Lang.FurnitureProp.done.@txt]),
 										Vector.<Function>([	function():void 
 															{
-																floorPlan.removeFurniture(fur);
+																floorPlan.removeFurniture(itm);
 																showFurnitureMenu();
 															},
 															showFurnitureMenu]));
@@ -485,8 +485,11 @@ package
 						floorPlan.selected.x += grid.mouseX - prevMousePt.x;
 						floorPlan.selected.y += grid.mouseY - prevMousePt.y;
 					}
-					else if (floorPlan.selected!=null)
+					else if (floorPlan.selected is Item)
 					{	// ----- furniture shifting... 
+					}
+					else if (floorPlan.selected!=null)
+					{	// ----- floor area selected
 					}
 					else 
 					{	// ----- shift grid background
@@ -523,17 +526,21 @@ package
 				else if (floorPlan.selected is TextField)	// selected a label
 				{
 					(TextField)(floorPlan.selected).background = true;
-					showLabelProperties(floorPlan.selected);
+					showLabelProperties((TextField)(floorPlan.selected));
 				}
-				else if (floorPlan.selected!=null)		// selected a furniture
+				else if (floorPlan.selected is Item)		// selected a furniture
 				{
-					showFurnitureProperties(floorPlan.selected);
+					showFurnitureProperties((Item)(floorPlan.selected));
+				}
+				else if (floorPlan.selected!=null)		// selected floor area
+				{
+					
 				}
 				else
 				{
 					showFurnitureMenu();
 					floorPlan.refresh();
-					prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
+					//prn("floorPlan.selected="+floorPlan.selected+"   "+floorPlan.debugStr);
 				}
 			}
 			// ----------------------------------------------------------------
@@ -1686,7 +1693,7 @@ class FloorPlan
 {
 	public var Joints:Vector.<Point>;
 	public var Walls:Vector.<Wall>;
-	public var Furniture:Vector.<Sprite>;		// list of furniture sprite already on the stage
+	public var Furniture:Vector.<Item>;			// list of furniture items already on the stage
 	public var floorAreas:Vector.<Sprite>;		// list of floor area sprites already on the stage
 	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
 	
@@ -1704,7 +1711,7 @@ class FloorPlan
 		Joints = new Vector.<Point>();
 		Walls = new Vector.<Wall>();
 		
-		Furniture = new Vector.<Sprite>();
+		Furniture = new Vector.<Item>();
 		floorAreas = new Vector.<Sprite>();
 		Labels = new Vector.<TextField>();
 		
@@ -1749,8 +1756,10 @@ class FloorPlan
 				
 		// ----- remove furniture
 		while (Furniture.length>0)				// clear off prev furniture
-			overlay.removeChild(Furniture.pop());
-		
+		{
+			var itm:Item = Furniture.pop();
+			overlay.removeChild(itm.icon);
+		}
 		refresh();
 	}//endfunction
 	
@@ -1784,15 +1793,16 @@ class FloorPlan
 				wo.Doors = (Wall)(v).Doors;
 				return wo;
 			}
-			else if (v is Sprite)	// furniture icons properties
+			else if (v is Item)	// furniture icons properties
 			{
 				var fo:Object = new Object();
-				fo.cls = getQualifiedClassName(v);
-				fo.x = v.x;
-				fo.y = v.y;
-				fo.rot = v.rotation;
-				fo.scX = v.scaleX;
-				fo.scY = v.scaleY;
+				fo.cls = getQualifiedClassName((Item)(v).icon);
+				fo.color = (Item)(v).color;
+				fo.x = (Item)(v).icon.x;
+				fo.y = (Item)(v).icon.y;
+				fo.rot = (Item)(v).icon.rotation;
+				fo.scX = (Item)(v).icon.scaleX;
+				fo.scY = (Item)(v).icon.scaleY;
 				return fo;
 			}
 			else if(v is Point)		// so only x,y vals are converted
@@ -1863,7 +1873,10 @@ class FloorPlan
 		
 		// ----- replace furniture
 		while (Furniture.length>0)				// clear off prev furniture
-			overlay.removeChild(Furniture.pop());
+		{
+			var itm:Item = Furniture.pop();
+			overlay.removeChild(itm.icon);
+		}
 		if (o.Furniture!=null)
 		for (i=o.Furniture.length-1; i>-1; i--)		// add in new walls
 		{
@@ -1874,7 +1887,8 @@ class FloorPlan
 			fur.rotation = fo.rot;
 			fur.scaleX = fo.scX;
 			fur.scaleY = fo.scY;
-			Furniture.unshift(fur);
+			itm = new Item(fur);
+			Furniture.unshift(itm);
 			overlay.addChild(fur);
 		}
 		
@@ -2265,7 +2279,7 @@ class FloorPlan
 	//=============================================================================================
 	public function addFurniture(fu:Sprite):void
 	{
-		Furniture.push(fu);
+		Furniture.push(new Item(fu));
 		overlay.addChild(fu);
 		
 		// ----- hack to start dragging
@@ -2289,15 +2303,15 @@ class FloorPlan
 	//=============================================================================================
 	// adds a furniture icon to floorplan
 	//=============================================================================================
-	public function removeFurniture(fu:Sprite):void
+	public function removeFurniture(itm:Item):void
 	{
 		if (furnitureCtrls!=null)
 		{
 			furnitureCtrls.parent.removeChild(furnitureCtrls);		// clear off furniture transform controls
 			furnitureCtrls = null;
 		}
-		if (Furniture.indexOf(fu)!=-1)	Furniture.splice(Furniture.indexOf(fu),1);
-		if (fu.parent!=null)			fu.parent.removeChild(fu);
+		if (Furniture.indexOf(itm)!=-1)	Furniture.splice(Furniture.indexOf(itm),1);
+		if (itm.icon.parent!=null)			itm.icon.parent.removeChild(itm.icon);
 	}//endfunction
 	
 	//=============================================================================================
@@ -2324,12 +2338,12 @@ class FloorPlan
 		if (selected==null)
 		{
 			for (i=Furniture.length-1; i>-1; i--)
-				if (Furniture[i].hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
+				if (Furniture[i].icon.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	// chk if on furniture
 					selected = Furniture[i];
 		
 			if (selected!=null)
 			{
-				furnitureCtrls = furnitureTransformControls(selected);
+				furnitureCtrls = furnitureTransformControls(selected.icon);
 				overlay.addChild(furnitureCtrls);
 			}
 		}
@@ -2566,7 +2580,7 @@ class FloorPlan
 		var W:Vector.<Wall> = new Vector.<Wall>();
 		for (var i:int=Walls.length-1; i>-1; i--)
 			if (Walls[i].joint1==pt || Walls[i].joint2==pt)
-				W.push(Walls[i]);
+				W.unshift(Walls[i]);
 		return W;
 	}//endfunction
 	
@@ -2613,95 +2627,6 @@ class FloorPlan
 		return s;
 	}//endfunction
 	
-	
-	//=============================================================================================
-	// find cyclics, i.e. room floor areas using breath first search
-	//=============================================================================================
-	public function findIsolatedAreasN():Vector.<Vector.<Point>>
-	{
-		var timr:uint = getTimer();
-		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
-		
-		//-------------------------------------------------------------------------------
-		var Adj:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
-		for (var j:int=0; j<Joints.length; j++)
-		{
-			var curJoint:Point = Joints[j];
-			var l:Vector.<Point> = new Vector.<Point>();
-			var edges:Vector.<Wall> = connectedToJoint(curJoint);
-			for (var i:int=edges.length-1; i>-1; i--)
-			{
-				if (edges[i].joint1==curJoint)	
-					l.push(edges[i].joint2);
-				else
-					l.push(edges[i].joint1);
-			}
-			Adj.push(l);
-		}
-		
-		// ----- init search from all vertices
-		var CA:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();
-		for (i=Joints.length-1; i>-1; i--)
-			CA.push(Vector.<Point>([Joints[i]]));
-		
-		// ----- start breath first search from all vertices
-		while (CA.length>0)
-		{
-			var path:Vector.<Point> = CA.shift();
-			curJoint = path[path.length-1];
-			var nxts:Vector.<Point> = Adj[Joints.indexOf(curJoint)];
-			for (i=nxts.length-1; i>-1; i--)
-			{
-				var npt:Point = nxts[i];
-				var nidx:int=path.indexOf(npt);
-				if (nidx==-1)			// unvisited point, add to back of Q 
-				{
-					var npath:Vector.<Point> = path.slice();
-					npath.push(npt);
-					var hasEqv:Boolean = false;
-					for (var c:int=CA.length-1; c>-1; c--)
-					{
-						var pp:Vector.<Point> = CA[c];
-						if (pp.length<npath.length)
-							c=-1;
-						else
-						{
-							hasEqv=true;
-							for (j=npath.length-1; j>-1; j--)
-								if (pp.indexOf(npath[j])==-1)
-								{
-									hasEqv=false;
-									j=-1;
-								}
-							if (hasEqv) c=-1;
-						}
-					}
-					if (!hasEqv)	CA.push(npath);	// push back for next iteration
-				}
-				else if (nidx!=0)		// gone back to a not first point, discard
-				{}
-				else if (path.length>2)	// is a complete non trivial loop
-				{
-					var toAdd:Boolean = true;
-					for (j=R.length-1; j>-1; j--)
-						if (polyIsIn(path,R[j]))
-						{
-							R[j] = path;
-							toAdd = false;
-						}
-						else if (polyIsIn(R[j],path))
-						{
-							toAdd = false;
-						}
-					if (toAdd)	R.push(path);
-				}
-			}//endfor
-		}//endwhile
-		
-		debugStr= "seek t="+(getTimer()-timr)+" R.length="+R.length;
-		return R;
-	}//endfunction
-	
 	//=============================================================================================
 	// find cyclics, i.e. room floor areas 
 	//=============================================================================================
@@ -2715,9 +2640,6 @@ class FloorPlan
 		var timr:uint = getTimer();
 		
 		//-------------------------------------------------------------------------------
-		var EdgeWalkCnts:Vector.<int> = new Vector.<int>();
-		for (var j:int=0; j<Walls.length; j++)
-			EdgeWalkCnts.push(0);
 		function seek(curJoint:Point,path:Vector.<Point>) : void
 		{
 			var i:int=0;
@@ -2740,19 +2662,18 @@ class FloorPlan
 			{
 				path = path.slice();	// duplicate
 				path.push(curJoint);
-				
+								
 				var edges:Vector.<Wall> = connectedToJoint(curJoint);
 				for (i=edges.length-1; i>-1; i--)
 				{
-					//if (EdgeWalkCnts[Walls.indexOf(edges[i])]<2)
-					{
-						if (edges[i].joint1==curJoint)
-							seek(edges[i].joint2,path);
-						else
-							seek(edges[i].joint1,path);
-					}
-				}
-			}
+					var e:Wall = edges[i];
+					var jt:Point = null;
+					if (e.joint1==curJoint)	jt = e.joint2;
+					else					jt = e.joint1;
+					if (path.length<2 || path[path.length-2]!=jt)	// not walking back
+						seek(jt,path);
+				}//endfor
+			}//endelse
 		}//endfunction
 		
 		seek(Joints[0],new Vector.<Point>());
@@ -3020,6 +2941,17 @@ class Wall extends Sprite
 								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
 								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
 	}//endfunction
+}//endclass
+
+class Item
+{
+	public var color:uint=0;
+	public var icon:Sprite=null;
+	
+	public function Item(ico:Sprite):void
+	{
+		icon = ico;
+	}
 }//endclass
 
 class Door
