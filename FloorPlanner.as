@@ -340,6 +340,7 @@ package
 				for (var i:int=floorPlan.Walls.length-1; i>-1; i--)
 					if (floorPlan.Walls[i].Doors.indexOf(door)!=-1)
 						wall = floorPlan.Walls[i];
+				var wallW:Number = wall.joint1.subtract(wall.joint2).length/100;
 				if (menu!=null)
 				{
 					if (menu.parent!=null) menu.parent.removeChild(menu);
@@ -347,25 +348,31 @@ package
 					py = menu.y;
 				}
 				menu = new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
-										Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*100)/100+"]",
+										Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*wallW*100)/100+"]",
 															Lang.DoorProp.flip.@txt,
 															Lang.DoorProp.remove.@txt,
 															Lang.DoorProp.done.@txt]),
-										Vector.<Function>([	function(val:String):void 
+										Vector.<Function>([	function(val:String):void 	// change door length
 															{
 																if (door.dir<0)
-																	door.dir = -Math.min(1,Math.max(0.01,Number(val)));
+																	door.dir = -Math.min(1,Math.max(0.01,Number(val)/wallW));
 																else
-																	door.dir = Math.min(1,Math.max(0.01,Number(val)));
+																	door.dir = Math.min(1,Math.max(0.01,Number(val)/wallW));
 																floorPlan.refresh();
 															},
-															function():void 
+															function():void 			// swap door dir
+															{
+																door.pivot += door.dir;
+																door.dir*=-1;
+																floorPlan.refresh();
+															},
+															function():void 			// remove door
 															{
 																wall.removeDoor(door);
 																floorPlan.drawWall(wall);
 																showFurnitureMenu();
 															},
-															showFurnitureMenu]));
+															showFurnitureMenu]));		// done
 				menu.x = px;
 				menu.y = py;
 				stage.addChild(menu);
@@ -512,6 +519,7 @@ package
 								floorPlan.createWall(snapW.joint1, selJ);
 								floorPlan.createWall(snapW.joint2, selJ);
 								floorPlan.selected = null;
+								mouseDownPt = new Vector3D(); // stopDrag
 							}
 						}
 						floorPlan.refresh();
