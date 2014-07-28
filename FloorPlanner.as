@@ -422,7 +422,7 @@ package
 			}//endfunction
 			
 			floorPlan.selected = null;
-						
+			
 			// ----- default editing logic
 			var snapDist:Number = 10;
 			var prevMousePt:Point = new Point(0,0);
@@ -1936,7 +1936,7 @@ class FloorPlan
 		{
 			var flo:Object = o.floorAreas[i];
 			var fa:FloorArea = new FloorArea(flo.flooring);
-			floorAreas.push(fa);
+			floorAreas.unshift(fa);		// order is important
 			overlay.addChildAt(fa.icon,0);
 		}
 		
@@ -2429,6 +2429,7 @@ class FloorPlan
 	{
 		var ctrls:Sprite = new Sprite();
 		
+		// --------------------------------------------------------------------
 		function drawCtrls():void
 		{
 			var rot:Number = targ.rotation;
@@ -2444,7 +2445,7 @@ class FloorPlan
 			drawI(ctrls,bnds.right+marg,bnds.top,bnds.right+marg,bnds.bottom,marg*2);
 			drawI(ctrls,bnds.left,bnds.bottom+marg,bnds.right,bnds.bottom+marg,marg*2);
 			drawI(ctrls,bnds.left,bnds.top,bnds.right,bnds.bottom,marg*2,true);
-			ctrls.graphics.beginFill(0x666666,1);
+			ctrls.graphics.beginFill(0x000000,1);
 			ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
 			ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
 			ctrls.graphics.endFill();
@@ -2455,6 +2456,7 @@ class FloorPlan
 		}
 		drawCtrls();
 		
+		// --------------------------------------------------------------------
 		var mouseDownPt:Point=null;
 		var mode:String = "";
 		var oPosn:Vector3D = null;	// {x,y,0,rotation}
@@ -2480,12 +2482,20 @@ class FloorPlan
 				var angDiff:Number = Math.acos(pvx*qvx+pvy*qvy);
 				if (pvx*qvy-pvy*qvx<0)	angDiff*=-1;
 				targ.rotation = oPosn.w+angDiff/Math.PI*180;
+				
+				// ----- scale as you rotate
+				var cd:Number = Math.sqrt((ctrls.parent.mouseX-targ.x)*(ctrls.parent.mouseX-targ.x) + (ctrls.parent.mouseY-targ.y)*(ctrls.parent.mouseY-targ.y));
+				var od:Number = Math.sqrt((mouseDownPt.x-targ.x)*(mouseDownPt.x-targ.x) + (mouseDownPt.y-targ.y)*(mouseDownPt.y-targ.y));
+				var sc:Number = cd/od;
+				targ.scaleX = oScale.x*sc;
+				targ.scaleY = oScale.y*sc;
+				drawCtrls();
 			}
 			else if (mode=="scaleX" || mode=="scaleY")
 			{
 				var opt:Point = mouseDownPt.subtract(new Point(ctrls.x,ctrls.y));
 				var mpt:Point = new Point(ctrls.parent.mouseX-ctrls.x,ctrls.parent.mouseY-ctrls.y);
-				var sc:Number = mpt.length/opt.length;
+				sc = mpt.length/opt.length;
 				if (mode=="scaleX")	targ.scaleX = oScale.x*sc;
 				if (mode=="scaleY")	targ.scaleY = oScale.y*sc;
 				drawCtrls();
@@ -2496,11 +2506,12 @@ class FloorPlan
 			ctrls.y = targ.y;
 		}//endfunction
 		
+		// --------------------------------------------------------------------
 		function mouseDownHandler(ev:Event):void
 		{
-			mouseDownPt = new Point(ctrls.parent.mouseX,ctrls.parent.mouseY);
-			oPosn = new Vector3D(targ.x,targ.y,0,targ.rotation);
-			oScale = new Point(targ.scaleX,targ.scaleY);
+			mouseDownPt = new Point(ctrls.parent.mouseX,ctrls.parent.mouseY);	// parent coords
+			oPosn = new Vector3D(targ.x,targ.y,0,targ.rotation);	// present position
+			oScale = new Point(targ.scaleX,targ.scaleY);			// present scale 
 			var bnds:Rectangle = targ.getBounds(targ);
 			bnds.x *= targ.scaleX;
 			bnds.width *= targ.scaleX;
@@ -2517,11 +2528,13 @@ class FloorPlan
 				mode = "rotate";
 		}//endfunction
 		
+		// --------------------------------------------------------------------
 		function mouseUpHandler(ev:Event):void
 		{
 			mode = "";
 		}//endfunction
 		
+		// --------------------------------------------------------------------
 		function removeHandler(ev:Event):void
 		{
 			ctrls.removeEventListener(Event.REMOVED_FROM_STAGE,removeHandler);
@@ -2559,7 +2572,7 @@ class FloorPlan
 		s.graphics.endFill();
 		
 		// ----- draw lines
-		s.graphics.lineStyle(0,0x666666,1);
+		s.graphics.lineStyle(0,0x000000,1);
 		s.graphics.moveTo(ax-uy*w,ay+ux*w);
 		s.graphics.lineTo(ax+uy*w,ay-ux*w);
 		s.graphics.moveTo(bx-uy*w,by+ux*w);
@@ -2575,6 +2588,7 @@ class FloorPlan
 			tf.autoSize = "left";
 			tf.selectable = false;
 			tf.text = (int(vl)/100)+"m";
+			tf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
 			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
 			bmp.bitmapData.draw(tf,null,null,null,null,true);
 			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
@@ -2650,7 +2664,7 @@ class FloorPlan
 		if (poly==null || poly.length==0)	return;
 		
 		flr.icon.graphics.clear();
-		flr.icon.graphics.beginBitmapFill(FloorPatterns[flr.flooring]);
+		flr.icon.graphics.beginBitmapFill(FloorPatterns[flr.flooring]);	// pattern type
 		var i:int=poly.length-1;
 		flr.icon.graphics.moveTo(poly[i].x,poly[i].y);
 		for (; i>-1; i--)
@@ -2671,6 +2685,7 @@ class FloorPlan
 			tf.autoSize = "left";
 			tf.wordWrap = false;
 			tf.selectable = false;
+			tf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
 		}
 		var bnds:Rectangle = flr.icon.getBounds(flr.icon);
 		flr.area = calculateArea(poly);

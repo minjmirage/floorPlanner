@@ -102,32 +102,32 @@
 		<FloorProp>
 			<title txt="面积"/>
 			<flooring txt="替换地面"/>
-			<done txt="取消"/>
+			<done txt="确认"/>
 		</FloorProp>
 		<FurnitureProp>
 			<title txt="家具"/>
 			<remove txt="删除"/>
-			<done txt="取消"/>
+			<done txt="确认"/>
 		</FurnitureProp>
 		<DoorProp>
 			<title txt="门"/>
 			<width txt="宽度"/>
 			<flip txt="左右调换"/>
 			<remove txt="删除"/>
-			<done txt="取消"/>
+			<done txt="确认"/>
 		</DoorProp>
 		<WallProp>
 			<title txt="墙"/>
 			<thickness txt="宽度"/>
 			<remove txt="删除"/>
-			<done txt="取消"/>
+			<done txt="确认"/>
 		</WallProp>
 		<LabelProp>
 			<title txt="文字"/>
 			<size txt="字体大小" />
 			<color txt="字体颜色" />
 			<remove txt="删除"/>
-			<done txt="取消"/>
+			<done txt="确认"/>
 		</LabelProp>
 		<SaveLoad>
 			<NewDocument ico="MenuIcoNew" txt="新建" />
