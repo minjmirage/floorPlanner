@@ -1,6 +1,7 @@
 package 
 {
 	import flash.display.Sprite;
+	import flash.display.MovieClip;
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.events.Event;
@@ -217,18 +218,7 @@ package
 		//=============================================================================================
 		private function showSaveLoadMenu():void
 		{
-			var px:int = stage.stageWidth;
-			var py:int = topBar.height+5;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new SaveLoadMenu(floorPlan);
-			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
-			menu.y = py;
-			addChild(menu);
+			replaceMenu(new SaveLoadMenu(floorPlan));
 		}//endfunction
 		
 		//=============================================================================================
@@ -236,22 +226,43 @@ package
 		//=============================================================================================
 		private function showFurnitureMenu():void
 		{
-			var px:int = stage.stageWidth;
-			var py:int = topBar.height+5;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new AddFurnitureMenu(Lang.Items[0].item,floorPlan,function(idx:int):void
+			replaceMenu(new AddFurnitureMenu(Lang.Items[0].item,floorPlan,function(idx:int):void
 			{
 				var IcoCls:Class = Class(getDefinitionByName(Lang.Items[0].item[idx].@cls));
-				floorPlan.addFurniture(new IcoCls());
-			});
-			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
-			menu.y = py;
-			addChild(menu);
+				var ico:Sprite = new IcoCls();
+				if (ico is MovieClip && (MovieClip)(ico).totalFrames>1)
+				{
+					var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+					var n:int = (MovieClip)(ico).totalFrames;
+					for (var i:int=n-1; i>-1; i--)
+					{
+						ico = new IcoCls();
+						(MovieClip)(ico).gotoAndStop(i+1);
+						var sc:Number = Math.min(70/(ico.width),70/(ico.height))*0.8;
+						var s:Sprite = new Sprite();
+						ico.scaleX = ico.scaleY = sc;
+						var b:Rectangle = ico.getBounds(ico);
+						s.graphics.beginFill(0xFFFFFF,1);
+						s.graphics.drawRoundRect(0,0,70,70,5);
+						s.graphics.endFill();
+						ico.x = (70-ico.width)/2-b.left*sc;
+						ico.y = (70-ico.height)/2-b.top*sc;
+						s.addChild(ico);
+						Icos.unshift(s);
+					}
+					replaceMenu(new IconsMenu(Icos,Math.ceil(n/2),2,function (i:int):void 
+					{
+						ico.scaleX=ico.scaleY=1;
+						(MovieClip)(ico).gotoAndStop(i+1);
+						floorPlan.addFurniture(ico);
+						showFurnitureMenu();
+					}));
+				}
+				else
+				{	
+					floorPlan.addFurniture(ico);
+				}
+			}));
 		}//endfunction
 		
 		//=============================================================================================
@@ -259,22 +270,11 @@ package
 		//=============================================================================================
 		private function showDoorsMenu():void
 		{
-			var px:int = stage.stageWidth;
-			var py:int = topBar.height+5;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new AddFurnitureMenu(Lang.Ports[0].port,floorPlan,function(idx:int):void
+			replaceMenu(new AddFurnitureMenu(Lang.Ports[0].port,floorPlan,function(idx:int):void
 			{
 				var IcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@cls));
 				modeAddDoors(new IcoCls() as Sprite);
-			});	
-			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
-			menu.y = py;
-			addChild(menu);
+			}));	
 		}//endfunction
 		
 		//=============================================================================================
@@ -288,13 +288,7 @@ package
 			
 			function showFloorAreaProperties(area:FloorArea):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				menu = new DialogMenu(Lang.FloorProp.title.@txt+":"+int(area.area/100)/100+"m sq",
+				replaceMenu(new DialogMenu(Lang.FloorProp.title.@txt+":"+int(area.area/100)/100+"m sq",
 										Vector.<String>([	Lang.FloorProp.flooring.@txt,
 															Lang.FloorProp.done.@txt]),
 										Vector.<Function>([	function():void 
@@ -306,21 +300,12 @@ package
 																	showFloorAreaProperties(area);
 																});
 															},
-															showFurnitureMenu]));
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+															showFurnitureMenu])));
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showFurnitureProperties(itm:Item):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				menu = new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(itm.icon),
+				replaceMenu(new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(itm.icon),
 										Vector.<String>([	Lang.FurnitureProp.remove.@txt,
 															Lang.FurnitureProp.done.@txt]),
 										Vector.<Function>([	function():void 
@@ -328,10 +313,7 @@ package
 																floorPlan.removeFurniture(itm);
 																showFurnitureMenu();
 															},
-															showFurnitureMenu]));
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+															showFurnitureMenu])));
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showDoorProperties(door:Door):void
@@ -341,13 +323,7 @@ package
 					if (floorPlan.Walls[i].Doors.indexOf(door)!=-1)
 						wall = floorPlan.Walls[i];
 				var wallW:Number = wall.joint1.subtract(wall.joint2).length/100;
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				menu = new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
+				replaceMenu(new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
 										Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*wallW*100)/100+"]",
 															Lang.DoorProp.flip.@txt,
 															Lang.DoorProp.remove.@txt,
@@ -372,21 +348,12 @@ package
 																floorPlan.drawWall(wall);
 																showFurnitureMenu();
 															},
-															showFurnitureMenu]));		// done
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+															showFurnitureMenu])));		// done
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showWallProperties(wall:Wall):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				menu = new DialogMenu(Lang.WallProp.title.@txt,
+				replaceMenu(new DialogMenu(Lang.WallProp.title.@txt,
 										Vector.<String>([	Lang.WallProp.thickness.@txt +" = ["+wall.thickness+"]",
 															Lang.WallProp.remove.@txt,
 															Lang.WallProp.done.@txt]),
@@ -401,22 +368,12 @@ package
 																floorPlan.refresh();
 																showFurnitureMenu();
 															},
-															showFurnitureMenu]));
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+															showFurnitureMenu])));
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showLabelProperties(tf:TextField):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				
-				menu = new DialogMenu(Lang.LabelProp.title.@txt,
+				replaceMenu(new DialogMenu(Lang.LabelProp.title.@txt,
 										Vector.<String>([Lang.LabelProp.size.@txt+" = ["+tf.defaultTextFormat.size+"]",
 														Lang.LabelProp.color.@txt+" = "+tf.defaultTextFormat.color.toString(16),
 														Lang.LabelProp.remove.@txt,
@@ -444,34 +401,16 @@ package
 																floorPlan.removeLabel(tf);
 																showFurnitureMenu();
 															},
-															showFurnitureMenu]));
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+															showFurnitureMenu])));
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showColorMenu(callBack:Function):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
-				menu = new ColorMenu(callBack);
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
+				replaceMenu(new ColorMenu(callBack));
 			}//endfunction
 			// ---------------------------------------------------------------------
 			function showFloorTexMenu(callBack:Function):void
 			{
-				if (menu!=null)
-				{
-					if (menu.parent!=null) menu.parent.removeChild(menu);
-					px = menu.x;
-					py = menu.y;
-				}
 				var Icos:Vector.<Sprite> = new Vector.<Sprite>();
 				for (var i:int=0; i<floorPlan.FloorPatterns.length; i++)
 				{
@@ -479,11 +418,7 @@ package
 					s.addChild(new Bitmap(floorPlan.FloorPatterns[i]));
 					Icos.push(s);
 				}
-				menu = new IconsMenu(Icos,5,2,callBack);
-				menu.x = px;
-				menu.y = py;
-				stage.addChild(menu);
-				
+				replaceMenu(new IconsMenu(Icos,5,2,callBack));
 			}//endfunction
 			
 			floorPlan.selected = null;
@@ -615,21 +550,10 @@ package
 		//=============================================================================================
 		private function modeAddWalls(snapDist:Number=10):void
 		{
-			var px:int = 0;
-			var py:int = 0;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new DialogMenu("ADDING WALLS",
+			replaceMenu( new DialogMenu("ADDING WALLS",
 									Vector.<String>(["DONE"]),
-									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}]));
-			menu.x = px;
-			menu.y = py;
-			stage.addChild(menu);
-		
+									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}])));
+			
 			// ----------------------------------------------------------------
 			var wall:Wall = null;
 			stepFn = function():void
@@ -697,20 +621,9 @@ package
 		//=============================================================================================
 		private function modeAddDoors(ico:Sprite,snapDist:Number=10):void
 		{
-			var px:int = 0;
-			var py:int = 0;
-			if (menu!=null)
-			{
-				if (menu.parent!=null) menu.parent.removeChild(menu);
-				px = menu.x;
-				py = menu.y;
-			}
-			menu = new DialogMenu("ADDING DOORS",
-									Vector.<String>(["DONE"]),
-									Vector.<Function>([function():void {showDoorsMenu(); modeDefault();}]));
-			menu.x = px;
-			menu.y = py;
-			stage.addChild(menu);
+			replaceMenu(new DialogMenu("ADDING DOORS",
+										Vector.<String>(["DONE"]),
+										Vector.<Function>([function():void {showDoorsMenu(); modeDefault();}])));
 			
 			// ----- add doors logic
 			var icoW:int = ico.width;
@@ -758,6 +671,26 @@ package
 				
 			}
 			
+		}//endfunction
+		
+		//=============================================================================================
+		// convenience function to place new menu on stage in place of existing menu
+		//=============================================================================================
+		private function replaceMenu(nmenu:Sprite,px:int=-1,py:int=-1) : void
+		{
+			if (px==-1) px = stage.stageWidth;
+			if (py==-1) py = topBar.height+5;
+			if (menu!=null)
+			{
+				if (menu.parent!=null) menu.parent.removeChild(menu);
+				px = menu.x;
+				py = menu.y;
+			}
+			
+			menu = nmenu;
+			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
+			menu.y = Math.min(py,stage.stageHeight-menu.height-5);
+			stage.addChild(menu);
 		}//endfunction
 		
 		//=============================================================================================
@@ -931,6 +864,7 @@ import flash.geom.Rectangle;
 import flash.geom.ColorTransform;
 import flash.text.TextField;
 import flash.display.Sprite;
+import flash.display.MovieClip;
 import flash.events.Event;
 import flash.events.TextEvent;
 import flash.events.MouseEvent;
@@ -1394,6 +1328,7 @@ class AddFurnitureMenu extends IconsMenu
 			btn.graphics.endFill();
 			IcoCls.push(getDefinitionByName(dat[i].@cls));
 			var ico:Sprite = new IcoCls[i]();
+			if (ico is MovieClip)	(MovieClip)(ico).gotoAndStop(1);
 			var bnds:Rectangle = ico.getBounds(ico);
 			var sc:Number = Math.min(icoW*0.8/ico.width,icoW*0.8/ico.height);
 			ico.scaleX = ico.scaleY = sc;
@@ -1420,6 +1355,15 @@ class AddFurnitureMenu extends IconsMenu
 		}
 		
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	override protected function onEnterFrame(ev:Event):void
+	{
+		
+		super.onEnterFrame(null);
 	}//endfunction
 	
 }//endclass
@@ -1951,6 +1895,8 @@ class FloorPlan
 		{
 			var fo:Object = o.Furniture[i];
 			var fur:Sprite = new (Class(getDefinitionByName(fo.cls)))() as Sprite;
+			fur.filters = [new DropShadowFilter(1,90,0x000000,1,8,8,1)];
+			if (fur is MovieClip) (MovieClip)(fur).gotoAndStop(fo.color);
 			fur.x = fo.x;
 			fur.y = fo.y;
 			fur.rotation = fo.rot;
@@ -2377,7 +2323,12 @@ class FloorPlan
 	//=============================================================================================
 	public function addFurniture(fu:Sprite):void
 	{
-		Furniture.push(new Item(fu));
+		fu.filters = [new DropShadowFilter(1,90,0x000000,1,8,8,1)];
+		if (fu is MovieClip)
+			Furniture.push(new Item(fu,(MovieClip)(fu).currentFrame));
+		else
+			Furniture.push(new Item(fu));
+		
 		overlay.addChild(fu);
 		
 		// ----- hack to start dragging
@@ -3211,9 +3162,10 @@ class Item
 	public var color:uint=0;		// tint color
 	public var icon:Sprite=null;	// furniture icon mc
 	
-	public function Item(ico:Sprite):void
+	public function Item(ico:Sprite,frame:int=0):void
 	{
 		icon = ico;
+		color = frame;
 	}
 }//endclass
 

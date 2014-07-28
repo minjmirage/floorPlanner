@@ -52,7 +52,9 @@
 		</SaveLoad>
 		<Items>
 			<item txt="LCD TV" cls="TVFlat" />
-			<item txt="Toilet Bowl" cls="Toilet" />
+			<item txt="Shoe Cabinet" cls="ShoeCabinet" />
+			<item txt="Cabinet" cls="Cabinet" />
+			<item txt="Shelfs" cls="Shelfs" />
 			<item txt="Square Table" cls="TableSquare" />
 			<item txt="Round Table" cls="TableRound" />
 			<item txt="Rectangular Table" cls="TableRect" />
@@ -67,12 +69,14 @@
 			<item txt="Piano" cls="Piano" />
 			<item txt="Oven" cls="Oven" />
 			<item txt="Chair" cls="Chair" />
+			<item txt="Armchair" cls="ArmChair" />
 			<item txt="Singale Bed" cls="BedSingle" />
 			<item txt="Double Bed" cls="BedDouble" />
 			<item txt="Round Bathtub" cls="BathTubRound" />
 			<item txt="Corner Bathtub" cls="BathTubL" />
 			<item txt="Bathtub" cls="BathTub" />
-			<item txt="Armchair" cls="ArmChair" />
+			<item txt="Toilet Bowl" cls="Toilet" />
+			<item txt="Squat Toilet" cls="ToiletSquat" />
 		</Items>
 		<Ports>
 			<port txt="Single Door" cls="DoorSingleSwinging" />
@@ -137,7 +141,9 @@
 		</SaveLoad>
 		<Items>
 			<item txt="液晶电视" cls="TVFlat" />
-			<item txt="马桶" cls="Toilet" />
+			<item txt="鞋柜" cls="ShoeCabinet" />
+			<item txt="柜子" cls="Cabinet" />
+			<item txt="书架" cls="Shelfs" />
 			<item txt="方桌" cls="TableSquare" />
 			<item txt="f圆桌" cls="TableRound" />
 			<item txt="长方桌" cls="TableRect" />
@@ -152,12 +158,14 @@
 			<item txt="钢琴" cls="Piano" />
 			<item txt="烘炉" cls="Oven" />
 			<item txt="椅子" cls="Chair" />
+			<item txt="靠椅" cls="ArmChair" />
 			<item txt="单人床" cls="BedSingle" />
 			<item txt="双人床" cls="BedDouble" />
 			<item txt="圆浴缸" cls="BathTubRound" />
 			<item txt="墙角浴缸" cls="BathTubL" />
 			<item txt="浴缸" cls="BathTub" />
-			<item txt="靠椅" cls="ArmChair" />
+			<item txt="马桶" cls="Toilet" />
+			<item txt="蹲马桶" cls="ToiletSquat" />
 		</Items>
 		<Ports>
 			<port txt="单门" cls="DoorSingleSwinging" />
