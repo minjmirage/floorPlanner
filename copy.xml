@@ -29,6 +29,8 @@
 		</DoorProp>
 		<WallProp>
 			<title txt="WALL" />
+			<edit txt="EDIT VERTICAL PLAN"/>
+			<length txt="LENGTH"/>
 			<thickness txt="THICKNESS" />
 			<remove txt="REMOVE" />
 			<done txt="DONE" />
@@ -118,6 +120,8 @@
 		</DoorProp>
 		<WallProp>
 			<title txt="墙"/>
+			<edit txt="修改立面图"/>
+			<length txt="长度"/>
 			<thickness txt="宽度"/>
 			<remove txt="删除"/>
 			<done txt="确认"/>

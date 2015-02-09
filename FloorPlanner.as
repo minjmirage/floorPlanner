@@ -49,17 +49,26 @@ package
 		private var mouseDownFn:Function = null;		// to exec
 		private var mouseUpFn:Function = null;			// to exec
 		
+		// ----- seems class names need to be mentioned once to be added in the compile
+		private static const Assets:Array = [DoorDoubleSliding,DoorDoubleSwinging,DoorSingleSliding,DoorSingleSwinging,
+		Floor1, Floor2, Floor3, Floor4, Floor5, Floor6, Floor7, Floor8, Floor9, Floor10, Floor11, Floor12, Floor13,
+		MenuIcoDrawDoor, MenuIcoDrawWall, MenuIcoFile, MenuIcoFurniture, MenuIcoNew, MenuIcoRedo, MenuIcoSave, MenuIcoText, MenuIcoUndo,
+		ArmChair, BathTub, BathTubL, BathTubRound, BedDouble, BedSingle, Cabinet, Chair, Oven, Piano, RoundSofa, Rug, Shelfs, ShoeCabinet, SinkKitchen, SinkRound,
+		Sofa2,Sofa3,Sofa4,TableL,TableOctagon,TableRect,TableRound,TableSquare,Toilet,ToiletSquat,TVFlat,WindowDouble,WindowSingle,WindowTriple,Stove];
+		
+		
 		//=============================================================================================
 		//
 		//=============================================================================================
 		public function FloorPlanner():void 
 		{
+			var ppp:Sprite = this;
 			function processXML(ev:Event):void
 			{
 				Copy = new XML(ev.target.data);
 				Lang = Copy.CN[0];
 				if (stage) init();
-				else addEventListener(Event.ADDED_TO_STAGE, init);
+				else ppp.addEventListener(Event.ADDED_TO_STAGE, init);
 			}
 		
 			var ldr:URLLoader = new URLLoader();
@@ -226,7 +235,7 @@ package
 		//=============================================================================================
 		private function showFurnitureMenu():void
 		{
-			replaceMenu(new AddFurnitureMenu(Lang.Items[0].item,floorPlan,function(idx:int):void
+			replaceMenu(new AddFurnitureMenu(Lang.Items[0].item,function(idx:int):void
 			{
 				var IcoCls:Class = Class(getDefinitionByName(Lang.Items[0].item[idx].@cls));
 				var ico:Sprite = new IcoCls();
@@ -270,7 +279,7 @@ package
 		//=============================================================================================
 		private function showDoorsMenu():void
 		{
-			replaceMenu(new AddFurnitureMenu(Lang.Ports[0].port,floorPlan,function(idx:int):void
+			replaceMenu(new AddFurnitureMenu(Lang.Ports[0].port,function(idx:int):void
 			{
 				var IcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@cls));
 				modeAddDoors(new IcoCls() as Sprite);
@@ -354,15 +363,34 @@ package
 			function showWallProperties(wall:Wall):void
 			{
 				replaceMenu(new DialogMenu(Lang.WallProp.title.@txt,
-										Vector.<String>([	Lang.WallProp.thickness.@txt +" = ["+wall.thickness+"]",
+										Vector.<String>([	Lang.WallProp.length.@txt +" = ["+wall.joint1.subtract(wall.joint2).length+"]",
+															Lang.WallProp.thickness.@txt +" = ["+wall.thickness+"]",
+															Lang.WallProp.edit.@txt,
 															Lang.WallProp.remove.@txt,
 															Lang.WallProp.done.@txt]),
-										Vector.<Function>([	function(val:String):void 
+										Vector.<Function>([	function(val:String):void	// set wall length
 															{
-																wall.thickness = Math.max(5,Math.min(30,Number(val)));
+																if (isNaN(parseFloat(val))) return;
+																var vec:Point = wall.joint2.subtract(wall.joint1);
+																var dif:Number = parseFloat(val) - vec.length;
+																vec.normalize(1);
+																wall.joint1.x -= vec.x * 0.5 * dif;
+																wall.joint1.y -= vec.y * 0.5 * dif;
+																wall.joint2.x += vec.x * 0.5 * dif;
+																wall.joint2.y += vec.y * 0.5 * dif;
 																floorPlan.refresh();
 															},
-															function():void 
+															function(val:String):void 	// set wall length
+															{
+																if (isNaN(parseFloat(val))) return;
+																wall.thickness = Math.max(5,Math.min(30,parseFloat(val)));
+																floorPlan.refresh();
+															},
+															function():void				// edit side view
+															{
+																modeEditWallSideView(wall);
+															},
+															function():void 			// remove wall
 															{
 																floorPlan.removeWall(wall);
 																floorPlan.refresh();
@@ -420,6 +448,8 @@ package
 				}
 				replaceMenu(new IconsMenu(Icos,5,2,callBack));
 			}//endfunction
+			
+			
 			
 			floorPlan.selected = null;
 			
@@ -505,7 +535,8 @@ package
 					undoStk.push(floorPlan.exportData());
 				
 				if (floorPlan.selected is Point)		// selected a joint
-				{	
+				{
+					replaceMenu(null);	// hide all prev menus
 				}
 				else if (floorPlan.selected is Wall)	// selected a wall
 				{
@@ -542,6 +573,39 @@ package
 					(TextField)(floorPlan.selected).background = false;
 				if (undoStk.length>0 && floorPlan.exportData()==undoStk[undoStk.length-1]) 
 					undoStk.pop();	// if no state change 
+			}
+		}//endfunction
+		
+		//=============================================================================================
+		// go into side view of wall
+		//=============================================================================================
+		private function modeEditWallSideView(wall:Wall):void
+		{
+			showDoorsMenu();
+			floorPlan.overlay.visible = false;
+			wall.updateSideView();
+			grid.addChild(wall.sideView);
+			topBar.visible = false;
+			trace("grid="+grid+"  wall.sideVied.width="+wall.sideView.width);	
+			
+			var mouseIsDown:Boolean = false;
+			mouseDownFn = function():void
+			{
+				mouseIsDown = true;
+			}
+			
+			mouseUpFn = function():void
+			{
+				if (!mouseIsDown) return;
+				mouseIsDown = false;
+				
+				if (wall.sideView.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY) == false)
+				{
+					grid.removeChild(wall.sideView);
+					topBar.visible = true;
+					floorPlan.overlay.visible = true;
+					modeDefault();
+				}
 			}
 		}//endfunction
 		
@@ -686,7 +750,7 @@ package
 				px = menu.x;
 				py = menu.y;
 			}
-			
+			if (nmenu == null) return;
 			menu = nmenu;
 			menu.x = Math.min(px,stage.stageWidth-menu.width-5);
 			menu.y = Math.min(py,stage.stageHeight-menu.height-5);
@@ -849,6 +913,19 @@ package
 		
 			return s;
 		}//endfunction
+		
+		//=============================================================================================
+		//
+		//=============================================================================================
+		private function createDirCompass():Sprite
+		{
+			var s:Sprite = new Sprite();
+			s.graphics.beginFill(0xFFFFFF,1);
+			s.graphics.drawCircle(0,0,30);
+			s.graphics.endFill();
+			
+			return s;
+		}//endfunction
 	}//endclass
 }//endpackage
 
@@ -856,6 +933,7 @@ import flash.display.DisplayObject;
 import flash.display.Bitmap;
 import flash.display.BitmapData;
 import flash.display.Loader;
+import flash.display.Stage;
 import flash.events.FocusEvent;
 import flash.geom.Point;
 import flash.geom.Vector3D;
@@ -868,6 +946,7 @@ import flash.display.MovieClip;
 import flash.events.Event;
 import flash.events.TextEvent;
 import flash.events.MouseEvent;
+import flash.events.KeyboardEvent;
 import flash.filters.GlowFilter;
 import flash.filters.DropShadowFilter;
 import flash.text.TextFormat;
@@ -1206,51 +1285,18 @@ class DialogMenu extends FloatingMenu
 		Fns = callBacks;
 		
 		// ----- create title
-		titleTf = new TextField();
-		var tff:TextFormat = titleTf.defaultTextFormat;
-		tff.font = "arial";
-		tff.color = 0x888888;
-		tff.bold = true;
-		tff.size = 15;
-		tff.align = "center";
-		titleTf.defaultTextFormat = tff;
-		titleTf.text = title;
-		titleTf.autoSize = "left";
-		titleTf.wordWrap = false;
-		titleTf.selectable = false;
+		titleTf = Utils.createText(title, 12, 0x888888);
 		addChild(titleTf);
-		tff.size = 12;
 		
 		// ----- create buttons
-		tff.size = 15;
 		Btns = new Vector.<Sprite>();
 		var n:int = Math.min(labels.length,callBacks.length);
 		for (var i:int=0; i<n; i++)
 		{
-			var tf:TextField = new TextField();
-			var itf:TextField  = null;
-			tf.autoSize = "left";
-			tf.wordWrap = false;
-			tf.defaultTextFormat = tff;
 			var lab:String = labels[i];
-			if (lab.indexOf("[")!=-1 && lab.indexOf("]")!=-1)
-			{
-				var A:Array = lab.split("[");
-				lab = A[0];
-				itf = new TextField();
-				itf.autoSize = "left";
-				itf.wordWrap = false;
-				itf.defaultTextFormat = tff;
-				itf.text = A[1].split("]")[0];
-			}
-			tf.text = lab;
 			var b:Sprite = new Sprite();
+			var tf:TextField = Utils.createText(lab,14,0x888888);
 			b.addChild(tf);
-			if (itf!=null)
-			{
-				itf.x = tf.width;
-				b.addChild(itf);
-			}
 			b.buttonMode = true;
 			b.mouseChildren = false;
 			Btns.push(b);
@@ -1258,7 +1304,7 @@ class DialogMenu extends FloatingMenu
 		}
 		
 		// ----- aligning
-		var w:int = this.width;
+		var w:int = this.width+20;
 		for (i=0; i<Btns.length; i++)
 		{
 			var btn:Sprite = Btns[i];
@@ -1281,23 +1327,27 @@ class DialogMenu extends FloatingMenu
 		
 		callBackFn = function(idx:int):void
 		{
-			if (Btns[idx].numChildren>1)
+			if (labels[idx].indexOf("[")!=-1 && labels[idx].indexOf("]")!=-1)
 			{
-				var itf:TextField = (TextField)(Btns[idx].getChildAt(1));
-				if (itf.type=="input")
+				if (Btns[idx].numChildren == 1)
 				{
-					itf.type="dynamic"
-					itf.background = false;
-					Fns[idx](itf.text);
-				}
-				else
-				{
-					itf.type = "input";
-					itf.background = true;
-					if (stage.focus!=itf)
+					trace("create itf");
+					var tf:TextField = Btns[idx].getChildAt(0) as TextField;
+					tf.text = tf.text.split("=")[0];
+					var val:String = labels[idx].split("[")[1].split("]")[0];
+					var itf:TextField = Utils.createInputText(function():void 
 					{
-						stage.focus = itf;
-					}
+						itf.parent.removeChild(itf);
+						Btns[idx].mouseEnabled = false;
+						tf.text = tf.text + "=[" + itf.text + "]";
+						Fns[idx](itf.text);
+					},
+					val);
+					itf.width = Btns[idx].width;
+					itf.x = this.x + Btns[idx].x + tf.x + tf.width + 5;
+					itf.y = this.y + Btns[idx].y;
+					this.parent.addChild(itf);
+					Btns[idx].mouseEnabled = true;
 				}
 			}
 			else
@@ -1309,16 +1359,14 @@ class DialogMenu extends FloatingMenu
 class AddFurnitureMenu extends IconsMenu
 {
 	private var IcoCls:Vector.<Class> = null;
-	private var floorPlan:FloorPlan = null;
 	
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function AddFurnitureMenu(dat:XMLList,floorP:FloorPlan,callBackFn:Function,icoW:int=70):void
+	public function AddFurnitureMenu(dat:XMLList,callBackFn:Function,icoW:int=70):void
 	{
 		Btns = new Vector.<Sprite>();
 		IcoCls = new Vector.<Class>();
-		floorPlan = floorP;
 		
 		for (var i:int=0; i<dat.length(); i++)
 		{
@@ -1356,16 +1404,6 @@ class AddFurnitureMenu extends IconsMenu
 		
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
 	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	override protected function onEnterFrame(ev:Event):void
-	{
-		
-		super.onEnterFrame(null);
-	}//endfunction
-	
 }//endclass
 
 class SaveLoadMenu extends IconsMenu
@@ -1402,7 +1440,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// dialog to confirm save
 	//===============================================================================================
-	function askToNew():void
+	private function askToNew():void
 	{
 		var askNew:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToNew.@txt,
 									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
@@ -1429,7 +1467,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// dialog to confirm save
 	//===============================================================================================
-	function askToSave():void
+	private function askToSave():void
 	{
 		var askSaveFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToSave.@txt,
 									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
@@ -1457,7 +1495,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// dialog to load data
 	//===============================================================================================
-	function askToLoad(idx:int):void
+	private function askToLoad(idx:int):void
 	{
 		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToLoad.@txt,
 									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
@@ -1498,7 +1536,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// Refresh buttons after save operation etc
 	//===============================================================================================
-	function updateBtns():void
+	private function updateBtns():void
 	{
 		Btns = new Vector.<Sprite>();
 		
@@ -1569,7 +1607,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// write floorplan data to SharedObject
 	//===============================================================================================
-	function saveToSharedObject():void
+	private function saveToSharedObject():void
 	{
 		var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
 		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFF);
@@ -1880,7 +1918,7 @@ class FloorPlan
 				var door:Door = new Door(Number(d.pivot),Number(d.dir),doorIco);
 				wall.addDoor(door);
 			}
-			overlay.addChild(wall);
+			overlay.addChild(wall.planView);
 			Walls.unshift(wall);
 		}
 		
@@ -2019,7 +2057,7 @@ class FloorPlan
 		{
 			Walls.push(wall);
 			drawWall(wall);
-			overlay.addChild(wall);
+			overlay.addChild(wall.planView);
 			return wall;
 		}
 	
@@ -2063,7 +2101,7 @@ class FloorPlan
 	public function removeWall(wall:Wall):void
 	{
 		if (Walls.indexOf(wall)!=-1)	Walls.splice(Walls.indexOf(wall),1);
-		if (wall.parent!=null)			wall.parent.removeChild(wall);	
+		if (wall.planView.parent!=null)	wall.planView.parent.removeChild(wall.planView);	
 		
 		var canRemJt1:Boolean = true;
 		var canRemJt2:Boolean = true;
@@ -2259,24 +2297,24 @@ class FloorPlan
 			if (ipt!=null)	wallB[3] = ipt;
 		}
 		// ----- draws the calculated wallB
-		wall.graphics.clear();
-		while (wall.numChildren>0)	wall.removeChildAt(0);
-		if (selected==wall)		wall.graphics.beginFill(0xFF6600,1);
-		else					wall.graphics.beginFill(0x000000,1);
-		wall.graphics.moveTo(wallB[0].x,wallB[0].y);
-		wall.graphics.lineTo(wallB[1].x,wallB[1].y);
-		wall.graphics.lineTo(wallB[2].x,wallB[2].y);
-		wall.graphics.lineTo(wallB[3].x,wallB[3].y);
-		wall.graphics.lineTo(wallB[0].x,wallB[0].y);
-		wall.graphics.endFill();
+		wall.planView.graphics.clear();
+		while (wall.planView.numChildren>0)	wall.planView.removeChildAt(0);
+		if (selected==wall)		wall.planView.graphics.beginFill(0xFF6600,1);
+		else					wall.planView.graphics.beginFill(0x000000,1);
+		wall.planView.graphics.moveTo(wallB[0].x,wallB[0].y);
+		wall.planView.graphics.lineTo(wallB[1].x,wallB[1].y);
+		wall.planView.graphics.lineTo(wallB[2].x,wallB[2].y);
+		wall.planView.graphics.lineTo(wallB[3].x,wallB[3].y);
+		wall.planView.graphics.lineTo(wallB[0].x,wallB[0].y);
+		wall.planView.graphics.endFill();
 		
 		// ----- draw wall length info
 		var ux:Number = wallB[1].x-wallB[0].x;
 		var uy:Number = wallB[1].y-wallB[0].y;
 		var vl:Number = Math.sqrt(ux*ux+uy*uy);
 		ux/=vl; uy/=vl;
-		drawI(wall,wallB[0].x+uy*5,wallB[0].y-ux*5,wallB[1].x+uy*5,wallB[1].y-ux*5,10,true);
-		drawI(wall,wallB[2].x-uy*5,wallB[2].y+ux*5,wallB[3].x-uy*5,wallB[3].y+ux*5,10,true);
+		drawI(wall.planView,wallB[0].x+uy*5,wallB[0].y-ux*5,wallB[1].x+uy*5,wallB[1].y-ux*5,10,true);
+		drawI(wall.planView,wallB[2].x-uy*5,wallB[2].y+ux*5,wallB[3].x-uy*5,wallB[3].y+ux*5,10,true);
 		
 		// ----- draw all doors
 		for (j=wall.Doors.length-1; j>-1; j--)
@@ -2288,16 +2326,16 @@ class FloorPlan
 										(wall.joint2.y-wall.joint1.y)*door.dir);
 			var bearing:Number = Math.atan2(dir.x,-dir.y);
 			if (selected==door)	
-				drawBar(wall,piv,piv.add(dir),wall.thickness,0xFF6600);	
+				drawBar(wall.planView,piv,piv.add(dir),wall.thickness,0xFF6600);	
 			else
-				drawBar(wall,piv,piv.add(dir),wall.thickness,0xEEEEEE);
+				drawBar(wall.planView,piv,piv.add(dir),wall.thickness,0xEEEEEE);
 			door.icon.x = piv.x+dir.x/2;
 			door.icon.y = piv.y+dir.y/2;
 			door.icon.rotation = 0;
 			door.icon.width = dir.length;
 			door.icon.scaleY = door.icon.scaleX;
 			door.icon.rotation = bearing*180/Math.PI+90;
-			wall.addChild(door.icon);
+			wall.planView.addChild(door.icon);
 			/*
 			var angL:Number = bearing+door.angL;
 			var angR:Number = bearing+door.angR;
@@ -2554,7 +2592,7 @@ class FloorPlan
 	//=============================================================================================
 	// convenience function to draw the length markings
 	//=============================================================================================
-	private function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
 	{
 		var vx:Number = bx-ax;
 		var vy:Number = by-ay;
@@ -3048,12 +3086,105 @@ class FloorPlan
 		
 }//endclass
 
-class Wall extends Sprite
+class Utils
+{
+	//===================================================================================
+	// 
+	//===================================================================================
+	public static function createText(txt:String="",fontSize:int=14,fontColor:uint=0x000000,w:int=-1) : TextField
+	{
+		if (txt == null) txt = "";
+		var tf:TextField = new TextField();
+		tf.height = 1;
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		tf.selectable = false;
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.size = fontSize;
+		tff.color = fontColor;
+		tf.defaultTextFormat = tff;
+		tf.setTextFormat(tff);
+		tf.textColor = fontColor;
+		tf.htmlText = txt;
+		if (w>0)
+		{
+			var h:int = tf.height+1;
+			tf.autoSize = "none";
+			tf.width = w;
+			tf.height = h;
+		}
+		
+		return tf;
+	}//endfunction
+	
+	//===================================================================================
+	// creates a text input textfield enabling input on click 
+	//===================================================================================
+	public static function createInputText(onTextChange:Function,txt:String="",size:uint=14,c:uint=0x000000,w:int=-1,replaceTxt:Boolean=false) : TextField
+	{
+		var tf:TextField = createText(txt,size,c,w);
+		tf.selectable = true;
+		var stageRef:Stage = null;
+		tf.addEventListener(MouseEvent.CLICK,enterEditHandler);
+		tf.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
+		tf.addEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
+		
+		function enterEditHandler(ev:Event):void
+		{
+			trace("enterEditClick");
+			tf.removeEventListener(MouseEvent.CLICK,enterEditHandler);
+			tf.type = "input";
+			if (replaceTxt) tf.text = "";
+			else 			tf.border = true;
+			tf.addEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
+			stageRef.addEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
+		}//endfunction
+		
+		function exitEditHandler(ev:Event):void
+		{
+			trace("exitEditClick");
+			if(ev is MouseEvent && !tf.hitTestPoint(stageRef.mouseX,stageRef.mouseY) ||	// clicked elsewhere
+			   (ev is KeyboardEvent && (ev as KeyboardEvent).charCode==13))			// key is ENTER
+			{
+				tf.removeEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
+				stageRef.removeEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
+				tf.addEventListener(MouseEvent.CLICK,enterEditHandler);
+				tf.border = false;
+				tf.type = "dynamic";
+				if (onTextChange!=null) onTextChange(tf.text);
+			}
+		}//endfunction
+		
+		function addToStageHandler(ev:Event):void
+		{
+			trace("input Tf added to stage");
+			stageRef = tf.stage;
+			tf.removeEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
+		}
+		
+		function removeHandler(ev:Event):void
+		{
+			tf.removeEventListener(MouseEvent.CLICK,enterEditHandler);
+			stageRef.removeEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
+			tf.removeEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
+			tf.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
+			tf.removeEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
+		}//endfunction
+		
+		return tf;
+	}//endfunction
+}//endclass
+
+class Wall
 {
 	public var joint1:Point;
 	public var joint2:Point;
 	public var thickness:Number;
+	public var height:Number;
 	public var Doors:Vector.<Door>;
+	public var planView:Sprite;					// 
+	public var sideView:Sprite;					// 
+	public var wallPaper:BitmapData = null;		// wall style
 	
 	//=======================================================================================
 	//
@@ -3063,7 +3194,11 @@ class Wall extends Sprite
 		joint1 = pt1;
 		joint2 = pt2;
 		thickness = thick;
+		height = 200;
 		Doors = new Vector.<Door>();
+		planView = new Sprite();
+		sideView = new Sprite();
+		wallPaper = new BitmapData(1, 1, false, 0xFFFFFF);
 	}//endconstr
 	
 	//=======================================================================================
@@ -3072,7 +3207,7 @@ class Wall extends Sprite
 	public function addDoor(door:Door):void
 	{
 		Doors.push(door);
-		addChild(door.icon);
+		planView.addChild(door.icon);
 	}//endfunction
 	
 	//=======================================================================================
@@ -3083,12 +3218,12 @@ class Wall extends Sprite
 		if (Doors.indexOf(door)!=-1)
 		{
 			Doors.splice(Doors.indexOf(door),1);
-			if (door.icon.parent==this) removeChild(door.icon);
+			if (door.icon.parent==this.planView) door.icon.parent.removeChild(door.icon);
 		}
 	}//endfunction
 	
 	//=======================================================================================
-	//
+	// chks if door can be placed on wall
 	//=======================================================================================
 	public function chkPlaceDoor(pt:Point, width:Number):Point
 	{
@@ -3155,6 +3290,43 @@ class Wall extends Sprite
 								new Point(j2.x+dv.x+dv.y,j2.y+dv.y-dv.x),
 								new Point(j2.x+dv.x-dv.y,j2.y+dv.y+dv.x),
 								new Point(j1.x-dv.x-dv.y,j1.y-dv.y+dv.x)]);
+	}//endfunction
+	
+	//=======================================================================================
+	// 
+	//=======================================================================================
+	public function updateSideView():void
+	{
+		var w:Number = joint1.subtract(joint2).length;
+		sideView.graphics.clear();
+		sideView.graphics.beginBitmapFill(wallPaper);
+		sideView.graphics.drawRect( -w/2, -height/2, w, height);
+		sideView.graphics.endFill();
+		
+		FloorPlan.drawI(sideView, -w / 2, -height / 2, w / 2, -height / 2, 6, true);
+		FloorPlan.drawI(sideView, -w / 2,  height / 2, w / 2,  height / 2, 6, true);
+		FloorPlan.drawI(sideView, -w / 2, -height / 2,-w / 2,  height / 2, 6, true);
+		FloorPlan.drawI(sideView,  w / 2, -height / 2, w / 2,  height / 2, 6, true);
+		
+		for (var i:int = 0; i < Doors.length; i++ )
+		{
+			var door:Door = Doors[i];
+			var r1:Number = door.pivot;
+			var r2:Number = door.pivot + door.dir;
+			
+			door.icon.x = -0.5*w*(1-r1) + 0.5*w*r1;
+			door.icon.y = height/2-door.icon.height;
+			door.icon.rotation = 0;
+			door.icon.width = Doors[i].dir*w;
+			door.icon.scaleY = door.icon.scaleX;
+			sideView.addChild(door.icon);
+			/*
+			var ptA:Point = new Point(	joint1.x * (1 - r1) + joint2.x * r1,
+										joint1.y * (1 - r1) + joint2.y * r1);
+			var ptB:Point = new Point(	joint1.x * (1 - r2) + joint2.x * r2,
+										joint1.y * (1 - r2) + joint2.y * r2);
+			*/
+		}
 	}//endfunction
 }//endclass
 
