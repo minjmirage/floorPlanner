@@ -1,35 +1,43 @@
 package 
 {
-	import flash.display.Sprite;
-	import flash.display.MovieClip;
+	import com.adobe.images.JPGEncoder;
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
+	import flash.display.MovieClip;
+	import flash.display.Sprite;
 	import flash.events.Event;
+	import flash.events.KeyboardEvent;
 	import flash.events.MouseEvent;
-	import flash.geom.Point;
-	import flash.geom.Matrix;
-	import flash.geom.Vector3D;
-	import flash.geom.Rectangle;
-	import flash.utils.ByteArray;
-	import flash.utils.getTimer;
-	import flash.text.TextField;
-	import flash.text.TextFormat;
+	import flash.events.FocusEvent;
 	import flash.filters.DropShadowFilter;
-	import com.adobe.images.JPGEncoder;
-	import flash.utils.getDefinitionByName;
-	import flash.utils.getQualifiedClassName;
+	import flash.geom.Matrix;
+	import flash.geom.Point;
+	import flash.geom.Rectangle;
+	import flash.geom.Vector3D;
 	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
+	import flash.net.URLVariables;
+	import flash.text.TextField;
+	import flash.text.TextFormat;
+	import flash.utils.ByteArray;
+	import flash.utils.getDefinitionByName;
+	import flash.utils.getQualifiedClassName;
+	import flash.utils.getTimer;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
 	/**
 	 * ...
+	 * 
 	 * @author mj
 	 */
 	public class FloorPlanner extends Sprite 
 	{
+		public static var baseUrl:String = "http://ruanzhuangyun.cn/";// "http://symspace.e360.cn/";
+		public static var userId:String = null;
+		public static var userToken:String = null;
+		
 		public static var Copy:XML = null;				// copy of all languages
 		public static var Lang:XML = null;				// copy of current language
 	
@@ -50,11 +58,12 @@ package
 		private var mouseUpFn:Function = null;			// to exec
 		
 		// ----- seems class names need to be mentioned once to be added in the compile
-		private static const Assets:Array = [DoorDoubleSliding,DoorDoubleSwinging,DoorSingleSliding,DoorSingleSwinging,
+		private static const Assets:Array = [DoorDoubleSliding, DoorDoubleSwinging, DoorSingleSliding, DoorSingleSwinging,WindowDouble,WindowSingle,WindowTriple,
+		DoorDoubleSlidingSV, DoorDoubleSwingingSV, DoorSingleSlidingSV, DoorSingleSwingingSV,WindowDoubleSV,WindowSingleSV,WindowTripleSV,
 		Floor1, Floor2, Floor3, Floor4, Floor5, Floor6, Floor7, Floor8, Floor9, Floor10, Floor11, Floor12, Floor13,
-		MenuIcoDrawDoor, MenuIcoDrawWall, MenuIcoFile, MenuIcoFurniture, MenuIcoNew, MenuIcoRedo, MenuIcoSave, MenuIcoText, MenuIcoUndo,
+		MenuIcoDrawDoor, MenuIcoDrawWall, MenuIcoDrawLine, MenuIcoFile, MenuIcoFurniture, MenuIcoNew, MenuIcoRedo, MenuIcoSave, MenuIcoText, MenuIcoUndo,
 		ArmChair, BathTub, BathTubL, BathTubRound, BedDouble, BedSingle, Cabinet, Chair, Oven, Piano, RoundSofa, Rug, Shelfs, ShoeCabinet, SinkKitchen, SinkRound,
-		Sofa2,Sofa3,Sofa4,TableL,TableOctagon,TableRect,TableRound,TableSquare,Toilet,ToiletSquat,TVFlat,WindowDouble,WindowSingle,WindowTriple,Stove];
+		Sofa2,Sofa3,Sofa4,TableL,TableOctagon,TableRect,TableRound,TableSquare,Toilet,ToiletSquat,TVFlat,Stove];
 		
 		
 		//=============================================================================================
@@ -74,7 +83,74 @@ package
 			var ldr:URLLoader = new URLLoader();
 			ldr.load(new URLRequest("copy.xml"));
 			ldr.addEventListener(Event.COMPLETE, processXML);
+			
+			if (root.loaderInfo.parameters.httpURL!=null) baseUrl = root.loaderInfo.parameters.httpURL+"";	
+			if (root.loaderInfo.parameters.token!=null) userToken = root.loaderInfo.parameters.token+"";
+			
 		}//
+		
+		//=============================================================================
+		// gets the userId and userToken
+		//=============================================================================
+		private function createLoginPage(callBack:Function=null):MovieClip
+		{
+			var login:MovieClip = new PopLogin();
+			login.x = (stage.stageWidth-login.width)/2;
+			login.y = (stage.stageHeight-login.height)/2;
+			login.graphics.beginFill(0x000000,0.8);
+			login.graphics.drawRect(-login.x,-login.y,stage.stageWidth,stage.stageHeight);
+			login.graphics.endFill();
+			
+			var tff:TextFormat = login.usernameTf.defaultTextFormat;
+			tff.color = 0x999999;
+			login.usernameTf.setTextFormat(tff);
+			login.passwordTf.setTextFormat(tff);
+			login.usernameTf.type = "input";
+			login.passwordTf.type = "input";
+			
+			function keyHandler(event:KeyboardEvent):void
+			{
+				// if the key is ENTER
+				if(event.charCode == 13)
+				{
+					if (login.usernameTf.text!="" && login.passwordTf.text!="")
+					{
+						var ldr:URLLoader = new URLLoader();
+						var req:URLRequest = new URLRequest(baseUrl+"?n=api&a=login&c=user");
+						req.method = "post";  
+						var vars : URLVariables = new URLVariables();  
+						vars.username = login.usernameTf.text;  
+						vars.password = login.passwordTf.text;  
+						req.data = vars;
+						ldr.load(req);
+						ldr.addEventListener(Event.COMPLETE, onComplete);  
+						function onComplete(e : Event):void
+						{  
+							trace("login return="+ldr.data);
+							var o:Object = JSON.parse(ldr.data);
+							login.textTf.text = o.meta.message; 
+							if (o.meta.code==200)
+							{
+								userId = o.data.userid;
+								userToken = o.data.utoken;
+								if (callBack!=null) callBack();
+							}
+						}
+					}
+				}
+			}//endfunction
+			
+			function focusHandler(ev:Event):void
+			{
+				(TextField)(ev.target).text = "";
+			}
+			login.usernameTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
+			login.passwordTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
+			login.usernameTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
+			login.passwordTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
+			
+			return login;
+		}//endfunction
 		
 		//=============================================================================================
 		// takes a 2D snapshot of current floorplan
@@ -145,7 +221,11 @@ package
 				{
 					modeAddWalls();
 				}
-				else if (i==4)	// text
+				else if (i==4)	// lines
+				{
+					modeAddLines();
+				}
+				else if (i==5)	// text
 				{
 					var csr:Sprite = new Sprite();
 					csr.graphics.lineStyle(0);
@@ -168,12 +248,12 @@ package
 					}
 					csr.addEventListener(MouseEvent.MOUSE_UP,setLab);
 				}
-				else if (i==5)	// save o image
+				else if (i==6)	// save o image
 				{
 					prn(floorPlan.exportData());
 					saveToJpg();
 				}
-				else if (i==6)	// undo
+				else if (i==7)	// undo
 				{
 					if (undoStk.length>0)
 					{
@@ -182,7 +262,7 @@ package
 						floorPlan.importData(undoStk.pop());
 					}
 				}
-				else if (i==7)	// redo
+				else if (i==8)	// redo
 				{
 					if (redoStk.length>0)
 					{
@@ -200,17 +280,32 @@ package
 			scaleSlider.y = stage.stageHeight/20 + topBar.height;
 			addChild(scaleSlider);
 			
-			// ----- enter default editing mode
-			showFurnitureMenu();
-			modeDefault();
-			
-			// ----- create default room walls
-			createDefaRoom();
-			
 			// ----- add controls
 			stage.addEventListener(Event.ENTER_FRAME, onEnterFrame);
 			stage.addEventListener(MouseEvent.MOUSE_DOWN, onMouseDown);
 			stage.addEventListener(MouseEvent.MOUSE_UP, onMouseUp);
+			
+			function initInterractions():void
+			{
+				// ----- enter default editing mode
+				showFurnitureMenu();
+				modeDefault();
+				
+				// ----- create default room walls
+				createDefaRoom();
+			}//endfunction
+			
+			if (userToken==null)
+			{
+				// ----- force user to login ----------------------------
+				var loginPage:Sprite = createLoginPage(function():void 
+				{
+					if (loginPage.parent != null) loginPage.parent.removeChild(loginPage); 
+					initInterractions();
+				});
+				addChild(loginPage);
+			}
+			else initInterractions();
 		}//endfunction
 		
 		//=============================================================================================
@@ -218,7 +313,16 @@ package
 		//=============================================================================================
 		private function createDefaRoom():void
 		{
-			floorPlan.importData('{"Joints":[{"y":-395,"x":-250},{"y":-396,"x":249},{"y":180,"x":250},{"y":180,"x":150},{"y":230,"x":50},{"y":230,"x":-50},{"y":180,"x":-150},{"y":180,"x":-250},{"y":-517,"x":543},{"y":89,"x":543},{"y":89,"x":249},{"y":-192,"x":249},{"y":-192,"x":249},{"y":-193,"x":543},{"y":-192,"x":249},{"y":-343,"x":-250},{"y":-343,"x":-524},{"y":-269,"x":-627},{"y":-113,"x":-627},{"y":-27,"x":-527},{"y":-27,"x":-406},{"y":141,"x":-406},{"y":141,"x":-250},{"y":-517,"x":249},{"y":-378,"x":543},{"y":-378,"x":701},{"y":-97,"x":701},{"y":-97,"x":543},{"y":89,"x":543},{"y":-97,"x":701},{"y":-396,"x":-138.00000000000003},{"y":-707,"x":-138},{"y":-707,"x":-524},{"y":-343,"x":-524},{"y":-707,"x":-524}],"Furniture":[{"x":485,"scX":1.2509692700746744,"color":0,"scY":1.2464523664404727,"cls":"Toilet","y":-86,"rot":89.70202789452766},{"x":451,"scX":1,"color":0,"scY":1,"cls":"SinkRound","y":-163,"rot":0},{"x":442,"scX":1,"color":0,"scY":1,"cls":"BathTub","y":37,"rot":90.4262926392602},{"x":-217,"scX":1,"color":0,"scY":1,"cls":"TVFlat","y":71,"rot":-90.27906677101664},{"x":-164,"scX":1,"color":0,"scY":1,"cls":"TableSquare","y":-117,"rot":0},{"x":206,"scX":1,"color":0,"scY":1,"cls":"Sofa4","y":48,"rot":-89.94349530479464},{"x":-473,"scX":0.6984775322209045,"color":0,"scY":0.6855680212976787,"cls":"Piano","y":-187,"rot":-118.87361735156438},{"x":457,"scX":1,"color":0,"scY":1,"cls":"BedDouble","y":-410,"rot":-0.14365196037870476},{"x":634,"scX":1,"color":0,"scY":1,"cls":"TableL","y":-311,"rot":-179.86341913948408},{"x":54,"scX":1,"color":0,"scY":1,"cls":"TableOctagon","y":-204,"rot":0},{"x":-361,"scX":1,"color":0,"scY":1,"cls":"ArmChair","y":-285,"rot":0},{"x":-191,"scX":1,"color":0,"scY":1,"cls":"SinkKitchen","y":-462,"rot":90.04634954861659},{"x":-200,"scX":1,"color":0,"scY":1,"cls":"Stove","y":-645,"rot":89.86412658886046},{"x":-449,"scX":1,"color":0,"scY":1,"cls":"TableRect","y":-592,"rot":89.96651083627482}],"Labels":[],"Walls":[{"j2":3,"Doors":[],"j1":2,"w":20},{"j2":4,"Doors":[{"dir":0.617154761789942,"pivot":0.22742261910502903,"cls":"WindowSingle"}],"j1":3,"w":10},{"j2":5,"Doors":[{"dir":0.69,"pivot":0.16500000000000004,"cls":"WindowSingle"}],"j1":4,"w":10},{"j2":6,"Doors":[{"dir":0.617154761789942,"pivot":0.15142261910502908,"cls":"WindowSingle"}],"j1":5,"w":10},{"j2":7,"Doors":[],"j1":6,"w":20},{"j2":10,"Doors":[],"j1":2,"w":10},{"j2":10,"Doors":[],"j1":9,"w":10},{"j2":11,"Doors":[{"dir":0.541871921182266,"pivot":0.3645320197044335,"cls":"DoorSingleSwinging"}],"j1":1,"w":10},{"j2":11,"Doors":[{"dir":0.3914590747330961,"pivot":0.5444839857651245,"cls":"DoorSingleSwinging"}],"j1":10,"w":10},{"j2":11,"Doors":[],"j1":13,"w":10},{"j2":15,"Doors":[],"j1":0,"w":10},{"j2":17,"Doors":[{"dir":0.5440496786546839,"pivot":0.2247734199204044,"cls":"WindowSingle"}],"j1":16,"w":10},{"j2":18,"Doors":[{"dir":0.4423076923076923,"pivot":0.27884615384615385,"cls":"WindowSingle"}],"j1":17,"w":10},{"j2":19,"Doors":[{"dir":0.5231477854550612,"pivot":0.24911822040192444,"cls":"WindowSingle"}],"j1":18,"w":10},{"j2":20,"Doors":[{"dir":0.5702479338842975,"pivot":0.1859504132231405,"cls":"WindowSingle"}],"j1":19,"w":10},{"j2":21,"Doors":[],"j1":20,"w":10},{"j2":22,"Doors":[],"j1":7,"w":10},{"j2":22,"Doors":[{"dir":0.2272727272727273,"pivot":0.0578512396694215,"cls":"DoorSingleSwinging"}],"j1":15,"w":10},{"j2":22,"Doors":[{"dir":0.8269230769230769,"pivot":0.08012820512820518,"cls":"WindowDouble"}],"j1":21,"w":10},{"j2":23,"Doors":[{"dir":0.4387755102040816,"pivot":0.5289115646258504,"cls":"WindowDouble"}],"j1":8,"w":10},{"j2":23,"Doors":[],"j1":1,"w":10},{"j2":24,"Doors":[],"j1":8,"w":10},{"j2":25,"Doors":[],"j1":24,"w":10},{"j2":26,"Doors":[],"j1":25,"w":10},{"j2":27,"Doors":[],"j1":9,"w":10},{"j2":27,"Doors":[],"j1":13,"w":10},{"j2":27,"Doors":[],"j1":26,"w":10},{"j2":30,"Doors":[],"j1":0,"w":10},{"j2":30,"Doors":[],"j1":1,"w":10},{"j2":31,"Doors":[],"j1":30,"w":10},{"j2":32,"Doors":[{"dir":0.33419689119170987,"pivot":0.5582901554404145,"cls":"WindowDouble"},{"dir":0.33419689119170987,"pivot":0.09974093264248704,"cls":"WindowDouble"}],"j1":31,"w":10},{"j2":16,"Doors":[{"dir":0.7846715328467153,"pivot":0.0967153284671533,"cls":"DoorSingleSliding"}],"j1":15,"w":10},{"j2":16,"Doors":[{"dir":0.3543956043956044,"pivot":0.6112637362637362,"cls":"WindowDouble"}],"j1":32,"w":10}]}');
+			floorPlan.importData('{"Joints":[{"y":-395,"x":-250},{"y":-396,"x":249},{"y":180,"x":250},{"y":180,"x":150},{"y":230,"x":50},{"y":230,"x":-50},{"y":180,"x":-150},{"y":180,"x":-250},{"y":-517,"x":543},{"y":89,"x":543},{"y":89,"x":249},{"y":-192,"x":249},{"y":-192,"x":249},{"y":-193,"x":543},{"y":-192,"x":249},{"y":-343,"x":-250},{"y":-343,"x":-524},{"y":-269,"x":-627},{"y":-113,"x":-627},{"y":-27,"x":-527},{"y":-27,"x":-406},{"y":141,"x":-406},{"y":141,"x":-250},{"y":-517,"x":249},{"y":-378,"x":543},{"y":-378,"x":701},{"y":-97,"x":701},{"y":-97,"x":543},{"y":89,"x":543},{"y":-97,"x":701},{"y":-396,"x":-138.00000000000003},{"y":-707,"x":-138},{"y":-707,"x":-524},{"y":-343,"x":-524},{"y":-707,"x":-524}],"Furniture":[{"x":485,"scX":1.2509692700746744,"color":0,"scY":1.2464523664404727,"cls":"Toilet","y":-86,"rot":89.70202789452766},{"x":451,"scX":1,"color":0,"scY":1,"cls":"SinkRound","y":-163,"rot":0},{"x":442,"scX":1,"color":0,"scY":1,"cls":"BathTub","y":37,"rot":90.4262926392602},{"x":-217,"scX":1,"color":0,"scY":1,"cls":"TVFlat","y":71,"rot":-90.27906677101664},{"x":-164,"scX":1,"color":0,"scY":1,"cls":"TableSquare","y":-117,"rot":0},{"x":206,"scX":1,"color":0,"scY":1,"cls":"Sofa4","y":48,"rot":-89.94349530479464},{"x":-473,"scX":0.6984775322209045,"color":0,"scY":0.6855680212976787,"cls":"Piano","y":-187,"rot":-118.87361735156438},{"x":457,"scX":1,"color":0,"scY":1,"cls":"BedDouble","y":-410,"rot":-0.14365196037870476},{"x":634,"scX":1,"color":0,"scY":1,"cls":"TableL","y":-311,"rot":-179.86341913948408},{"x":54,"scX":1,"color":0,"scY":1,"cls":"TableOctagon","y":-204,"rot":0},{"x":-361,"scX":1,"color":0,"scY":1,"cls":"ArmChair","y":-285,"rot":0},{"x":-191,"scX":1,"color":0,"scY":1,"cls":"SinkKitchen","y":-462,"rot":90.04634954861659},{"x":-200,"scX":1,"color":0,"scY":1,"cls":"Stove","y":-645,"rot":89.86412658886046},{"x":-449,"scX":1,"color":0,"scY":1,"cls":"TableRect","y":-592,"rot":89.96651083627482}],"Labels":[],"Walls":[{"j2":3,"Doors":[],"j1":2,"w":20},{"j2":4,"Doors":[{"dir":0.617154761789942,"pivot":0.22742261910502903,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":3,"w":10},{"j2":5,"Doors":[{"dir":0.69,"pivot":0.16500000000000004,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":4,"w":10},{"j2":6,"Doors":[{"dir":0.617154761789942,"pivot":0.15142261910502908,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":5,"w":10},{"j2":7,"Doors":[],"j1":6,"w":20},{"j2":10,"Doors":[],"j1":2,"w":10},{"j2":10,"Doors":[],"j1":9,"w":10},{"j2":11,"Doors":[{"dir":0.541871921182266,"pivot":0.3645320197044335,"cls":"DoorSingleSwinging","side":"DoorSingleSwingingSV"}],"j1":1,"w":10},{"j2":11,"Doors":[{"dir":0.3914590747330961,"pivot":0.5444839857651245,"cls":"DoorSingleSwinging","side":"DoorSingleSwingingSV"}],"j1":10,"w":10},{"j2":11,"Doors":[],"j1":13,"w":10},{"j2":15,"Doors":[],"j1":0,"w":10},{"j2":17,"Doors":[{"dir":0.5440496786546839,"pivot":0.2247734199204044,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":16,"w":10},{"j2":18,"Doors":[{"dir":0.4423076923076923,"pivot":0.27884615384615385,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":17,"w":10},{"j2":19,"Doors":[{"dir":0.5231477854550612,"pivot":0.24911822040192444,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":18,"w":10},{"j2":20,"Doors":[{"dir":0.5702479338842975,"pivot":0.1859504132231405,"cls":"WindowSingle","side":"WindowSingleSV"}],"j1":19,"w":10},{"j2":21,"Doors":[],"j1":20,"w":10},{"j2":22,"Doors":[],"j1":7,"w":10},{"j2":22,"Doors":[{"dir":0.2272727272727273,"pivot":0.0578512396694215,"cls":"DoorSingleSwinging","side":"DoorSingleSwingingSV"}],"j1":15,"w":10},{"j2":22,"Doors":[{"dir":0.8269230769230769,"pivot":0.08012820512820518,"cls":"WindowDouble","side":"WindowDoubleSV"}],"j1":21,"w":10},{"j2":23,"Doors":[{"dir":0.4387755102040816,"pivot":0.5289115646258504,"cls":"WindowDouble","side":"WindowDoubleSV"}],"j1":8,"w":10},{"j2":23,"Doors":[],"j1":1,"w":10},{"j2":24,"Doors":[],"j1":8,"w":10},{"j2":25,"Doors":[],"j1":24,"w":10},{"j2":26,"Doors":[],"j1":25,"w":10},{"j2":27,"Doors":[],"j1":9,"w":10},{"j2":27,"Doors":[],"j1":13,"w":10},{"j2":27,"Doors":[],"j1":26,"w":10},{"j2":30,"Doors":[],"j1":0,"w":10},{"j2":30,"Doors":[],"j1":1,"w":10},{"j2":31,"Doors":[],"j1":30,"w":10},{"j2":32,"Doors":[{"dir":0.33419689119170987,"pivot":0.5582901554404145,"cls":"WindowDouble","side":"WindowDoubleSV"},{"dir":0.33419689119170987,"pivot":0.09974093264248704,"cls":"WindowDouble","side":"WindowDoubleSV"}],"j1":31,"w":10},{"j2":16,"Doors":[{"dir":0.7846715328467153,"pivot":0.0967153284671533,"cls":"DoorSingleSliding","side":"DoorSingleSlidingSV"}],"j1":15,"w":10},{"j2":16,"Doors":[{"dir":0.3543956043956044,"pivot":0.6112637362637362,"cls":"WindowDouble","side":"WindowDoubleSV"}],"j1":32,"w":10}]}');
+			floorPlan.refresh();
+		}//endfunction
+		
+		//=============================================================================================
+		// default room to look at just so it wouldnt be too boring 
+		//=============================================================================================
+		private function createSquareRoom(w:int,h:int):void
+		{
+			floorPlan.importData('{"floorAreas":[{"flooring":1}],"Joints":[{"y":-'+h/2+',"x":-'+w/2+'},{"y":-'+h/2+',"x":'+w/2+'},{"y":'+h/2+',"x":'+w/2+'},{"y":'+h/2+',"x":-'+w/2+'}],"Walls":[{"w":10,"j1":0,"j2":1,"Doors":[]},{"w":10,"j1":1,"j2":2,"Doors":[]},{"w":10,"j1":2,"j2":3,"Doors":[]},{"w":10,"j1":3,"j2":0,"Doors":[]}],"Labels":[],"Furniture":[]}');
 			floorPlan.refresh();
 		}//endfunction
 		
@@ -227,8 +331,34 @@ package
 		//=============================================================================================
 		private function showSaveLoadMenu():void
 		{
-			replaceMenu(new SaveLoadMenu(floorPlan));
+			replaceMenu(new SaveLoadMenu(floorPlan,showBuildDfaultRoom));
 		}//endfunction
+		
+		//=============================================================================================
+		// show option to build a default room
+		//=============================================================================================
+		public function showBuildDfaultRoom():void
+		{
+			var w:int = 10; 
+			var l:int = 5;
+			var h:int = 2;
+			replaceMenu(new DialogMenu("是否建标准房间",
+										Vector.<String>([	"长度 =["+w+"]",
+															"宽度 =["+l+"]",
+															"高度 =["+h+"]",
+														FloorPlanner.Lang.SaveLoad.Confirm.@txt,
+														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
+										Vector.<Function>([	function(val:String):void { w = parseFloat(val); if (isNaN(w) || w < 1) w = 1; },
+															function(val:String):void { l = parseFloat(val); if (isNaN(l) || l < 1) l = 1; },					
+															function(val:String):void { h = parseFloat(val); if (isNaN(h) || h < 1) h = 1; },
+															function():void 
+															{
+																floorPlan.ceilingHeight = h*100;
+																createSquareRoom(w * 100, l * 100);
+																modeDefault();
+															},
+															modeDefault])));
+		}
 		
 		//=============================================================================================
 		// show available furniture selection
@@ -282,7 +412,8 @@ package
 			replaceMenu(new AddFurnitureMenu(Lang.Ports[0].port,function(idx:int):void
 			{
 				var IcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@cls));
-				modeAddDoors(new IcoCls() as Sprite);
+				var SideIcoCls:Class = Class(getDefinitionByName(Lang.Ports[0].port[idx].@side));
+				modeAddDoors(new IcoCls() as Sprite,new SideIcoCls() as Sprite);
 			}));	
 		}//endfunction
 		
@@ -360,6 +491,33 @@ package
 															showFurnitureMenu])));		// done
 			}//endfunction
 			// ---------------------------------------------------------------------
+			function showLineProperties(line:Line):void
+			{
+				replaceMenu(new DialogMenu(Lang.LineProp.title.@txt,
+										Vector.<String>([	Lang.LineProp.length.@txt +" = ["+line.joint1.subtract(line.joint2).length+"]",
+															Lang.LineProp.remove.@txt,
+															Lang.LineProp.done.@txt]),
+										Vector.<Function>([	function(val:String):void	// set line length
+															{
+																if (isNaN(parseFloat(val))) return;
+																var vec:Point = line.joint2.subtract(line.joint1);
+																var dif:Number = parseFloat(val) - vec.length;
+																vec.normalize(1);
+																line.joint1.x -= vec.x * 0.5 * dif;
+																line.joint1.y -= vec.y * 0.5 * dif;
+																line.joint2.x += vec.x * 0.5 * dif;
+																line.joint2.y += vec.y * 0.5 * dif;
+																line.refresh();
+															},
+															function():void 			// remove line
+															{
+																floorPlan.removeLine(line);
+																floorPlan.refresh();
+																showFurnitureMenu();
+															},
+															showFurnitureMenu])));
+			}//endfunction
+			// ---------------------------------------------------------------------
 			function showWallProperties(wall:Wall):void
 			{
 				replaceMenu(new DialogMenu(Lang.WallProp.title.@txt,
@@ -388,7 +546,7 @@ package
 															},
 															function():void				// edit side view
 															{
-																modeEditWallSideView(wall);
+																modeWallSideView(wall);
 															},
 															function():void 			// remove wall
 															{
@@ -460,7 +618,7 @@ package
 			{
 				if (mouseDownPt.w>mouseUpPt.w)	// is dragging
 				{
-					if (floorPlan.selected is Point)
+					if (floorPlan.selected is Point && floorPlan.Joints.indexOf(floorPlan.selected)!=-1)
 					{	// ----- shift joint
 						var selJ:Point = (Point)(floorPlan.selected); 
 						selJ.x = grid.mouseX;
@@ -488,6 +646,23 @@ package
 							}
 						}
 						floorPlan.refresh();
+					}
+					else if (floorPlan.selected is Point)
+					{
+						trace("FGHFGH");
+						var pt:Point = (Point)(floorPlan.selected); 
+						pt.x = grid.mouseX;
+						pt.y = grid.mouseY;
+						floorPlan.refresh();
+					}
+					else if (floorPlan.selected is Line)
+					{	// ----- shift wall
+						var line:Line = (Line)(floorPlan.selected);
+						line.joint1.x += grid.mouseX - prevMousePt.x;
+						line.joint1.y += grid.mouseY - prevMousePt.y;
+						line.joint2.x += grid.mouseX - prevMousePt.x;
+						line.joint2.y += grid.mouseY - prevMousePt.y;
+						line.refresh();
 					}
 					else if (floorPlan.selected is Wall)
 					{	// ----- shift wall
@@ -538,6 +713,10 @@ package
 				{
 					replaceMenu(null);	// hide all prev menus
 				}
+				if (floorPlan.selected is Line)		// selected a ruler line
+				{
+					showLineProperties((Line)(floorPlan.selected));
+				}
 				else if (floorPlan.selected is Wall)	// selected a wall
 				{
 					showWallProperties((Wall)(floorPlan.selected));
@@ -579,33 +758,213 @@ package
 		//=============================================================================================
 		// go into side view of wall
 		//=============================================================================================
-		private function modeEditWallSideView(wall:Wall):void
+		private function modeWallSideView(wall:Wall):void
 		{
-			showDoorsMenu();
+			var ports:XMLList = Lang.Ports[0].port;
+			
+			var selected:Door = null;
+			var ctrls:Sprite = null;
+			
+			function showSideItemsMenu():void
+			{
+				wall.updateSideView();
+				selected = null;
+				ctrls = null;
+				replaceMenu(new AddSideViewItemsMenu(ports,function(idx:int):void
+				{
+					var cls:Class = Class(getDefinitionByName(ports[idx].@side));
+					var sideIco:Sprite = new cls();
+					cls =  Class(getDefinitionByName(ports[idx].@cls));
+					var planIco:Sprite = new cls();
+					var door:Door = new Door(0.25, 0.5, planIco, sideIco);
+					wall.addDoor(door);
+					wall.updateSideView();
+					//modeAddDoors(new IcoCls() as Sprite);
+				}));	
+			}//endfunction
+			
+			function showDoorMenu(door:Door):void
+			{
+				var wallW:Number = wall.joint1.subtract(wall.joint2).length;
+				replaceMenu(new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
+									Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*wallW*100)/100+"]",
+														Lang.DoorProp.flip.@txt,
+														Lang.DoorProp.remove.@txt,
+														Lang.DoorProp.done.@txt]),
+									Vector.<Function>([	function(val:String):void 	// change door length
+														{
+															if (door.dir<0)
+																door.dir = -Math.min(1,Math.max(0.01,Number(val)/wallW));
+															else
+																door.dir = Math.min(1,Math.max(0.01,Number(val)/wallW));
+															wall.updateSideView();
+														},
+														function():void 			// swap door dir
+														{
+															door.pivot += door.dir;
+															door.dir*=-1;
+															wall.updateSideView();
+														},
+														function():void 			// remove door
+														{
+															wall.removeDoor(door);
+															wall.updateSideView();
+															showSideItemsMenu();
+														},
+														showSideItemsMenu])));		// done
+			}
+			showSideItemsMenu();
+			
+			floorPlan.selected = null;
 			floorPlan.overlay.visible = false;
-			wall.updateSideView();
+			//wall.updateSideView();
+			wall.sideView.x = -grid.x + stage.stageWidth / 2;
+			wall.sideView.y = -grid.y + stage.stageHeight / 2;
 			grid.addChild(wall.sideView);
 			topBar.visible = false;
 			trace("grid="+grid+"  wall.sideVied.width="+wall.sideView.width);	
 			
-			var mouseIsDown:Boolean = false;
+			function showWallAreaProperties(wall:Wall):void
+			{
+				replaceMenu(new DialogMenu(Lang.WallProp.area.@txt+":"+int(wall.area/100)/100+"m sq",
+										Vector.<String>([	Lang.WallProp.wallPaper.@txt,
+															Lang.WallProp.height.@txt+"=["+floorPlan.ceilingHeight+"]",
+															Lang.WallProp.done.@txt]),
+										Vector.<Function>([	function():void 
+															{
+																var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+																for (var i:int=0; i<Wall.WallPapers.length; i++)
+																{
+																	var s:Sprite = new Sprite();
+																	s.addChild(new Bitmap(Wall.WallPapers[i]));
+																	Icos.push(s);
+																}
+																replaceMenu(new IconsMenu(Icos,5,2,function(f:int):void 
+																{
+																	wall.wallPaper = Wall.WallPapers[f];
+																	wall.updateSideView();
+																	showWallAreaProperties(wall);
+																}));
+															},
+															function(val:String):void 
+															{
+																floorPlan.ceilingHeight = parseFloat(val)*100;
+																if (isNaN(floorPlan.ceilingHeight))
+																	floorPlan.ceilingHeight = 200;
+																for (var i:int = 0; i < floorPlan.Walls.length; i++ )
+																	floorPlan.Walls[i].height = floorPlan.ceilingHeight;
+																wall.updateSideView();
+															},
+															showSideItemsMenu])));
+			}//endfunction
+			
+			var mouseDownPt:Vector3D = null;
+			stepFn = function():void
+			{
+				if (mouseDownPt != null)
+				{
+					if (ctrls)
+					{
+						wall.updateDoorWithIconPosn(selected);
+					}
+					else
+					{
+						grid.x -= mouseDownPt.x - grid.mouseX;
+						grid.y -= mouseDownPt.y - grid.mouseY;
+						grid.update();
+					}
+				}
+			}//endfunction
+			
 			mouseDownFn = function():void
 			{
-				mouseIsDown = true;
-			}
+				mouseDownPt = new Vector3D(grid.mouseX, grid.mouseY, 0, getTimer());
+				if (ctrls == null)
+				{
+					selected = null;
+					for (var i:int = 0; i < wall.Doors.length && ctrls==null; i++)
+						if (wall.Doors[i].sideIcon.hitTestPoint(stage.mouseX, stage.mouseY))
+						{
+							selected = wall.Doors[i];
+							ctrls = floorPlan.furnitureTransformControls(selected.sideIcon,5,false);
+							wall.sideView.addChild(ctrls);
+						}
+				}
+				
+				if (selected != null)	showDoorMenu(selected);
+				else					showSideItemsMenu();
+			}//endfunction
 			
 			mouseUpFn = function():void
 			{
-				if (!mouseIsDown) return;
-				mouseIsDown = false;
+				if (mouseDownPt==null) return;
 				
-				if (wall.sideView.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY) == false)
+				if (ctrls!=null)
+				{
+					if (!ctrls.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY))
+					{
+						ctrls.parent.removeChild(ctrls);
+						ctrls = null;
+					}
+				}
+				else if (wall.sideView.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY))
+					showWallAreaProperties(wall);
+				else if (getTimer()-mouseDownPt.w<200)
 				{
 					grid.removeChild(wall.sideView);
 					topBar.visible = true;
 					floorPlan.overlay.visible = true;
+					showFurnitureMenu();
 					modeDefault();
+					floorPlan.refresh();
 				}
+				mouseDownPt = null;
+			}//endfunction
+		}//endfunction
+		
+		//=============================================================================================
+		// go into adding lines mode
+		//=============================================================================================
+		private function modeAddLines(snapDist:Number=10):void
+		{
+			replaceMenu( new DialogMenu("ADDING LINES",
+									Vector.<String>(["DONE"]),
+									Vector.<Function>([function():void {showFurnitureMenu(); modeDefault();}])));
+			
+			// ----------------------------------------------------------------
+			var line:Line = null;
+			stepFn = function():void
+			{
+				if (line!=null)
+				{
+					trace("line ?? "+line);
+					line.joint2.x = grid.mouseX;
+					line.joint2.y = grid.mouseY;
+					floorPlan.refresh();
+				}
+			}
+			// ----------------------------------------------------------------
+			mouseDownFn = function():void
+			{
+				undoStk.push(floorPlan.exportData());
+				if (line==null)
+				{
+					line = floorPlan.createLine(new Point(grid.mouseX,grid.mouseY),
+												new Point(grid.mouseX,grid.mouseY));
+				}
+			}
+			// ----------------------------------------------------------------
+			mouseUpFn = function():void
+			{
+				if (line!=null && line.joint1.subtract(line.joint2).length<=snapDist)
+				{
+					floorPlan.removeLine(line);		// remove wall stub
+					floorPlan.refresh();
+				}
+				line = null;
+				
+				if (undoStk.length>0 && undoStk[undoStk.length-1]==floorPlan.exportData())
+					undoStk.pop();
 			}
 		}//endfunction
 		
@@ -683,7 +1042,7 @@ package
 		//=============================================================================================
 		// go into adding doors mode
 		//=============================================================================================
-		private function modeAddDoors(ico:Sprite,snapDist:Number=10):void
+		private function modeAddDoors(ico:Sprite,sideIco:Sprite,snapDist:Number=10):void
 		{
 			replaceMenu(new DialogMenu("ADDING DOORS",
 										Vector.<String>(["DONE"]),
@@ -692,7 +1051,7 @@ package
 			// ----- add doors logic
 			var icoW:int = ico.width;
 			var prevWall:Wall = null;
-			var door:Door = new Door(0,0.5,ico);	// pivot and dir values to be replaced
+			var door:Door = new Door(0,0.5,ico,sideIco);	// pivot and dir values to be replaced
 			
 			stepFn = function():void
 			{
@@ -929,33 +1288,35 @@ package
 	}//endclass
 }//endpackage
 
-import flash.display.DisplayObject;
+import com.adobe.images.JPGEncoder;
 import flash.display.Bitmap;
 import flash.display.BitmapData;
+import flash.display.DisplayObject;
+import flash.display.JointStyle;
 import flash.display.Loader;
-import flash.display.Stage;
-import flash.events.FocusEvent;
-import flash.geom.Point;
-import flash.geom.Vector3D;
-import flash.geom.Matrix;
-import flash.geom.Rectangle;
-import flash.geom.ColorTransform;
-import flash.text.TextField;
-import flash.display.Sprite;
 import flash.display.MovieClip;
+import flash.display.Sprite;
+import flash.display.Stage;
 import flash.events.Event;
-import flash.events.TextEvent;
-import flash.events.MouseEvent;
 import flash.events.KeyboardEvent;
-import flash.filters.GlowFilter;
+import flash.events.MouseEvent;
 import flash.filters.DropShadowFilter;
+import flash.filters.GlowFilter;
+import flash.geom.ColorTransform;
+import flash.geom.Matrix;
+import flash.geom.Point;
+import flash.geom.Rectangle;
+import flash.geom.Vector3D;
+import flash.net.SharedObject;
+import flash.net.URLLoader;
+import flash.net.URLVariables;
+import flash.net.URLRequest;
+import flash.text.TextField;
 import flash.text.TextFormat;
-import flash.utils.getTimer;
 import flash.utils.ByteArray;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
-import flash.net.SharedObject;
-import com.adobe.images.JPGEncoder;
+import flash.utils.getTimer;
 
 class FloatingMenu extends Sprite		// to be extended
 {
@@ -1406,18 +1767,71 @@ class AddFurnitureMenu extends IconsMenu
 	}//endfunction
 }//endclass
 
-class SaveLoadMenu extends IconsMenu
+class AddSideViewItemsMenu extends IconsMenu
 {
-	private var floorPlan:FloorPlan;
-	private var hasInit:Boolean = false;
+	private var IcoCls:Vector.<Class> = null;
 	
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function SaveLoadMenu(floorP:FloorPlan):void
+	public function AddSideViewItemsMenu(dat:XMLList,callBackFn:Function,icoW:int=70):void
+	{
+		Btns = new Vector.<Sprite>();
+		IcoCls = new Vector.<Class>();
+		
+		for (var i:int=0; i<dat.length(); i++)
+		{
+			var btn:Sprite = new Sprite();
+			btn.graphics.beginFill(0xFFFFFF,1);
+			btn.graphics.drawRoundRect(0,0,icoW,icoW,icoW/10,icoW/10);
+			btn.graphics.endFill();
+			IcoCls.push(getDefinitionByName(dat[i].@side));
+			var ico:Sprite = new IcoCls[i]();
+			if (ico is MovieClip)	(MovieClip)(ico).gotoAndStop(1);
+			var bnds:Rectangle = ico.getBounds(ico);
+			var sc:Number = Math.min(icoW*0.8/ico.width,icoW*0.8/ico.height);
+			ico.scaleX = ico.scaleY = sc;
+			ico.x = (icoW-ico.width)/2 - bnds.left*sc;
+			ico.y = (icoW-ico.height)/2 - bnds.top*sc;
+			btn.addChild(ico);
+			btn.buttonMode = true;
+			btn.mouseChildren = false;
+			var tf:TextField = new TextField();
+			tf.autoSize = "left";
+			tf.wordWrap = false;
+			do {
+				var tff:TextFormat = tf.defaultTextFormat;
+				tff.color = 0x000000;
+				tff.size = int(tff.size)-1;
+				tf.defaultTextFormat = tff;
+				tf.text = dat[i].@txt;
+			}
+			while (tf.width>icoW);
+			tf.y = btn.height;
+			tf.x = (btn.width-tf.width)/2;
+			btn.addChild(tf);
+			Btns.push(btn);
+		}
+		
+		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+	}//endfunction
+}//endclass
+
+class SaveLoadMenu extends IconsMenu
+{
+	private var floorPlan:FloorPlan;
+	private var hasInit:Boolean = false;
+	private var showBuildDefaultRoom:Function = null;
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function SaveLoadMenu(floorP:FloorPlan,showBuildDefa:Function=null):void
 	{
 		floorPlan = floorP;
 				
+		showBuildDefaultRoom = showBuildDefa;
+		
 		callBackFn = function(idx:int):void
 		{
 			if (idx==0)			// new document
@@ -1435,10 +1849,19 @@ class SaveLoadMenu extends IconsMenu
 		updateBtns();
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
 		hasInit = true;
+		
+		// ----- try loading user save data 
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=index&token=" + FloorPlanner.userToken));
+		function onComplete(ev:Event):void
+		{
+			var dat:Object = JSON.parse(ldr.data);
+			trace("GOT SAVE LIST :  ldr.data : "+dat.meta+"\n\nlength:"+dat.meta.length);
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE,onComplete);
 	}//endconstr
 	
 	//===============================================================================================
-	// dialog to confirm save
+	// dialog to confirm new
 	//===============================================================================================
 	private function askToNew():void
 	{
@@ -1449,6 +1872,7 @@ class SaveLoadMenu extends IconsMenu
 														{
 															floorPlan.clearAll();
 															overlay.parent.removeChild(overlay);
+															if (showBuildDefaultRoom != null) showBuildDefaultRoom();
 														},
 														function():void 
 														{
@@ -1477,6 +1901,8 @@ class SaveLoadMenu extends IconsMenu
 															saveToSharedObject();
 															overlay.parent.removeChild(overlay);
 															updateBtns();
+															
+															
 														},
 														function():void 
 														{
@@ -1497,6 +1923,34 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	private function askToLoad(idx:int):void
 	{
+		function loadDataFromServer(id:String):void
+		{
+			trace("loadDataFromServer("+id+")");
+			var ldr:URLLoader = new URLLoader();
+			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl+"?n=api&a=scheme&c=house&m=info&token="+FloorPlanner.userToken+"&id="+id);
+			function onComplete(ev:Event):void
+			{
+				trace("GOT DATA FROM SERVER  ldr.data : "+ldr.data);
+				var o:Object = JSON.parse(ldr.data);
+				//floorPlan.importData(o.data);	// imports the data string
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
+		}//endfunction
+		
+		function deleteDataFromServer(id:String):void
+		{
+			trace("loadDataFromServer("+id+")");
+			var ldr:URLLoader = new URLLoader();
+			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl+"?n=api&a=scheme&c=house&m=del&token"+FloorPlanner.userToken+"&id="+id);
+			function onComplete(ev:Event):void
+			{
+				trace("Deleted DATA FROM SERVER  ldr.data : "+ldr.data);
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
+		}//endfunction
+		
 		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToLoad.@txt,
 									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
 														FloorPlanner.Lang.SaveLoad.Cancel.@txt,
@@ -1505,7 +1959,13 @@ class SaveLoadMenu extends IconsMenu
 														{	// LOAD
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															floorPlan.importData(saveDat[(idx)*3+2]);	// imports the data string
+															if (saveDat[idx*3].split(":").length>1)
+															{
+																var saveId:String = saveDat[idx*3].split(":")[1].split(" ")[0];
+																loadDataFromServer(saveId);
+															}
+															else
+																floorPlan.importData(saveDat[(idx)*3+2]);	// imports the data string
 															overlay.parent.removeChild(overlay);
 														},
 														function():void 
@@ -1516,6 +1976,11 @@ class SaveLoadMenu extends IconsMenu
 														{	// DELETE
 															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+															if (saveDat[idx*3].split(":").length>1)
+															{
+																var saveId:String = saveDat[idx*3].split(":")[1].split(" ")[0];
+																deleteDataFromServer(saveId);
+															}
 															saveDat.splice((idx)*3,3);
 															so.data.savedData = saveDat;
 															so.flush();
@@ -1621,12 +2086,125 @@ class SaveLoadMenu extends IconsMenu
 		
 		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
 		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-		if (saveDat==null) saveDat = [];
+		if (saveDat == null) saveDat = [];
+		trace("data : " +floorPlan.exportData());
 		saveDat.unshift(dat.date+" "+M[dat.month]+" "+dat.fullYear , ba , floorPlan.exportData());
 		if (saveDat.length>20*3) saveDat = saveDat.slice(0,20*3);
 		so.data.savedData = saveDat;
 		so.flush();
 		
+		// ----- sends data to server
+		var ldr:URLLoader = new URLLoader();
+		var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=add&token=" + FloorPlanner.userToken);
+		req.method = "post";  
+		bnds = floorPlan.boundRect();
+		var o:Object = {houseName:"houseName", spacelength:bnds.width, spacewidth:bnds.height, spaceheight:floorPlan.ceilingHeight, json:floorPlan.exportData(), productjson:"", desc:dat.date+" "+M[dat.month]+" "+dat.fullYear};
+		req.data = JSON.stringify(o);
+		function onComplete(ev:Event):void
+		{
+			trace("UPLOADED  ldr.data : "+ldr.data);
+			var o:Object = JSON.parse(ldr.data);
+			var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
+			saveDat[0] = "id:"+o.data.id+" date:"+saveDat[0];
+			updateBtns();
+			uploadWallPics(o.data.id);
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE, onComplete);
+		ldr.load(req);
+	}//endfunction
+	
+	//===============================================================================================
+	// upload each wall pic to server
+	//===============================================================================================
+	private function uploadWallPics(saveId:String):void
+	{
+		var idx:int = 0;
+		
+		var overlay:Sprite = new Sprite();
+		overlay.graphics.beginFill(0, 0.8);
+		overlay.graphics.drawRect(0, 0, stage.stageWidth, stage.stageHeight);
+		overlay.graphics.endFill();
+		var tf:TextField = new TextField();
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.color = 0xFFFFFF;
+		tff.size = 14;
+		tff.bold = true;
+		tf.defaultTextFormat = tff;
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		overlay.addChild(tf);
+		this.parent.addChild(overlay);
+		
+		function uploadFloorPic(callBack:Function=null):void
+		{
+			floorPlan.refresh();
+			var b:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
+			var bmd:BitmapData = new BitmapData(b.width+20, b.height+20, false, 0xFFFFFF);
+			bmd.draw(floorPlan.overlay, new Matrix(1, 0, 0, 1, 10 - b.left, 10 - b.top));
+			var bmp:Bitmap = new Bitmap(bmd);
+			bmp.scaleX = bmp.scaleY = 1 / 10;
+			bmp.x = (overlay.width - bmp.width) / 2;
+			bmp.y = (overlay.height - bmp.height) / 2;
+			while (overlay.numChildren > 1) overlay.removeChildAt(1);
+			overlay.addChild(bmp);
+			tf.text = "Uploading floorplan";
+			tf.x = (overlay.width - tf.width) / 2;
+			tf.y = bmp.y + bmp.height + 3;
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
+			var ldr:URLLoader = new URLLoader();
+			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=0&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=floorplan");
+			req.contentType = 'application/octet-stream';
+			req.method = "post";  
+			req.data = ba;
+			function onComplete(ev:Event):void
+			{
+				trace("UPLOADED floor pic ldr.data : "+ldr.data);
+				if (callBack!=null) callBack();
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
+		}//endfunction
+		
+		function uploadWallPics():void
+		{
+			if (idx >= floorPlan.Walls.length)
+			{
+				trace("upload wall pic done!");
+				if (overlay.parent != null) overlay.parent.removeChild(overlay);
+				return;
+			}
+			var wall:Wall = floorPlan.Walls[idx];
+			wall.updateSideView();
+			var b:Rectangle = wall.sideView.getBounds(wall.sideView);
+			var bmd:BitmapData = new BitmapData(b.width+20, b.height+20, false, 0xFFFFFF);
+			bmd.draw(wall.sideView, new Matrix(1, 0, 0, 1, 10 - b.left, 10 - b.top));
+			var bmp:Bitmap = new Bitmap(bmd);
+			bmp.x = (overlay.width - bmp.width) / 2;
+			bmp.y = (overlay.height - bmp.height) / 2;
+			while (overlay.numChildren > 1) overlay.removeChildAt(1);
+			overlay.addChild(bmp);
+			tf.text = "Uploading wall" + idx;
+			tf.x = (overlay.width - tf.width) / 2;
+			tf.y = bmp.y + bmp.height + 3;
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
+			var ldr:URLLoader = new URLLoader();
+			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=1&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=wall"+idx);
+			req.contentType = 'application/octet-stream';
+			req.method = "post";  
+			req.data = ba;
+			function onComplete(ev:Event):void
+			{
+				trace("UPLOADED wall"+idx+" pic ldr.data : "+ldr.data);
+				idx++;
+				uploadWallPics();
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
+		}//endfunction
+		
+		uploadFloorPic(uploadWallPics);
 	}//endfunction
 	
 }//endclass
@@ -1733,13 +2311,20 @@ class WireGrid extends Sprite
 	
 }//endclass
 
+
 class FloorPlan
 {
 	public var Joints:Vector.<Point>;
 	public var Walls:Vector.<Wall>;
+	
+	public var Lines:Vector.<Line>;
+	public var LineEndings:Vector.<Point>;
+	
 	public var Furniture:Vector.<Item>;			// list of furniture items already on the stage
 	public var floorAreas:Vector.<FloorArea>;	// list of floor area sprites already on the stage
 	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
+	
+	public var ceilingHeight:Number = 2;
 	
 	public var selected:* = null;				// of Furniture or Joint or Wall
 	
@@ -1754,6 +2339,8 @@ class FloorPlan
 	{
 		Joints = new Vector.<Point>();
 		Walls = new Vector.<Wall>();
+		Lines = new Vector.<Line>();
+		LineEndings = new Vector.<Point>();
 		
 		Furniture = new Vector.<Item>();
 		floorAreas = new Vector.<FloorArea>();
@@ -1796,13 +2383,12 @@ class FloorPlan
 		
 		// ----- remove walls
 		while (Walls.length>0)					// clear off prev walls
-			overlay.removeChild(Walls.pop());
+			overlay.removeChild(Walls.pop().planView);
 				
 		// ----- remove furniture
 		while (Furniture.length>0)				// clear off prev furniture
 		{
-			var itm:Item = Furniture.pop();
-			overlay.removeChild(itm.icon);
+			overlay.removeChild(Furniture.pop().icon);
 		}
 		refresh();
 	}//endfunction
@@ -1826,7 +2412,9 @@ class FloorPlan
 				var o:Object = new Object();
 				o.pivot = v.pivot;
 				o.dir = v.dir;
+				o.height = v.height;
 				o.cls = getQualifiedClassName((Door)(v).icon);
+				o.side = getQualifiedClassName((Door)(v).sideIcon);
 				return o;
 			}
 			else if (v is Wall)		// joints become indexes
@@ -1880,6 +2468,23 @@ class FloorPlan
 	}//endfunction
 	
 	//=============================================================================================
+	//
+	//=============================================================================================
+	public function boundRect():Rectangle
+	{
+		var r:Rectangle = new Rectangle();
+		for (var i:int=Joints.length-1; i>-1; i--)
+		{
+			var jt:Point = Joints[i];
+			if (jt.x<r.left)	r.left = jt.x;
+			if (jt.x>r.right)	r.right = jt.x;
+			if (jt.y<r.top)		r.top = jt.y;
+			if (jt.y>r.bottom)	r.bottom = jt.y;
+		}
+		return r;
+	}//endfunction
+	
+	//=============================================================================================
 	// converts from JSON data back to floorPlan, original data will be OVERRIDDEN
 	//=============================================================================================
 	public function importData(dat:String):void
@@ -1905,17 +2510,31 @@ class FloorPlan
 		
 		// ----- replace walls --------------------------------------
 		while (Walls.length>0)					// clear off prev walls
-			overlay.removeChild(Walls.pop());
+			overlay.removeChild(Walls.pop().planView);
 		if (o.Walls!=null)
 		for (i=o.Walls.length-1; i>-1; i--)		// add in new walls
 		{
 			var wo:Object = o.Walls[i];
-			var wall:Wall = new Wall(Joints[wo.j1],Joints[wo.j2],wo.w);
+			var wall:Wall = new Wall(Joints[wo.j1],Joints[wo.j2],wo.w,ceilingHeight);
 			for (var j:int=wo.Doors.length-1; j>-1; j--)
 			{
 				var d:Object = wo.Doors[j];
 				var doorIco:Sprite = new (Class(getDefinitionByName(d.cls)))() as Sprite;
-				var door:Door = new Door(Number(d.pivot),Number(d.dir),doorIco);
+				var doorSideIco:Sprite = null;
+				if (d.side!=null && d.side!="null")	
+					doorSideIco = new (Class(getDefinitionByName(d.side)))() as Sprite;
+				else
+				{
+					try {
+					doorSideIco = new (Class(getDefinitionByName(d.cls+"SV")))() as Sprite;
+					} catch (e:Error) {trace("oopss no "+d.cls+"SV");}
+				}
+				trace("d.side="+d.side+"   doorSideIco="+doorSideIco);
+				var door:Door = new Door(Number(d.pivot),Number(d.dir),doorIco,doorSideIco);
+				if (d.height!=null && d.height!="null") 
+					door.height = Number(d.height);
+				else
+					door.height=1;
 				wall.addDoor(door);
 			}
 			overlay.addChild(wall.planView);
@@ -2039,13 +2658,52 @@ class FloorPlan
 		return tf;
 	}//endfunction
 	
-	//=============================================================================================
+	//======
 	// 
 	//=============================================================================================
 	public function removeLabel(tf:TextField):void
 	{
 		if (Labels.indexOf(tf)!=-1)	Labels.splice(Labels.indexOf(tf),1);
 		if (tf.parent!=null)	tf.parent.removeChild(tf);
+	}//endfunction
+	
+	//=============================================================================================
+	// creates and add wall to floorplan 
+	//=============================================================================================
+	public function createLine(pt1:Point, pt2:Point):Line
+	{
+		for (var i:int = LineEndings.length - 1; i > -1; i--)
+		{
+			if (LineEndings[i].subtract(pt1).length < 3)	pt1 = LineEndings[i];
+		}
+		
+		var line:Line = new Line(pt1, pt2);
+		Lines.push(line);
+		if (LineEndings.indexOf(line.joint1)==-1) LineEndings.push(line.joint1);
+		if (LineEndings.indexOf(line.joint2)==-1) LineEndings.push(line.joint2);
+		line.refresh();
+		overlay.addChild(line.planView);
+		return line;
+	}//endfunction
+	
+	//=============================================================================================
+	// cleanly remove wall and its unused joints
+	//=============================================================================================
+	public function removeLine(line:Line):void
+	{
+		if (Lines.indexOf(line) != -1)	Lines.splice(Lines.indexOf(line), 1);
+		if (line.planView.parent != null)	line.planView.parent.removeChild(line.planView);
+		
+		var canRemJt1:Boolean = true;
+		var canRemJt2:Boolean = true;
+		for (var i:int=Lines.length-1; i>-1; i--)
+		{
+			var l:Line = Lines[i];
+			if (l.joint1==line.joint1 || l.joint2==line.joint1)	canRemJt1 = false;
+			if (l.joint1==line.joint2 || l.joint2==line.joint2)	canRemJt2 = false;
+		}
+		if (canRemJt1 && LineEndings.indexOf(line.joint1)!=-1) LineEndings.splice(LineEndings.indexOf(line.joint1),1);
+		if (canRemJt2 && LineEndings.indexOf(line.joint2)!=-1) LineEndings.splice(LineEndings.indexOf(line.joint2),1);
 	}//endfunction
 	
 	//=============================================================================================
@@ -2072,8 +2730,8 @@ class FloorPlan
 			{
 				pt1 = projectedWallPosition(snapW, pt1);
 				removeWall(snapW);
-				registerWall(new Wall(snapW.joint1, pt1));
-				registerWall(new Wall(snapW.joint2, pt1));
+				registerWall(new Wall(snapW.joint1, pt1,snapW.thickness,ceilingHeight));
+				registerWall(new Wall(snapW.joint2, pt1,snapW.thickness,ceilingHeight));
 			}
 			Joints.push(pt1);
 		}
@@ -2092,7 +2750,7 @@ class FloorPlan
 			Joints.push(pt2);
 		
 		// ----- register new wall
-		return registerWall(new Wall(pt1, pt2, width));
+		return registerWall(new Wall(pt1, pt2, width,ceilingHeight));
 	}//endfunction
 	
 	//=============================================================================================
@@ -2128,6 +2786,22 @@ class FloorPlan
 				cutOff = joint.subtract(posn).length;
 			}
 		return joint;
+	}//endfunction
+	
+	//=============================================================================================
+	// finds the nearest line end to this position
+	//=============================================================================================
+	public function nearestLineEnd(posn:Point,cutOff:Number):Point
+	{
+		var pt:Point = null;
+		for (var i:int=LineEndings.length-1; i>-1; i--)
+			if (LineEndings[i]!=pt && cutOff>LineEndings[i].subtract(posn).length)
+			{
+				pt = LineEndings[i];
+				cutOff = pt.subtract(posn).length;
+			}
+		//trace("nearestLineEnd("+posn+","+cutOff+") -> "+pt);
+		return pt;
 	}//endfunction
 	
 	//=============================================================================================
@@ -2229,6 +2903,10 @@ class FloorPlan
 		var i:int=0;
 		for (i=Walls.length-1; i>-1; i--)
 			drawWall(Walls[i]);
+		
+		// ----- redraw all lines ---------------------------------------------
+		for (i=Lines.length-1; i>-1; i--)
+			Lines[i].refresh();
 		
 		// ----- redraw enclosed floor areas ----------------------------------
 		var A:Vector.<Vector.<Point>> = findIsolatedAreas();
@@ -2435,9 +3113,17 @@ class FloorPlan
 				overlay.addChild(furnitureCtrls);
 			}
 		}
+		// ----- chk if near any line end -------------------------------------
+		if (selected==null)
+			selected = nearestLineEnd(new Point(overlay.mouseX,overlay.mouseY), 10);
 		// ----- chk if near any joint ----------------------------------------
 		if (selected==null)
-			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);	
+			selected = nearestJoint(new Point(overlay.mouseX,overlay.mouseY), 10);
+		// ----- chk if line selected -----------------------------------------
+		if (selected==null)
+			for (i=Lines.length-1; i>-1; i--)
+				if (Lines[i].planView.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))	
+					selected = Lines[i];
 		// ----- chk if near any wall -----------------------------------------
 		if (selected==null)
 		{
@@ -2463,7 +3149,7 @@ class FloorPlan
 	//=============================================================================================
 	// add controls to target furniture to shift scale rotate furniture
 	//=============================================================================================
-	public function furnitureTransformControls(targ:Sprite,marg:int=5):Sprite
+	public function furnitureTransformControls(targ:Sprite,marg:int=5,canRotate:Boolean=true):Sprite
 	{
 		var ctrls:Sprite = new Sprite();
 		
@@ -2483,10 +3169,13 @@ class FloorPlan
 			drawI(ctrls,bnds.right+marg,bnds.top,bnds.right+marg,bnds.bottom,marg*2);
 			drawI(ctrls,bnds.left,bnds.bottom+marg,bnds.right,bnds.bottom+marg,marg*2);
 			drawI(ctrls,bnds.left,bnds.top,bnds.right,bnds.bottom,marg*2,true);
-			ctrls.graphics.beginFill(0x000000,1);
-			ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
-			ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
-			ctrls.graphics.endFill();
+			if (canRotate)
+			{
+				ctrls.graphics.beginFill(0x000000,1);
+				ctrls.graphics.drawCircle(bnds.left-marg,bnds.top-marg,marg-1);
+				ctrls.graphics.drawCircle(bnds.right+marg,bnds.bottom+marg,marg-1);
+				ctrls.graphics.endFill();
+			}
 			ctrls.x = targ.x;
 			ctrls.y = targ.y;
 			ctrls.rotation = targ.rotation;
@@ -2562,7 +3251,7 @@ class FloorPlan
 				mode = "scaleY";
 			else if (ctrls.mouseY>bnds.top && ctrls.mouseY<bnds.bottom)
 				mode = "scaleX";
-			else
+			else if (canRotate)
 				mode = "rotate";
 		}//endfunction
 		
@@ -2620,8 +3309,10 @@ class FloorPlan
 		{
 			var tf:TextField = new TextField();
 			var tff:TextFormat = tf.defaultTextFormat;
+			tff.size = 22;
 			tff.color = 0x000000;
 			tff.font = "arial";
+			tf.defaultTextFormat = tff;
 			tf.wordWrap = false;
 			tf.autoSize = "left";
 			tf.selectable = false;
@@ -2629,6 +3320,7 @@ class FloorPlan
 			tf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
 			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
 			bmp.bitmapData.draw(tf,null,null,null,null,true);
+			bmp.scaleX = bmp.scaleY = 0.5;
 			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
 			var tx:Number = -0.5*bmp.width;
 			var ty:Number = 0.5*bmp.height;
@@ -2636,7 +3328,8 @@ class FloorPlan
 			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
 			bmp.rotation = rot/Math.PI*180;
 			bmp.x += (ax+bx)/2;
-			bmp.y += (ay+by)/2;
+			bmp.y += (ay + by) / 2;
+			
 			s.addChild(bmp);
 			var tw:int = Math.max(bmp.width,bmp.height);
 			s.graphics.moveTo(ax,ay);
@@ -3175,6 +3868,97 @@ class Utils
 	}//endfunction
 }//endclass
 
+class Line
+{
+	public var joint1:Point;
+	public var joint2:Point;
+	public var planView:Sprite;					// 
+	
+	//=======================================================================================
+	//
+	//=======================================================================================
+	public function Line(pt1:Point, pt2:Point):void
+	{
+		joint1 = pt1;
+		joint2 = pt2;
+		planView = new Sprite();
+	}
+	
+	//=======================================================================================
+	//
+	//=======================================================================================
+	public function refresh():void
+	{
+		planView.graphics.clear();
+		while (planView.numChildren > 0)	planView.removeChildAt(0);
+		drawI(planView, joint1.x, joint1.y, joint2.x, joint2.y,6,true);
+	}
+	
+	//=============================================================================================
+	// convenience function to draw the length markings
+	//=============================================================================================
+	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	{
+		var vx:Number = bx-ax;
+		var vy:Number = by-ay;
+		var vl:Number = Math.sqrt(vx*vx+vy*vy);
+		var ux:Number = vx/vl;
+		var uy:Number = vy/vl;
+		w/=2;
+		// ----- draw rect
+		s.graphics.lineStyle();
+		s.graphics.beginFill(0x666666,0);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		s.graphics.lineTo(bx-uy*w,by+ux*w);
+		s.graphics.endFill();
+		
+		// ----- draw lines
+		s.graphics.lineStyle(0,0x666666,1);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.moveTo(bx-uy*w,by+ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);	
+		
+		if (showLen)
+		{
+			var tf:TextField = new TextField();
+			var tff:TextFormat = tf.defaultTextFormat;
+			tff.color = 0x000000;
+			tff.font = "arial";
+			tf.wordWrap = false;
+			tf.autoSize = "left";
+			tf.selectable = false;
+			tf.text = (int(vl)/100)+"m";
+			tf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
+			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
+			bmp.bitmapData.draw(tf,null,null,null,null,true);
+			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
+			var tx:Number = -0.5*bmp.width;
+			var ty:Number = 0.5*bmp.height;
+			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
+			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
+			bmp.rotation = rot/Math.PI*180;
+			bmp.x += (ax+bx)/2;
+			bmp.y += (ay+by)/2;
+			s.addChild(bmp);
+			var tw:int = Math.max(bmp.width,bmp.height);
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
+			s.graphics.moveTo(bx,by);
+			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
+		}
+		else
+		{
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(bx,by);
+		}
+	}//endfunction
+	
+	
+}//endclass
+
 class Wall
 {
 	public var joint1:Point;
@@ -3186,14 +3970,21 @@ class Wall
 	public var sideView:Sprite;					// 
 	public var wallPaper:BitmapData = null;		// wall style
 	
+	public static var WallPapers:Vector.<BitmapData> = Vector.<BitmapData>([new wall01(),new wall02(),new wall03(),new wall04(),new wall05(),
+																			new wall06(),new wall07(),new wall08(),new wall09(),new wall10(),
+																			new wall11(),new wall12(),new wall13(),new wall14(),new wall15(),
+																			new wall16(),new wall17(),new wall18(),new wall19(),new wall20(),
+																			new wall21()]);
+	
 	//=======================================================================================
 	//
 	//=======================================================================================
-	public function Wall(pt1:Point, pt2:Point, thick:Number=10):void
+	public function Wall(pt1:Point, pt2:Point, thick:Number=10,h:Number=2):void
 	{
 		joint1 = pt1;
 		joint2 = pt2;
 		thickness = thick;
+		height = h;
 		height = 200;
 		Doors = new Vector.<Door>();
 		planView = new Sprite();
@@ -3208,6 +3999,8 @@ class Wall
 	{
 		Doors.push(door);
 		planView.addChild(door.icon);
+		if (door.sideIcon!=null) sideView.addChild(door.sideIcon);
+		
 	}//endfunction
 	
 	//=======================================================================================
@@ -3218,7 +4011,8 @@ class Wall
 		if (Doors.indexOf(door)!=-1)
 		{
 			Doors.splice(Doors.indexOf(door),1);
-			if (door.icon.parent==this.planView) door.icon.parent.removeChild(door.icon);
+			if (door.icon.parent == this.planView) door.icon.parent.removeChild(door.icon);
+			if (door.sideIcon.parent == this.sideView) door.sideIcon.parent.removeChild(door.sideIcon);
 		}
 	}//endfunction
 	
@@ -3297,6 +4091,8 @@ class Wall
 	//=======================================================================================
 	public function updateSideView():void
 	{
+		trace("updateSideView()");
+		while (sideView.numChildren > 0)	sideView.removeChildAt(0);
 		var w:Number = joint1.subtract(joint2).length;
 		sideView.graphics.clear();
 		sideView.graphics.beginBitmapFill(wallPaper);
@@ -3311,15 +4107,21 @@ class Wall
 		for (var i:int = 0; i < Doors.length; i++ )
 		{
 			var door:Door = Doors[i];
-			var r1:Number = door.pivot;
-			var r2:Number = door.pivot + door.dir;
+			if (isNaN(door.height)) door.height = 0;
+			trace("  - door pivot="+door.pivot+" dir="+door.dir +" height="+door.height+" sideIco="+door.sideIcon);
+			if (door.sideIcon != null)
+			{
+				door.sideIcon.x = w*(door.pivot + 0.5*door.dir)-w/2;
+				door.sideIcon.rotation = 0;
+				door.sideIcon.width = door.dir*w;
+				door.sideIcon.height = door.height*height;
+				door.sideIcon.y = door.bottom * height - height / 2 - door.sideIcon.height / 2;
+				trace("door.sideIcon  w="+door.sideIcon.width+"  h="+door.sideIcon.height+"  ");
+				sideView.addChild(door.sideIcon);
+			}
+			else
+				trace("door.sideIcon="+door.sideIcon+"!!");
 			
-			door.icon.x = -0.5*w*(1-r1) + 0.5*w*r1;
-			door.icon.y = height/2-door.icon.height;
-			door.icon.rotation = 0;
-			door.icon.width = Doors[i].dir*w;
-			door.icon.scaleY = door.icon.scaleX;
-			sideView.addChild(door.icon);
 			/*
 			var ptA:Point = new Point(	joint1.x * (1 - r1) + joint2.x * r1,
 										joint1.y * (1 - r1) + joint2.y * r1);
@@ -3327,6 +4129,41 @@ class Wall
 										joint1.y * (1 - r2) + joint2.y * r2);
 			*/
 		}
+	}//endfunction
+	
+	//=======================================================================================
+	// 
+	//=======================================================================================
+	public function updateDoorWithIconPosn(door:Door):void
+	{
+		var w:Number = joint1.subtract(joint2).length;
+		door.dir = door.sideIcon.width / w;
+		if (door.sideIcon.scaleX < 0)	door.dir *= -1;
+		door.pivot = (door.sideIcon.x+w/2 - door.dir * w/2) / w;
+		door.bottom = (door.sideIcon.height / 2 + door.sideIcon.y+height/2) / height;
+		door.height = door.sideIcon.height/height;
+		trace("door.dir="+door.dir+"  door.pivot="+door.pivot+"  door.bottom="+door.bottom);
+	
+		if (door.dir > 0)
+		{
+			if (door.pivot < 0) door.pivot = 0;
+			if (door.pivot + door.dir > 1) door.pivot = 1 - door.dir;
+		}
+		else
+		{
+			if (door.pivot + door.dir < 0) door.pivot = -door.dir;
+			if (door.pivot > 1) door.pivot = 1;
+		}
+		if (door.bottom > 1) door.bottom = 1;
+		
+	}//endfunction
+	
+	//=======================================================================================
+	// 
+	//=======================================================================================
+	public function get area():Number
+	{
+		return joint1.subtract(joint2).length * height;
 	}//endfunction
 }//endclass
 
@@ -3358,14 +4195,18 @@ class Item
 
 class Door
 {
-	public var pivot:Number;	// a ratio from joint1 to joint2 of wall	
-	public var dir:Number;		// an added ratio relative to pivot
-	public var icon:Sprite=null;
+	public var pivot:Number=0.5;	// a ratio from joint1 to joint2 of wall	
+	public var dir:Number=0.25;		// an added ratio relative to pivot, should i make this absolute
+	public var height:Number = 1;	// height ratio relative to wall height
+	public var bottom:Number = 1;
+	public var icon:Sprite = null;
+	public var sideIcon:Sprite = null;
 	
-	public function Door(piv:Number,wid:Number,ico:Sprite):void
+	public function Door(piv:Number,wid:Number,ico:Sprite,sideIco:Sprite=null):void
 	{
 		pivot = piv;
 		dir = wid;
 		icon = ico;
+		sideIcon = sideIco;
 	}//endfunction
 }//endclass

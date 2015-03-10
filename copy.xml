@@ -5,6 +5,7 @@
 			<btn ico="MenuIcoFurniture" txt="FURNITURE" />
 			<btn ico="MenuIcoDrawDoor" txt="WINDOWS AND DOORS" />
 			<btn ico="MenuIcoDrawWall" txt="DRAW WALLS" />
+			<btn ico="MenuIcoDrawLine" txt="DRAW LINES" />
 			<btn ico="MenuIcoText" txt="ADD TEXT" />
 			<btn ico="MenuIcoSave" txt="SAVE IMAGE" />
 			<btn ico="MenuIcoUndo" txt="UNDO" />
@@ -29,12 +30,21 @@
 		</DoorProp>
 		<WallProp>
 			<title txt="WALL" />
+			<area txt="WALL AREA"/>
+			<wallPaper txt="CHANGE WALLPAPER"/>
 			<edit txt="EDIT VERTICAL PLAN"/>
 			<length txt="LENGTH"/>
 			<thickness txt="THICKNESS" />
+			<height txt="HEIGHT"/>
 			<remove txt="REMOVE" />
 			<done txt="DONE" />
 		</WallProp>
+		<LineProp>
+			<title txt="LINE" />
+			<length txt="LENGTH"/>
+			<remove txt="REMOVE" />
+			<done txt="DONE" />
+		</LineProp>
 		<LabelProp>
 			<title txt="TEXT" />
 			<size txt="FONT SIZE = "/>
@@ -81,13 +91,13 @@
 			<item txt="Squat Toilet" cls="ToiletSquat" />
 		</Items>
 		<Ports>
-			<port txt="Single Door" cls="DoorSingleSwinging" />
-			<port txt="Sliding Door" cls="DoorSingleSliding" />
-			<port txt="Double Door" cls="DoorDoubleSwinging" />
-			<port txt="Double Sliding Door" cls="DoorDoubleSliding" />
-			<port txt="Small Window" cls="WindowSingle" />
-			<port txt="Medium Window" cls="WindowDouble" />
-			<port txt="Large Window" cls="WindowTriple" />
+			<port txt="Single Door" cls="DoorSingleSwinging" side="DoorSingleSwingingSV" />
+			<port txt="Sliding Door" cls="DoorSingleSliding" side="DoorSingleSlidingSV" />
+			<port txt="Double Door" cls="DoorDoubleSwinging" side="DoorDoubleSwingingSV" />
+			<port txt="Double Sliding Door" cls="DoorDoubleSliding" side="DoorDoubleSlidingSV" />
+			<port txt="Small Window" cls="WindowSingle" side="WindowSingleSV" />
+			<port txt="Medium Window" cls="WindowDouble" side="WindowDoubleSV" />
+			<port txt="Large Window" cls="WindowTriple" side="WindowTripleSV" />
 		</Ports>
 	</EN>
 	<CN>
@@ -96,6 +106,7 @@
 			<btn ico="MenuIcoFurniture" txt="家具" />
 			<btn ico="MenuIcoDrawDoor" txt="门窗" />
 			<btn ico="MenuIcoDrawWall" txt="画墙壁" />
+			<btn ico="MenuIcoDrawLine" txt="画线" />
 			<btn ico="MenuIcoText" txt="文字" />
 			<btn ico="MenuIcoSave" txt="保存图片" />
 			<btn ico="MenuIcoUndo" txt="后退" />
@@ -120,12 +131,21 @@
 		</DoorProp>
 		<WallProp>
 			<title txt="墙"/>
+			<area txt="面积"/>
+			<wallPaper txt="替换墙纸"/>
 			<edit txt="修改立面图"/>
 			<length txt="长度"/>
 			<thickness txt="宽度"/>
+			<height txt="高度"/>
 			<remove txt="删除"/>
 			<done txt="确认"/>
 		</WallProp>
+		<LineProp>
+			<title txt="线" />
+			<length txt="长度"/>
+			<remove txt="删除" />
+			<done txt="确认" />
+		</LineProp>
 		<LabelProp>
 			<title txt="文字"/>
 			<size txt="字体大小" />
@@ -172,13 +192,13 @@
 			<item txt="蹲马桶" cls="ToiletSquat" />
 		</Items>
 		<Ports>
-			<port txt="单门" cls="DoorSingleSwinging" />
-			<port txt="单移门" cls="DoorSingleSliding" />
-			<port txt="双门" cls="DoorDoubleSwinging" />
-			<port txt="双移门" cls="DoorDoubleSliding" />
-			<port txt="小窗" cls="WindowSingle" />
-			<port txt="中窗" cls="WindowDouble" />
-			<port txt="大窗" cls="WindowTriple" />
+			<port txt="单门" cls="DoorSingleSwinging" side="DoorSingleSwingingSV"  />
+			<port txt="单移门" cls="DoorSingleSliding" side="DoorSingleSlidingSV"  />
+			<port txt="双门" cls="DoorDoubleSwinging" side="DoorDoubleSwingingSV"  />
+			<port txt="双移门" cls="DoorDoubleSliding" side="DoorDoubleSlidingSV"  />
+			<port txt="小窗" cls="WindowSingle" side="WindowSingleSV"  />
+			<port txt="中窗" cls="WindowDouble" side="WindowDoubleSV"  />
+			<port txt="大窗" cls="WindowTriple" side="WindowTripleSV"  />
 		</Ports>
 	</CN>
 </Copy>
