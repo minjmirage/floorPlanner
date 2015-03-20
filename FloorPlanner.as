@@ -833,15 +833,21 @@ package
 				var wallW:Number = wall.joint1.subtract(wall.joint2).length;
 				replaceMenu(new DialogMenu(Lang.DoorProp.title.@txt+" : "+getQualifiedClassName(door.icon),
 									Vector.<String>([	Lang.DoorProp.width.@txt+" = ["+int(Math.abs(door.dir)*wallW*100)/100+"]",
+														Lang.DoorProp.height.@txt+" = ["+int(Math.abs(door.height)*wall.height*100)/100+"]",
 														Lang.DoorProp.flip.@txt,
 														Lang.DoorProp.remove.@txt,
 														Lang.DoorProp.done.@txt]),
-									Vector.<Function>([	function(val:String):void 	// change door length
+									Vector.<Function>([	function(val:String):void 	// change door width
 														{
 															if (door.dir<0)
 																door.dir = -Math.min(1,Math.max(0.01,Number(val)/wallW));
 															else
 																door.dir = Math.min(1,Math.max(0.01,Number(val)/wallW));
+															wall.updateSideView();
+														},
+														function(val:String):void 	// change door height
+														{
+															door.height = Math.min(1,Math.max(0.01,Number(val)/wall.height));
 															wall.updateSideView();
 														},
 														function():void 			// swap door dir
@@ -948,7 +954,8 @@ package
 				{
 					if (!ctrls.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY))
 					{
-						ctrls.parent.removeChild(ctrls);
+						if (ctrls.parent!=null) 
+							ctrls.parent.removeChild(ctrls);
 						ctrls = null;
 					}
 				}
@@ -1346,6 +1353,7 @@ import flash.events.Event;
 import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
 import flash.events.FocusEvent;
+import flash.events.IOErrorEvent;
 import flash.filters.DropShadowFilter;
 import flash.filters.GlowFilter;
 import flash.geom.ColorTransform;
@@ -1363,6 +1371,8 @@ import flash.utils.ByteArray;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
 import flash.utils.getTimer;
+import mx.utils.Base64Encoder;
+import mx.utils.Base64Decoder;
 
 class FloatingMenu extends Sprite		// to be extended
 {
@@ -1870,6 +1880,8 @@ class SaveLoadMenu extends IconsMenu
 	private var hasInit:Boolean = false;
 	private var showBuildDefaultRoom:Function = null;
 	
+	private var saveData:Array = [];
+	
 	//===============================================================================================
 	// 
 	//===============================================================================================
@@ -1902,7 +1914,8 @@ class SaveLoadMenu extends IconsMenu
 		function onComplete(ev:Event):void
 		{
 			var dat:Object = JSON.parse(ldr.data);
-			trace("GOT SAVE LIST :  ldr.data : "+dat.meta+"\n\nlength:"+dat.meta.length);
+			trace("GOT SAVE LIST :  ldr.data : "+Utils.prnObject(dat));
+			updateBtns(dat.data);			
 		}//endfunction
 		ldr.addEventListener(Event.COMPLETE,onComplete);
 	}//endconstr
@@ -2048,7 +2061,7 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// Refresh buttons after save operation etc
 	//===============================================================================================
-	private function updateBtns():void
+	private function updateBtns(saveObj:Object=null):void
 	{
 		Btns = new Vector.<Sprite>();
 		
@@ -2070,7 +2083,7 @@ class SaveLoadMenu extends IconsMenu
 				tff.color = 0x000000;
 				tff.size = int(tff.size)-1;
 				tf.defaultTextFormat = tff;
-				tf.text = txt;
+				tf.text = txt+"";
 			}
 			while (tf.width>btn.width);
 			tf.y = btn.height;
@@ -2078,42 +2091,41 @@ class SaveLoadMenu extends IconsMenu
 			btn.addChild(tf);
 			Btns.push(btn);
 		}
-		// --------------------------------------------------------------------
-		function showSaveFiles(saveDat:Array):void
-		{
-			var idx:int=0;
-			
-			function loadNext():void
-			{
-				var ldr:Loader = new Loader();
-				ldr.loadBytes(saveDat[idx+1] as ByteArray);
-				function imgLoaded(ev:Event):void
-				{
-					makeBtn(ldr.content,saveDat[idx]);	// create button with icon and label
-					ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
-					idx+=3;
-					if (idx>=saveDat.length)
-					{
-						if (hasInit) 	refresh();
-					}
-					else
-						loadNext();
-				}
-				ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
-			}
-			if (saveDat.length>idx)	loadNext();
-			else if (hasInit) refresh();
-		}//endfunction
 		
 		var ico:DisplayObject = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewDocument.@ico)))());
 		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewDocument.@txt);
 		ico = (DisplayObject)(new (Class(getDefinitionByName(FloorPlanner.Lang.SaveLoad.NewSave.@ico)))());
 		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewSave.@txt);
 		
-		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-		if (saveDat==null)	saveDat = [];
-		showSaveFiles(saveDat);
+		// ----- parse to array and start making btns icons
+		var saveDat:Array = new Array();
+		if (saveObj!=null)
+			for (var i:* in saveObj)	
+				saveDat.push(saveObj[i]);
+		saveData = saveDat;
+				
+		var idx:int=0;
+		function loadNext():void
+		{
+			trace("loadNext() idx="+idx);
+			function imgLoaded(img:Bitmap):void
+			{
+				trace("loaded...");
+				var bmp:Bitmap = new Bitmap(new BitmapData(90,90,false));
+				bmp.bitmapData.draw(img,new Matrix(bmp.width/img.width,0,0,bmp.height/img.height));
+				makeBtn(bmp,saveDat[idx].name);	// create button with icon and label
+				idx++;
+				if (idx>=saveDat.length)
+				{
+					if (hasInit) 	refresh();
+				}
+				else
+					loadNext();
+			}//endfunction
+			Utils.loadAsset(FloorPlanner.baseUrl+saveDat[idx].image,imgLoaded);
+		}//endfunction
+		if (saveDat.length>idx)	loadNext();
+		else if (hasInit) refresh();
 	}//endfunction
 	
 	//===============================================================================================
@@ -2253,6 +2265,7 @@ class SaveLoadMenu extends IconsMenu
 		
 		uploadFloorPic(uploadWallPics);
 	}//endfunction
+	
 	
 }//endclass
 
@@ -2443,7 +2456,7 @@ class FloorPlan
 	//=============================================================================================
 	// covert data to JSON formatted string
 	//=============================================================================================
-	public function exportData():String
+	public function exportData(tmbData:String=null):String
 	{
 		var o:Object = new Object();
 		o.Joints = Joints;
@@ -2451,6 +2464,7 @@ class FloorPlan
 		o.Furniture = Furniture;
 		o.Labels = Labels;
 		o.floorAreas = floorAreas;
+		if (tmbData!=null) o.tmb = tmbData;
 		
 		function replacer(k,v):*
 		{
@@ -3915,6 +3929,52 @@ class Utils
 		
 		return tf;
 	}//endfunction
+
+	//===================================================================================
+	// to pretty print JSON data
+	//===================================================================================
+	public static function prnObject(o:Object,nest:int=0):String
+	{
+		var tabs:String="";
+		for (var i:int=0; i<nest; i++)
+			tabs+="  ";
+			
+		var s:String = "{";
+		for(var id:String in o) 
+		{
+			var value:Object = o[id];
+			if (value is String || value is int || value is Number || value is Boolean)
+				s += "\n"+tabs+"  "+id+"="+value;
+			else
+				s += "\n"+tabs+"  "+id+"="+prnObject(value,nest+1);
+		}
+		return s+"}";
+	}//endfunction
+
+	//===================================================================================
+	//
+	//===================================================================================
+	public static function loadAsset(url:String,callBack:Function):void
+	{
+		url = url.split("//").join("/");
+		var ldr:Loader = new Loader();
+		trace("loading asset " + url);
+		ldr.load(new URLRequest(url));
+		function imgLoaded(ev:Event):void
+		{
+			ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
+			ldr.contentLoaderInfo.removeEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
+			if (ev is IOErrorEvent)
+			{
+				trace("Load IOError! "+ev);
+				callBack(new Bitmap(new BitmapData(90,90,false,0xFF0000)));
+			}
+			else
+				callBack(ldr.content);
+		}
+		ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
+		ldr.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
+	}
 }//endclass
 
 class Line

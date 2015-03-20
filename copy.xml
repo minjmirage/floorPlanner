@@ -25,6 +25,7 @@
 		<DoorProp>
 			<title txt="DOOR" />
 			<width txt="WIDTH" />
+			<width txt="HEIGHT" />
 			<flip txt="FLIP SIDE" />
 			<remove txt="REMOVE" />
 			<done txt="DONE" />
@@ -129,6 +130,7 @@
 		<DoorProp>
 			<title txt="门"/>
 			<width txt="宽度"/>
+			<height txt="高度"/>
 			<flip txt="左右调换"/>
 			<remove txt="删除"/>
 			<done txt="确认"/>
