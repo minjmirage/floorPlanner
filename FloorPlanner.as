@@ -24,6 +24,7 @@ package
 	import flash.utils.getDefinitionByName;
 	import flash.utils.getQualifiedClassName;
 	import flash.utils.getTimer;
+	import flash.external.ExternalInterface;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 	
@@ -87,19 +88,24 @@ package
 			if (root.loaderInfo.parameters.httpURL!=null) baseUrl = root.loaderInfo.parameters.httpURL+"";	
 			if (root.loaderInfo.parameters.token!=null) userToken = root.loaderInfo.parameters.token+"";
 			
+			try {
+				baseUrl = ExternalInterface.call("window.location.hostname.toString");
+			} catch (e:Error) {trace(e);}
 		}//
 		
 		//=============================================================================
 		// gets the userId and userToken
 		//=============================================================================
-		private function createLoginPage(callBack:Function=null):MovieClip
+		private function createLoginPage(callBack:Function=null):Sprite
 		{
+			var s:Sprite = new Sprite();
+			s.graphics.beginFill(0x000000,0.8);
+			s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+			s.graphics.endFill();
 			var login:MovieClip = new PopLogin();
 			login.x = (stage.stageWidth-login.width)/2;
 			login.y = (stage.stageHeight-login.height)/2;
-			login.graphics.beginFill(0x000000,0.8);
-			login.graphics.drawRect(-login.x,-login.y,stage.stageWidth,stage.stageHeight);
-			login.graphics.endFill();
+			s.addChild(login);
 			
 			var tff:TextFormat = login.usernameTf.defaultTextFormat;
 			tff.color = 0x999999;
@@ -107,6 +113,25 @@ package
 			login.passwordTf.setTextFormat(tff);
 			login.usernameTf.type = "input";
 			login.passwordTf.type = "input";
+			
+			function enterFrameHandler(ev:Event):void
+			{
+				if (s.stage==null) 
+				{
+					s.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+					return;
+				}
+				if (s.width!=stage.stageWidth || s.height!=stage.stageHeight)
+				{
+					s.graphics.clear();
+					s.graphics.beginFill(0x000000,0.8);
+					s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+					s.graphics.endFill();
+				}
+				login.x = (stage.stageWidth-login.width)/2;
+				login.y = (stage.stageHeight-login.height)/2;
+			}//endfunction
+			s.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
 			
 			function keyHandler(event:KeyboardEvent):void
 			{
@@ -149,7 +174,7 @@ package
 			login.usernameTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
 			login.passwordTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
 			
-			return login;
+			return s;
 		}//endfunction
 		
 		//=============================================================================================
@@ -446,9 +471,14 @@ package
 			function showFurnitureProperties(itm:Item):void
 			{
 				replaceMenu(new DialogMenu(Lang.FurnitureProp.title.@txt+" : "+getQualifiedClassName(itm.icon),
-										Vector.<String>([	Lang.FurnitureProp.remove.@txt,
+										Vector.<String>([	Lang.FurnitureProp.rotation.@txt+" = ["+itm.icon.rotation+"]",
+															Lang.FurnitureProp.remove.@txt,
 															Lang.FurnitureProp.done.@txt]),
-										Vector.<Function>([	function():void 
+										Vector.<Function>([	function(val:String):void		// set rotation
+															{
+																itm.icon.rotation = Number(val);
+															},	
+															function():void 
 															{
 																floorPlan.removeFurniture(itm);
 																showFurnitureMenu();
@@ -495,6 +525,8 @@ package
 			{
 				replaceMenu(new DialogMenu(Lang.LineProp.title.@txt,
 										Vector.<String>([	Lang.LineProp.length.@txt +" = ["+line.joint1.subtract(line.joint2).length+"]",
+															Lang.LineProp.thickness.@txt+" = ["+line.thickness+"]",
+															Lang.LineProp.color.@txt,
 															Lang.LineProp.remove.@txt,
 															Lang.LineProp.done.@txt]),
 										Vector.<Function>([	function(val:String):void	// set line length
@@ -508,6 +540,20 @@ package
 																line.joint2.x += vec.x * 0.5 * dif;
 																line.joint2.y += vec.y * 0.5 * dif;
 																line.refresh();
+															},
+															function(val:String):void	// set line thickness
+															{
+																line.thickness = Number(val);
+																line.refresh();
+															},
+															function():void	// set line color
+															{
+																showColorMenu(function(color:uint):void 
+																{
+																	line.color = color;
+																	line.refresh();
+																	showLineProperties(line);
+																});
 															},
 															function():void 			// remove line
 															{
@@ -649,7 +695,6 @@ package
 					}
 					else if (floorPlan.selected is Point)
 					{
-						trace("FGHFGH");
 						var pt:Point = (Point)(floorPlan.selected); 
 						pt.x = grid.mouseX;
 						pt.y = grid.mouseY;
@@ -958,7 +1003,7 @@ package
 			{
 				if (line!=null && line.joint1.subtract(line.joint2).length<=snapDist)
 				{
-					floorPlan.removeLine(line);		// remove wall stub
+					floorPlan.removeLine(line);		// remove line stub
 					floorPlan.refresh();
 				}
 				line = null;
@@ -1300,6 +1345,7 @@ import flash.display.Stage;
 import flash.events.Event;
 import flash.events.KeyboardEvent;
 import flash.events.MouseEvent;
+import flash.events.FocusEvent;
 import flash.filters.DropShadowFilter;
 import flash.filters.GlowFilter;
 import flash.geom.ColorTransform;
@@ -1708,6 +1754,7 @@ class DialogMenu extends FloatingMenu
 					itf.x = this.x + Btns[idx].x + tf.x + tf.width + 5;
 					itf.y = this.y + Btns[idx].y;
 					this.parent.addChild(itf);
+					this.stage.focus = itf;
 					Btns[idx].mouseEnabled = true;
 				}
 			}
@@ -2658,7 +2705,7 @@ class FloorPlan
 		return tf;
 	}//endfunction
 	
-	//======
+	//=============================================================================================
 	// 
 	//=============================================================================================
 	public function removeLabel(tf:TextField):void
@@ -3818,6 +3865,7 @@ class Utils
 		var tf:TextField = createText(txt,size,c,w);
 		tf.selectable = true;
 		var stageRef:Stage = null;
+		tf.addEventListener(FocusEvent.FOCUS_IN,enterEditHandler);
 		tf.addEventListener(MouseEvent.CLICK,enterEditHandler);
 		tf.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
 		tf.addEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
@@ -3857,6 +3905,7 @@ class Utils
 		
 		function removeHandler(ev:Event):void
 		{
+			tf.removeEventListener(FocusEvent.FOCUS_IN,enterEditHandler);
 			tf.removeEventListener(MouseEvent.CLICK,enterEditHandler);
 			stageRef.removeEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
 			tf.removeEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
@@ -3872,6 +3921,8 @@ class Line
 {
 	public var joint1:Point;
 	public var joint2:Point;
+	public var thickness:Number=1;
+	public var color:uint=0x666666;
 	public var planView:Sprite;					// 
 	
 	//=======================================================================================
@@ -3891,13 +3942,13 @@ class Line
 	{
 		planView.graphics.clear();
 		while (planView.numChildren > 0)	planView.removeChildAt(0);
-		drawI(planView, joint1.x, joint1.y, joint2.x, joint2.y,6,true);
+		drawI(planView, joint1.x, joint1.y, joint2.x, joint2.y,6,true,thickness,color);
 	}
 	
 	//=============================================================================================
 	// convenience function to draw the length markings
 	//=============================================================================================
-	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false,thickness:Number=0,color:uint=0x666666):void
 	{
 		var vx:Number = bx-ax;
 		var vy:Number = by-ay;
@@ -3905,9 +3956,9 @@ class Line
 		var ux:Number = vx/vl;
 		var uy:Number = vy/vl;
 		w/=2;
-		// ----- draw rect
+		// ----- draw rect for hittest
 		s.graphics.lineStyle();
-		s.graphics.beginFill(0x666666,0);
+		s.graphics.beginFill(color,0);
 		s.graphics.moveTo(ax-uy*w,ay+ux*w);
 		s.graphics.lineTo(ax+uy*w,ay-ux*w);
 		s.graphics.lineTo(bx+uy*w,by-ux*w);	
@@ -3915,7 +3966,7 @@ class Line
 		s.graphics.endFill();
 		
 		// ----- draw lines
-		s.graphics.lineStyle(0,0x666666,1);
+		s.graphics.lineStyle(thickness,color,1);
 		s.graphics.moveTo(ax-uy*w,ay+ux*w);
 		s.graphics.lineTo(ax+uy*w,ay-ux*w);
 		s.graphics.moveTo(bx-uy*w,by+ux*w);
