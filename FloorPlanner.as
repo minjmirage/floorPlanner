@@ -1901,23 +1901,10 @@ class SaveLoadMenu extends IconsMenu
 				askToLoad(idx-2);
 		}//endfunction
 		
-		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-		if (saveDat==null)	saveDat = [];
-		
-		updateBtns();
+		Btns = new Vector.<Sprite>();
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+		updateBtns();
 		hasInit = true;
-		
-		// ----- try loading user save data 
-		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=index&token=" + FloorPlanner.userToken));
-		function onComplete(ev:Event):void
-		{
-			var dat:Object = JSON.parse(ldr.data);
-			trace("GOT SAVE LIST :  ldr.data : "+Utils.prnObject(dat));
-			updateBtns(dat.data);			
-		}//endfunction
-		ldr.addEventListener(Event.COMPLETE,onComplete);
 	}//endconstr
 	
 	//===============================================================================================
@@ -1961,8 +1948,6 @@ class SaveLoadMenu extends IconsMenu
 															saveToSharedObject();
 															overlay.parent.removeChild(overlay);
 															updateBtns();
-															
-															
 														},
 														function():void 
 														{
@@ -2017,15 +2002,7 @@ class SaveLoadMenu extends IconsMenu
 														FloorPlanner.Lang.SaveLoad.DeleteEntry.@txt]),
 									Vector.<Function>([function():void 
 														{	// LOAD
-															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															if (saveDat[idx*3].split(":").length>1)
-															{
-																var saveId:String = saveDat[idx*3].split(":")[1].split(" ")[0];
-																loadDataFromServer(saveId);
-															}
-															else
-																floorPlan.importData(saveDat[(idx)*3+2]);	// imports the data string
+															floorPlan.importData(saveData[idx].data);
 															overlay.parent.removeChild(overlay);
 														},
 														function():void 
@@ -2061,9 +2038,27 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	// Refresh buttons after save operation etc
 	//===============================================================================================
-	private function updateBtns(saveObj:Object=null):void
+	private function updateBtns():void
 	{
+		// ----- try loading user save data 
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=index&token=" + FloorPlanner.userToken));
+		function onComplete(ev:Event):void
+		{
+			var dat:Object = JSON.parse(ldr.data);
+			trace("GOT SAVE LIST :  ldr.data : "+Utils.prnObject(dat));
+			_updateBtns(dat.data);			
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE,onComplete);
+	}//endfunction
+	
+	//===============================================================================================
+	// Refresh buttons after save operation etc
+	//===============================================================================================
+	private function _updateBtns(saveObj:Object=null):void
+	{
+		
 		Btns = new Vector.<Sprite>();
+		var BtnBmds:Vector.<BitmapData> = new Vector.<BitmapData>();
 		
 		// --------------------------------------------------------------------
 		function makeBtn(ico:DisplayObject,txt:String):void
@@ -2098,12 +2093,17 @@ class SaveLoadMenu extends IconsMenu
 		makeBtn(ico,FloorPlanner.Lang.SaveLoad.NewSave.@txt);
 		
 		// ----- parse to array and start making btns icons
-		var saveDat:Array = new Array();
+		saveData = new Array();
 		if (saveObj!=null)
-			for (var i:* in saveObj)	
-				saveDat.push(saveObj[i]);
-		saveData = saveDat;
-				
+			for (var i:* in saveObj)
+			{
+				saveData.push(saveObj[i]);
+				var bmd:BitmapData = new BitmapData(90,90,false,0x999999);
+				BtnBmds.push(bmd);
+				makeBtn(new Bitmap(bmd),saveObj[i].name);
+			}
+		if (hasInit) refresh();
+		
 		var idx:int=0;
 		function loadNext():void
 		{
@@ -2111,21 +2111,18 @@ class SaveLoadMenu extends IconsMenu
 			function imgLoaded(img:Bitmap):void
 			{
 				trace("loaded...");
-				var bmp:Bitmap = new Bitmap(new BitmapData(90,90,false));
-				bmp.bitmapData.draw(img,new Matrix(bmp.width/img.width,0,0,bmp.height/img.height));
-				makeBtn(bmp,saveDat[idx].name);	// create button with icon and label
+				var bmd:BitmapData = BtnBmds[idx];
+				bmd.draw(img,new Matrix(bmd.width/img.width,0,0,bmd.height/img.height));
 				idx++;
-				if (idx>=saveDat.length)
-				{
-					if (hasInit) 	refresh();
-				}
-				else
+				if (idx<saveData.length)
 					loadNext();
+				else if (hasInit) 	
+					refresh();
 			}//endfunction
-			Utils.loadAsset(FloorPlanner.baseUrl+saveDat[idx].image,imgLoaded);
+			Utils.loadAsset(FloorPlanner.baseUrl+saveData[idx].image,imgLoaded);
 		}//endfunction
-		if (saveDat.length>idx)	loadNext();
-		else if (hasInit) refresh();
+		if (saveData.length>idx)	loadNext();
+		
 	}//endfunction
 	
 	//===============================================================================================
@@ -2143,15 +2140,6 @@ class SaveLoadMenu extends IconsMenu
 		var M:Array = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 		var dat:Date = new Date();
 		
-		var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-		var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-		if (saveDat == null) saveDat = [];
-		trace("data : " +floorPlan.exportData());
-		saveDat.unshift(dat.date+" "+M[dat.month]+" "+dat.fullYear , ba , floorPlan.exportData());
-		if (saveDat.length>20*3) saveDat = saveDat.slice(0,20*3);
-		so.data.savedData = saveDat;
-		so.flush();
-		
 		// ----- sends data to server
 		var ldr:URLLoader = new URLLoader();
 		var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=add&token=" + FloorPlanner.userToken);
@@ -2163,8 +2151,6 @@ class SaveLoadMenu extends IconsMenu
 		{
 			trace("UPLOADED  ldr.data : "+ldr.data);
 			var o:Object = JSON.parse(ldr.data);
-			var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-			saveDat[0] = "id:"+o.data.id+" date:"+saveDat[0];
 			updateBtns();
 			uploadWallPics(o.data.id);
 		}//endfunction
