@@ -35,7 +35,8 @@ package
 	 */
 	public class FloorPlanner extends Sprite 
 	{
-		public static var baseUrl:String = "http://ruanzhuangyun.cn/";// "http://symspace.e360.cn/";
+		public static var apiUrl:String = "http://ruanzhuangyun.cn/";// "http://symspace.e360.cn/";
+		public static var curUrl:String = "http://ruanzhuangyun.cn/2dplanner";
 		public static var userId:String = null;
 		public static var userToken:String = null;
 		
@@ -85,12 +86,13 @@ package
 			ldr.load(new URLRequest("copy.xml"));
 			ldr.addEventListener(Event.COMPLETE, processXML);
 			
-			if (root.loaderInfo.parameters.httpURL!=null) baseUrl = root.loaderInfo.parameters.httpURL+"";	
+			if (root.loaderInfo.parameters.httpURL!=null) apiUrl = root.loaderInfo.parameters.httpURL+"";	
 			if (root.loaderInfo.parameters.token!=null) userToken = root.loaderInfo.parameters.token+"";
 			
 			try {
-				baseUrl = ExternalInterface.call("window.location.hostname.toString");
-			} catch (e:Error) {trace(e);}
+				apiUrl = ExternalInterface.call("window.location.hostname.toString");
+				curUrl = ExternalInterface.call("window.location.toString");
+			} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
 		}//
 		
 		//=============================================================================
@@ -141,7 +143,7 @@ package
 					if (login.usernameTf.text!="" && login.passwordTf.text!="")
 					{
 						var ldr:URLLoader = new URLLoader();
-						var req:URLRequest = new URLRequest(baseUrl+"?n=api&a=login&c=user");
+						var req:URLRequest = new URLRequest(apiUrl+"?n=api&a=login&c=user");
 						req.method = "post";  
 						var vars : URLVariables = new URLVariables();  
 						vars.username = login.usernameTf.text;  
@@ -1380,6 +1382,7 @@ class FloatingMenu extends Sprite		// to be extended
 	protected var callBackFn:Function = null;
 	protected var overlay:Sprite = null;			// something on top to disable this
 	protected var mouseDownPt:Point = null;
+	protected var draggable:Boolean = true;
 	
 	//===============================================================================================
 	// simpleton constructor, subclasses must initialize Btns and callBackFn
@@ -1391,6 +1394,7 @@ class FloatingMenu extends Sprite		// to be extended
 		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
 		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
 		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+		addEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
 	}//endfunction
 	
 	//===============================================================================================
@@ -1400,7 +1404,7 @@ class FloatingMenu extends Sprite		// to be extended
 	{
 		if (stage==null) return;
 		mouseDownPt = new Point(this.mouseX,this.mouseY);
-		this.startDrag();
+		if (draggable)	this.startDrag();
 	}//endfunction
 	
 	//===============================================================================================
@@ -1412,7 +1416,7 @@ class FloatingMenu extends Sprite		// to be extended
 		this.stopDrag();
 		if (overlay!=null) return;
 		if (mouseDownPt==null)	return;	// mousedown somewhere else
-		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;
+		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;	// is dragging
 		mouseDownPt = null;
 		if (Btns!=null)
 		for (var i:int=Btns.length-1; i>-1; i--)
@@ -1455,6 +1459,13 @@ class FloatingMenu extends Sprite		// to be extended
 					Btns[i].filters = A;
 				}
 			}
+		
+		// ----- ensure menu within stage bounds
+		if (this.x+this.width>this.stage.stageWidth)	this.x = this.stage.stageWidth-this.width;
+		if (this.y+this.height>this.stage.stageHeight)	this.y = this.stage.stageHeight-this.height;
+		if (this.x<0)	this.x = 0;
+		if (this.y<0)	this.y = 0;
+		
 	}//endfunction
 	
 	//===============================================================================================
@@ -1466,6 +1477,7 @@ class FloatingMenu extends Sprite		// to be extended
 		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
 		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
 		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+		removeEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
 	}//endfunction
 	
 	//===============================================================================================
@@ -1610,6 +1622,7 @@ class TopBarMenu extends FloatingMenu
 	//===============================================================================================
 	public function TopBarMenu(labels:XMLList,callBack:Function):void
 	{
+		draggable = false;
 		callBackFn = callBack;
 		
 		// ----- create buttons
@@ -1821,6 +1834,39 @@ class AddFurnitureMenu extends IconsMenu
 		}
 		
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+		
+		loadFurnitureData();
+	}//endfunction
+
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	private function loadFurnitureData():void
+	{
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&c=product&m=qd&a=product&productids=047431,047551,047549,047550,047503,047496,J042433,J044554,047419,047422,042418,028710,022182,044209,045398&token=" + FloorPlanner.userToken));
+		function onComplete(ev:Event):void
+		{
+			var dat:Object = JSON.parse(ldr.data);
+			trace("GOT FURNITURE LIST :  ldr.data : "+Utils.prnObject(dat));
+			
+			// ----- generate all the categories
+			for (var catid:* in dat.products)
+			{
+				var catData:Object = dat.products[catid];
+				catData.catename;		// category name
+				catData.cateid;			// category id
+				catData.catesn;			// category sn
+				trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
+				for (var prodid:* in catData.product)
+				{
+					var prodData:Object = catData.product[prodid];
+					trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
+				}
+			}
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE,onComplete);
+		
+		
 	}//endfunction
 }//endclass
 
@@ -1945,7 +1991,7 @@ class SaveLoadMenu extends IconsMenu
 														FloorPlanner.Lang.SaveLoad.Cancel.@txt]),
 									Vector.<Function>([function():void 
 														{
-															saveToSharedObject();
+															saveToServer();
 															overlay.parent.removeChild(overlay);
 															updateBtns();
 														},
@@ -1968,34 +2014,6 @@ class SaveLoadMenu extends IconsMenu
 	//===============================================================================================
 	private function askToLoad(idx:int):void
 	{
-		function loadDataFromServer(id:String):void
-		{
-			trace("loadDataFromServer("+id+")");
-			var ldr:URLLoader = new URLLoader();
-			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl+"?n=api&a=scheme&c=house&m=info&token="+FloorPlanner.userToken+"&id="+id);
-			function onComplete(ev:Event):void
-			{
-				trace("GOT DATA FROM SERVER  ldr.data : "+ldr.data);
-				var o:Object = JSON.parse(ldr.data);
-				//floorPlan.importData(o.data);	// imports the data string
-			}//endfunction
-			ldr.addEventListener(Event.COMPLETE, onComplete);
-			ldr.load(req);
-		}//endfunction
-		
-		function deleteDataFromServer(id:String):void
-		{
-			trace("loadDataFromServer("+id+")");
-			var ldr:URLLoader = new URLLoader();
-			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl+"?n=api&a=scheme&c=house&m=del&token"+FloorPlanner.userToken+"&id="+id);
-			function onComplete(ev:Event):void
-			{
-				trace("Deleted DATA FROM SERVER  ldr.data : "+ldr.data);
-			}//endfunction
-			ldr.addEventListener(Event.COMPLETE, onComplete);
-			ldr.load(req);
-		}//endfunction
-		
 		var askLoadFile:Sprite = new DialogMenu(FloorPlanner.Lang.SaveLoad.AskToLoad.@txt,
 									Vector.<String>([	FloorPlanner.Lang.SaveLoad.Confirm.@txt,
 														FloorPlanner.Lang.SaveLoad.Cancel.@txt,
@@ -2011,17 +2029,7 @@ class SaveLoadMenu extends IconsMenu
 														},
 														function():void 
 														{	// DELETE
-															var so:SharedObject = SharedObject.getLocal("FloorPlanner");
-															var saveDat:Array = so.data.savedData;	// name,tmbByteArr,datastring
-															if (saveDat[idx*3].split(":").length>1)
-															{
-																var saveId:String = saveDat[idx*3].split(":")[1].split(" ")[0];
-																deleteDataFromServer(saveId);
-															}
-															saveDat.splice((idx)*3,3);
-															so.data.savedData = saveDat;
-															so.flush();
-															so.close();
+															deleteDataFromServer(saveData[idx].id);
 															overlay.parent.removeChild(overlay);
 															updateBtns();
 														}])); 
@@ -2041,7 +2049,7 @@ class SaveLoadMenu extends IconsMenu
 	private function updateBtns():void
 	{
 		// ----- try loading user save data 
-		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=index&token=" + FloorPlanner.userToken));
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=house&m=index&token=" + FloorPlanner.userToken));
 		function onComplete(ev:Event):void
 		{
 			var dat:Object = JSON.parse(ldr.data);
@@ -2119,16 +2127,16 @@ class SaveLoadMenu extends IconsMenu
 				else if (hasInit) 	
 					refresh();
 			}//endfunction
-			Utils.loadAsset(FloorPlanner.baseUrl+saveData[idx].image,imgLoaded);
+			Utils.loadAsset(FloorPlanner.curUrl+saveData[idx].image,imgLoaded);
 		}//endfunction
 		if (saveData.length>idx)	loadNext();
 		
 	}//endfunction
 	
 	//===============================================================================================
-	// write floorplan data to SharedObject
+	// write floorplan data to server
 	//===============================================================================================
-	private function saveToSharedObject():void
+	public function saveToServer():void
 	{
 		var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
 		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFF);
@@ -2142,14 +2150,20 @@ class SaveLoadMenu extends IconsMenu
 		
 		// ----- sends data to server
 		var ldr:URLLoader = new URLLoader();
-		var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=house&m=add&token=" + FloorPlanner.userToken);
+		var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=house&m=add&token=" + FloorPlanner.userToken);
 		req.method = "post";  
 		bnds = floorPlan.boundRect();
-		var o:Object = {houseName:"houseName", spacelength:bnds.width, spacewidth:bnds.height, spaceheight:floorPlan.ceilingHeight, json:floorPlan.exportData(), productjson:"", desc:dat.date+" "+M[dat.month]+" "+dat.fullYear};
+		var o:Object = {houseName:dat.date+" "+M[dat.month]+" "+dat.fullYear, 
+						spacelength:bnds.width, 
+						spacewidth:bnds.height, 
+						spaceheight:floorPlan.ceilingHeight, 
+						json:floorPlan.exportData(), 
+						productjson:"", 
+						desc:dat.date+" "+M[dat.month]+" "+dat.fullYear};
 		req.data = JSON.stringify(o);
 		function onComplete(ev:Event):void
 		{
-			trace("UPLOADED  ldr.data : "+ldr.data);
+			trace("UPLOADED  ldr.data -> "+ldr.data);
 			var o:Object = JSON.parse(ldr.data);
 			updateBtns();
 			uploadWallPics(o.data.id);
@@ -2158,6 +2172,40 @@ class SaveLoadMenu extends IconsMenu
 		ldr.load(req);
 	}//endfunction
 	
+	//===============================================================================================
+	// laod floorplan data of id from server
+	//===============================================================================================
+	public function loadDataFromServer(id:String):void
+	{
+		trace("loadDataFromServer("+id+")");
+		var ldr:URLLoader = new URLLoader();
+		var req:URLRequest = new URLRequest(FloorPlanner.apiUrl+"?n=api&a=scheme&c=house&m=info&token="+FloorPlanner.userToken+"&id="+id);
+		function onComplete(ev:Event):void
+		{
+			trace("GOT DATA FROM SERVER  ldr.data : "+ldr.data);
+			var o:Object = JSON.parse(ldr.data);
+			//floorPlan.importData(o.data);	// imports the data string
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE, onComplete);
+		ldr.load(req);
+	}//endfunction
+		
+	//===============================================================================================
+	// delete floorplan given id
+	//===============================================================================================
+	private function deleteDataFromServer(id:String):void
+	{
+		trace("deleteDataFromServer("+id+")");
+		var ldr:URLLoader = new URLLoader();
+		var req:URLRequest = new URLRequest(FloorPlanner.apiUrl+"?n=api&a=scheme&c=house&m=del&token"+FloorPlanner.userToken+"&id="+id);
+		function onComplete(ev:Event):void
+		{
+			trace("Deleted DATA FROM SERVER  ldr.data : "+ldr.data);
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE, onComplete);
+		ldr.load(req);
+	}//endfunction
+		
 	//===============================================================================================
 	// upload each wall pic to server
 	//===============================================================================================
@@ -2198,7 +2246,7 @@ class SaveLoadMenu extends IconsMenu
 			var jpgEnc:JPGEncoder = new JPGEncoder(80);
 			var ba:ByteArray = jpgEnc.encode(bmd);
 			var ldr:URLLoader = new URLLoader();
-			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=0&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=floorplan");
+			var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=0&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=floorplan");
 			req.contentType = 'application/octet-stream';
 			req.method = "post";  
 			req.data = ba;
@@ -2235,13 +2283,13 @@ class SaveLoadMenu extends IconsMenu
 			var jpgEnc:JPGEncoder = new JPGEncoder(80);
 			var ba:ByteArray = jpgEnc.encode(bmd);
 			var ldr:URLLoader = new URLLoader();
-			var req:URLRequest = new URLRequest(FloorPlanner.baseUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=1&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=wall"+idx);
+			var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=1&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=wall"+idx);
 			req.contentType = 'application/octet-stream';
 			req.method = "post";  
 			req.data = ba;
 			function onComplete(ev:Event):void
 			{
-				trace("UPLOADED wall"+idx+" pic ldr.data : "+ldr.data);
+				//trace("UPLOADED wall"+idx+" pic ldr.data : "+ldr.data);
 				idx++;
 				uploadWallPics();
 			}//endfunction
@@ -2251,7 +2299,6 @@ class SaveLoadMenu extends IconsMenu
 		
 		uploadFloorPic(uploadWallPics);
 	}//endfunction
-	
 	
 }//endclass
 
