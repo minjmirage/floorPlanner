@@ -388,9 +388,20 @@ package
 		}
 		
 		//=============================================================================================
-		// show available furniture selection
+		// show available furniture selection from server
 		//=============================================================================================
 		private function showFurnitureMenu():void
+		{
+			replaceMenu(new ItemsMenu(function(prod:Object):void 
+			{
+				trace("SELECTED "+ Utils.prnObject(prod));
+			}));
+		}//endfunction
+		
+		//=============================================================================================
+		// show available furniture selection
+		//=============================================================================================
+		private function showFurnitureMenuO():void
 		{
 			replaceMenu(new AddFurnitureMenu(Lang.Items[0].item,function(idx:int):void
 			{
@@ -1787,6 +1798,132 @@ class DialogMenu extends FloatingMenu
 	}//endfunction
 }//endclass
 
+class ItemsMenu extends IconsMenu
+{
+	var tabs:Sprite = null;
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function ItemsMenu(callBackFn:Function,icoW:int=70):void
+	{
+		loadFurnitureData();
+		Btns = new Vector.<Sprite>();
+		super(Btns,3,2,callBackFn);
+		
+		addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	function enterFrameHandler(ev:Event):void
+	{
+		if (stage==null)
+		{
+			removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+			if (tabs.parent!=null) tabs.parent.removeChild(tabs);
+		}
+		else if (tabs!=null)
+		{
+			if (tabs.parent==null) this.parent.addChild(tabs);
+			tabs.x = this.x-tabs.width-2;
+			tabs.y = this.y;
+		}
+	}//endfunction
+	
+	//===============================================================================================
+	// init load data from server 
+	//===============================================================================================
+	private function loadFurnitureData():void
+	{
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&c=product&m=qd&a=product&productids=047431,047551,047549,047550,047503,047496,J042433,J044554,047419,047422,042418,028710,022182,044209,045398&token=" + FloorPlanner.userToken));
+		function onComplete(ev:Event):void
+		{
+			var dat:Object = JSON.parse(ldr.data);
+			//trace("GOT FURNITURE LIST :  ldr.data : "+Utils.prnObject(dat));
+			
+			function createCatLoadFn(prodObj:Object):Function
+			{
+				return function():void
+				{
+					var A:Array = [];
+					for (var prodid:* in prodObj)
+						A.push(prodObj[prodid]);
+					showProductCatMenu(A);
+				}
+			}//endfunction
+			
+			// ----- generate all the categories
+			var AllProducts:Array = [];
+			var CatNames:Vector.<String> = Vector.<String>(["全部"]);
+			var LoadCatFns:Vector.<Function> = Vector.<Function>([function():void {showProductCatMenu(AllProducts);}]);
+			for (var catid:* in dat.products)
+			{
+				var catData:Object = dat.products[catid];
+				CatNames.push(catData.catename+"");					// category name
+				LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
+				trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
+				for (var prodid:* in catData.product)
+				{
+					var prodData:Object = catData.product[prodid];
+					trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
+					AllProducts.push(prodData);
+				}
+			}
+			
+			tabs = Utils.createTabs(CatNames,LoadCatFns);
+			showProductCatMenu(AllProducts);
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE,onComplete);
+	}//endfunction
+	
+	//===============================================================================================
+	// show the category tabs for 
+	//===============================================================================================
+	private function showProductCatMenu(prod:Array):void
+	{
+		trace("showProductCatMenu("+prod+")");
+		function createIco(o:Object):Sprite 
+		{
+			var s:Sprite = new Sprite();
+			trace("create icon for "+Utils.prnObject(o));
+			var bmp:Bitmap = new Bitmap(new BitmapData(70,60,false,0x999999));
+			s.addChild(bmp);
+			var tf:TextField = Utils.createText(o.productname,12,0x000000,bmp.width);
+			tf.x = (bmp.width-tf.width)/2;
+			tf.y = bmp.height;
+			s.addChild(tf);
+			
+			Utils.loadJson(FloorPlanner.apiUrl+"?n=api&a=product&c=product&m=class_detail&id="+o.classid+"&token="+ FloorPlanner.userToken, function(o:Object):void 
+			{
+				trace("product details : "+Utils.prnObject(o));
+				Utils.loadAsset(FloorPlanner.curUrl+o.product.pic,function (pic:DisplayObject):void
+				{
+					if (pic!=null)
+					{
+						var bw:int = bmp.bitmapData.width;
+						var bh:int = bmp.bitmapData.height;
+						var sc:Number = Math.min(bw/pic.width,bh/pic.height);
+						bmp.bitmapData.draw(pic,new Matrix(sc,0,0,sc,(bw-pic.width*sc)/2,(bh-pic.height*sc)/2));
+					}
+				});
+			});
+			return s;
+		}//endfunction
+		
+		var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+		for (var i:int=0; i<prod.length; i++)
+		{
+			Icos.push(createIco(prod[i]));
+		}//endfor
+		
+		Btns = Icos;
+		refresh();
+	}//endfunction
+}//endclass
+
+
 class AddFurnitureMenu extends IconsMenu
 {
 	private var IcoCls:Vector.<Class> = null;
@@ -1834,39 +1971,6 @@ class AddFurnitureMenu extends IconsMenu
 		}
 		
 		super(Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
-		
-		loadFurnitureData();
-	}//endfunction
-
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	private function loadFurnitureData():void
-	{
-		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&c=product&m=qd&a=product&productids=047431,047551,047549,047550,047503,047496,J042433,J044554,047419,047422,042418,028710,022182,044209,045398&token=" + FloorPlanner.userToken));
-		function onComplete(ev:Event):void
-		{
-			var dat:Object = JSON.parse(ldr.data);
-			trace("GOT FURNITURE LIST :  ldr.data : "+Utils.prnObject(dat));
-			
-			// ----- generate all the categories
-			for (var catid:* in dat.products)
-			{
-				var catData:Object = dat.products[catid];
-				catData.catename;		// category name
-				catData.cateid;			// category id
-				catData.catesn;			// category sn
-				trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
-				for (var prodid:* in catData.product)
-				{
-					var prodData:Object = catData.product[prodid];
-					trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
-				}
-			}
-		}//endfunction
-		ldr.addEventListener(Event.COMPLETE,onComplete);
-		
-		
 	}//endfunction
 }//endclass
 
@@ -3875,6 +3979,8 @@ class FloorPlan
 
 class Utils
 {
+	//private static var LoadedAssets:Object = new Object();	// hashtable of the bytes of loaded assets
+	
 	//===================================================================================
 	// 
 	//===================================================================================
@@ -3963,6 +4069,85 @@ class Utils
 		return tf;
 	}//endfunction
 
+	//=============================================================================
+	// create the tabs at the top of the menu
+	//=============================================================================
+	public static function createTabs(sideLabels:Vector.<String>,fns:Vector.<Function>):Sprite
+	{
+		trace("createTabs("+sideLabels+","+fns+")");
+		
+		var Tabs:Sprite = new Sprite();
+		
+		var offY:int=0;
+		for (var i:int=0; i<sideLabels.length; i++)
+		{
+			var btn:Sprite= new Sprite();
+			sideLabels[i] = sideLabels[i].split("").join("\n");
+			var tf:TextField = createText(sideLabels[i],13,0xFFFFFF);
+			tf.x = 5;
+			tf.y = 5;
+			btn.addChild(tf);
+			btn.graphics.beginFill(0xFFFFFF,1);
+			btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
+			btn.graphics.endFill();
+			btn.buttonMode = true;
+			btn.mouseChildren = false;
+			btn.y = offY;
+			offY += btn.height+2;
+			trace("tabBtn "+btn.width+"x"+btn.height);
+			Tabs.addChild(btn);
+		}
+		
+		function setTabHighlight(idx:int):void
+		{
+			for (var i:int=0; i<Tabs.numChildren; i++)
+			{
+				var btn:Sprite = (Sprite)(Tabs.getChildAt(i));
+				var tf:TextField = (TextField)(btn.getChildAt(btn.numChildren-1));
+				var tff:TextFormat = tf.getTextFormat();
+				if (i==idx)
+				{
+					tff.color = 0xc1c1c1;
+					btn.graphics.clear();
+					btn.graphics.beginFill(0xFFFFFF,1);
+					btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
+					btn.graphics.endFill();
+				}
+				else
+				{
+					tff.color = 0xFFFFFF;
+					btn.graphics.beginFill(0xA1A1A1,1);
+					btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
+					btn.graphics.endFill();
+				}
+				tf.setTextFormat(tff);
+			}
+		}//endfunction
+		setTabHighlight(0);
+		
+		function clickHandler(ev:Event):void
+		{
+			for (var i:int = 0; i < Tabs.numChildren; i++)
+				if (Tabs.getChildAt(i).hitTestPoint(Tabs.stage.mouseX, Tabs.stage.mouseY,true))
+				{
+					setTabHighlight(i);
+					fns[i]();
+					return;
+				}
+		}
+		
+		function removeHandler(ev:Event):void
+		{
+			Tabs.removeEventListener(MouseEvent.CLICK, clickHandler);
+			Tabs.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);	
+		}
+		
+		Tabs.addEventListener(MouseEvent.CLICK, clickHandler);
+		Tabs.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
+		
+		return Tabs;
+	}//endfunction
+	
 	//===================================================================================
 	// to pretty print JSON data
 	//===================================================================================
@@ -3983,14 +4168,31 @@ class Utils
 		}
 		return s+"}";
 	}//endfunction
-
+	
+	//=============================================================================
+	// convenience function to load JSON from server
+	//=============================================================================
+	public static function loadJson(url:String, callBack:Function):void
+	{
+		var ldr:URLLoader = new URLLoader();
+		var req:URLRequest = new URLRequest(url);
+		ldr.load(req);
+		ldr.addEventListener(Event.COMPLETE, onComplete);  
+		function onComplete(e:Event):void
+		{
+			ldr.removeEventListener(Event.COMPLETE, onComplete);  
+			callBack(JSON.parse(ldr.data));
+		}//
+	}//endfunction
+	
 	//===================================================================================
 	//
 	//===================================================================================
 	public static function loadAsset(url:String,callBack:Function):void
 	{
-		url = url.split("//").join("/");
+		url = url.split("//").join("/").split(":/").join("://");
 		var ldr:Loader = new Loader();
+		
 		trace("loading asset " + url);
 		ldr.load(new URLRequest(url));
 		function imgLoaded(ev:Event):void
