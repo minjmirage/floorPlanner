@@ -17,6 +17,7 @@ package
 	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLRequest;
+	import flash.net.URLRequestMethod;
 	import flash.net.URLVariables;
 	import flash.text.TextField;
 	import flash.text.TextFormat;
@@ -36,7 +37,6 @@ package
 	public class FloorPlanner extends Sprite 
 	{
 		public static var apiUrl:String = "http://ruanzhuangyun.cn/";// "http://symspace.e360.cn/";
-		public static var curUrl:String = "http://ruanzhuangyun.cn/2dplanner";
 		public static var userId:String = null;
 		public static var userToken:String = null;
 		
@@ -91,7 +91,6 @@ package
 			
 			try {
 				apiUrl = ExternalInterface.call("window.location.hostname.toString");
-				curUrl = ExternalInterface.call("window.location.toString");
 			} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
 		}//
 		
@@ -142,10 +141,17 @@ package
 				{
 					if (login.usernameTf.text!="" && login.passwordTf.text!="")
 					{
+						var rootUrl:String = apiUrl;
+						try {
+							rootUrl = ExternalInterface.call("window.location.hostname.toString");
+						} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
 						var ldr:URLLoader = new URLLoader();
-						var req:URLRequest = new URLRequest(apiUrl+"?n=api&a=login&c=user");
+						var req:URLRequest = new URLRequest(rootUrl+"?n=api&a=login&c=user");
 						req.method = "post";  
-						var vars : URLVariables = new URLVariables();  
+						var vars : URLVariables = new URLVariables(); 
+						vars.n = "api";
+						vars.a = "login";
+						vars.c = "user"
 						vars.username = login.usernameTf.text;  
 						vars.password = login.passwordTf.text;  
 						req.data = vars;
@@ -324,6 +330,8 @@ package
 			
 			if (userToken==null)
 			{
+				//defaLogin(initInterractions);
+				
 				// ----- force user to login ----------------------------
 				var loginPage:Sprite = createLoginPage(function():void 
 				{
@@ -334,6 +342,37 @@ package
 			}
 			else initInterractions();
 		}//endfunction
+		
+		//=============================================================================================
+		// default login wih shaoyiting 
+		//=============================================================================================
+		private function  defaLogin(callBack:Function):void
+		{
+			var ldr:URLLoader = new URLLoader();
+			var req:URLRequest = new URLRequest(apiUrl+"?n=api&a=login&c=user");
+			req.method = URLRequestMethod.POST;
+			var vars : URLVariables = new URLVariables(); 
+			vars.n = "api";
+			vars.a = "login";
+			vars.c = "user";
+			vars.username = "shaoyiting";
+			vars.password = "shaoyiting";  
+			req.data = vars;
+			ldr.load(req);
+			ldr.addEventListener(Event.COMPLETE, onComplete);  
+			function onComplete(e : Event):void
+			{  
+				trace("login return="+ldr.data);
+				var o:Object = JSON.parse(ldr.data);
+				if (o.meta.code==200)
+				{
+					userId = o.data.userid;
+					userToken = o.data.utoken;
+					trace("userId="+userId+"  userToken="+userToken);
+					if (callBack!=null) callBack();
+				}
+			}
+		}
 		
 		//=============================================================================================
 		// default room to look at just so it wouldnt be too boring 
@@ -460,7 +499,7 @@ package
 		//=============================================================================================
 		private function modeDefault():void
 		{
-			//prn("modeDefault");
+			prn("modeDefault");
 			var px:int = 0;
 			var py:int = topBar.height+5;
 			
@@ -1798,45 +1837,44 @@ class DialogMenu extends FloatingMenu
 	}//endfunction
 }//endclass
 
-class ItemsMenu extends IconsMenu
+class ItemsMenu extends FloatingMenu
 {
 	var tabs:Sprite = null;
+	private var pageIdx:int=0;
+	private var pageBtns:Sprite = null;
+	private var r:int = 1;		// rows
+	private var c:int = 1;		// cols
+	private var bw:int = 50;	// btn width
+	private var bh:int = 50;	// btn height
+	private var marg:int = 10;
 	
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function ItemsMenu(callBackFn:Function,icoW:int=70):void
+	public function ItemsMenu(callBack:Function,icoW:int=70):void
 	{
-		loadFurnitureData();
 		Btns = new Vector.<Sprite>();
-		super(Btns,3,2,callBackFn);
+		r = 4;
+		c = 2;
+		pageBtns = new Sprite();
+		addChild(pageBtns);
+		callBack = callBackFn;		
 		
-		addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	function enterFrameHandler(ev:Event):void
-	{
-		if (stage==null)
+		function pageBtnsClickHandler(ev:Event) : void
 		{
-			removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			if (tabs.parent!=null) tabs.parent.removeChild(tabs);
+			for (var i:int=pageBtns.numChildren-1; i>-1; i--)
+				if (pageBtns.getChildAt(i).hitTestPoint(stage.mouseX,stage.mouseY))
+					pageTo(i);
 		}
-		else if (tabs!=null)
+		function pageBtnsRemoveHandler(ev:Event) : void
 		{
-			if (tabs.parent==null) this.parent.addChild(tabs);
-			tabs.x = this.x-tabs.width-2;
-			tabs.y = this.y;
+			pageBtns.removeEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
+			pageBtns.removeEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
 		}
-	}//endfunction
-	
-	//===============================================================================================
-	// init load data from server 
-	//===============================================================================================
-	private function loadFurnitureData():void
-	{
+		pageBtns.addEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
+		pageBtns.addEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
+		
+		// ----- LOADS THE FURNITURE DATA AND CREATE CATEGORY TABS
 		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&c=product&m=qd&a=product&productids=047431,047551,047549,047550,047503,047496,J042433,J044554,047419,047422,042418,028710,022182,044209,045398&token=" + FloorPlanner.userToken));
 		function onComplete(ev:Event):void
 		{
@@ -1863,16 +1901,17 @@ class ItemsMenu extends IconsMenu
 				var catData:Object = dat.products[catid];
 				CatNames.push(catData.catename+"");					// category name
 				LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
-				trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
+				//trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
 				for (var prodid:* in catData.product)
 				{
 					var prodData:Object = catData.product[prodid];
-					trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
+					//trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
 					AllProducts.push(prodData);
 				}
 			}
 			
 			tabs = Utils.createTabs(CatNames,LoadCatFns);
+			addChild(tabs);
 			showProductCatMenu(AllProducts);
 		}//endfunction
 		ldr.addEventListener(Event.COMPLETE,onComplete);
@@ -1897,8 +1936,14 @@ class ItemsMenu extends IconsMenu
 			
 			Utils.loadJson(FloorPlanner.apiUrl+"?n=api&a=product&c=product&m=class_detail&id="+o.classid+"&token="+ FloorPlanner.userToken, function(o:Object):void 
 			{
-				trace("product details : "+Utils.prnObject(o));
-				Utils.loadAsset(FloorPlanner.curUrl+o.product.pic,function (pic:DisplayObject):void
+				//trace("product details : "+Utils.prnObject(o));
+				var picUrl:String = o.product.pic+"";
+				if (o.product.modelpics!=null)
+				{
+					if (o.product.modelpics is String)	o.product.modelpics = JSON.parse(o.product.modelpics);
+					picUrl = o.product.modelpics.up;
+				}
+				Utils.loadAsset(FloorPlanner.apiUrl+picUrl,function (pic:DisplayObject):void
 				{
 					if (pic!=null)
 					{
@@ -1921,6 +1966,82 @@ class ItemsMenu extends IconsMenu
 		Btns = Icos;
 		refresh();
 	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	public function refresh():void
+	{
+		var tw:int=0;
+		var th:int=0;
+		for (var i:int=Btns.length-1; i>-1; i--)
+		{
+			tw+=Btns[i].width;
+			th+=Btns[i].height;
+		}
+		if (tw>0)	bw = tw/Btns.length;
+		if (th>0)	bh = th/Btns.length;
+		
+		// ----- update pageBtns to show correct pages
+		var pageCnt:int = Math.ceil(Btns.length/(r*c));
+		while (pageBtns.numChildren>pageCnt)	
+			pageBtns.removeChildAt(pageBtns.numChildren-1);
+		for (i=0; i<pageCnt; i++)
+		{
+			var sqr:Sprite = new Sprite();
+			sqr.graphics.beginFill(0x666666,1);
+			sqr.graphics.drawRect(0,0,9,9);
+			sqr.graphics.endFill();
+			sqr.x = i*(sqr.width+10);
+			sqr.buttonMode = true;
+			pageBtns.addChild(sqr);
+		}
+		
+		if (pageCnt>1)
+		{
+			pageBtns.visible=true;
+			drawStripedRect(this,tabs.width+2,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		else
+		{
+			pageBtns.visible=false;
+			drawStripedRect(this,tabs.width+2,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		pageBtns.x = (this.width-pageBtns.width)/2;
+		pageBtns.y =this.height-marg*2-pageBtns.height/2;
+		
+		pageTo(pageIdx);
+	}//endfunction
+	
+	//===============================================================================================
+	// go to page number
+	//===============================================================================================
+	public function pageTo(idx:int):void
+	{
+		while (numChildren>2)	removeChildAt(2);	// child 0 is pageBtns 1 is tabs
+		
+		if (idx<0)	idx = 0;
+		if (idx>Math.ceil(Btns.length/(r*c)))	idx = Math.ceil(Btns.length/(r*c));
+		var a:int = idx*r*c;
+		var b:int = Math.min(Btns.length,a+r*c);
+		for (var i:int=a; i<b; i++)
+		{
+			var btn:Sprite = Btns[i];
+			btn.x = marg*2+(i%c)*(bw+marg)+(bw-btn.width)/2 + tabs.width+2;
+			btn.y = marg*2+int((i-a)/c)*(bh+marg)+(bh-btn.height)/2;
+			addChild(btn);
+		}
+		
+		for (i=pageBtns.numChildren-1; i>-1; i--)
+		{
+			if (i==idx)
+				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform(1,1,1,1,70,70,70);
+			else
+				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform();
+		}
+		pageIdx = idx;
+	}//endfunction	
+	
 }//endclass
 
 
@@ -2231,7 +2352,7 @@ class SaveLoadMenu extends IconsMenu
 				else if (hasInit) 	
 					refresh();
 			}//endfunction
-			Utils.loadAsset(FloorPlanner.curUrl+saveData[idx].image,imgLoaded);
+			Utils.loadAsset(FloorPlanner.apiUrl+saveData[idx].image,imgLoaded);
 		}//endfunction
 		if (saveData.length>idx)	loadNext();
 		
@@ -3979,7 +4100,7 @@ class FloorPlan
 
 class Utils
 {
-	//private static var LoadedAssets:Object = new Object();	// hashtable of the bytes of loaded assets
+	private static var LoadedAssets:Object = new Object();	// hashtable of the bytes of loaded assets
 	
 	//===================================================================================
 	// 
@@ -4191,24 +4312,38 @@ class Utils
 	public static function loadAsset(url:String,callBack:Function):void
 	{
 		url = url.split("//").join("/").split(":/").join("://");
-		var ldr:Loader = new Loader();
 		
-		trace("loading asset " + url);
-		ldr.load(new URLRequest(url));
-		function imgLoaded(ev:Event):void
+		var ldr:Loader = null;
+		
+		if (LoadedAssets[url]!=null)
 		{
-			ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
-			ldr.contentLoaderInfo.removeEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
-			if (ev is IOErrorEvent)
-			{
-				trace("Load IOError! "+ev);
-				callBack(new Bitmap(new BitmapData(90,90,false,0xFF0000)));
-			}
-			else
-				callBack(ldr.content);
+			ldr = new Loader();
+			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE,function(ev:Event):void {callBack(ldr.content);});
+			ldr.loadBytes(LoadedAssets[url]);
 		}
-		ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
-		ldr.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
+		else
+		{
+			trace("loading asset " + url);
+			ldr = new Loader();
+			ldr.load(new URLRequest(url));
+			function imgLoaded(ev:Event):void
+			{
+				ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
+				ldr.contentLoaderInfo.removeEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
+				if (ev is IOErrorEvent)
+				{
+					trace("Load IOError! "+ev);
+					callBack(new Bitmap(new BitmapData(90,90,false,0xFF0000)));
+				}
+				else
+				{
+					LoadedAssets[url] = ldr.contentLoaderInfo.bytes;	// stores teh laoded bytes
+					callBack(ldr.content);
+				}
+			}
+			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
+			ldr.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
+		}
 	}
 }//endclass
 
