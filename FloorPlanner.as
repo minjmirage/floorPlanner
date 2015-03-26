@@ -1923,6 +1923,8 @@ class ItemsMenu extends FloatingMenu
 	private function showProductCatMenu(prod:Array):void
 	{
 		trace("showProductCatMenu("+prod+")");
+		
+		pageIdx = 0;
 		function createIco(o:Object):Sprite 
 		{
 			var s:Sprite = new Sprite();
@@ -1937,13 +1939,14 @@ class ItemsMenu extends FloatingMenu
 			Utils.loadJson(FloorPlanner.apiUrl+"?n=api&a=product&c=product&m=class_detail&id="+o.classid+"&token="+ FloorPlanner.userToken, function(o:Object):void 
 			{
 				//trace("product details : "+Utils.prnObject(o));
-				var picUrl:String = o.product.pic+"";
+				var picUrl:String = FloorPlanner.apiUrl+o.product.pic+"";
 				if (o.product.modelpics!=null)
 				{
 					if (o.product.modelpics is String)	o.product.modelpics = JSON.parse(o.product.modelpics);
-					picUrl = o.product.modelpics.up;
+					picUrl = FloorPlanner.apiUrl+o.product.modelpics.up;
 				}
-				Utils.loadAsset(FloorPlanner.apiUrl+picUrl,function (pic:DisplayObject):void
+				if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
+				Utils.loadAsset(picUrl,function (pic:DisplayObject):void
 				{
 					if (pic!=null)
 					{
@@ -2352,7 +2355,9 @@ class SaveLoadMenu extends IconsMenu
 				else if (hasInit) 	
 					refresh();
 			}//endfunction
-			Utils.loadAsset(FloorPlanner.apiUrl+saveData[idx].image,imgLoaded);
+			var picUrl:String = FloorPlanner.apiUrl+saveData[idx].image;
+			if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
+			Utils.loadAsset(picUrl,imgLoaded);
 		}//endfunction
 		if (saveData.length>idx)	loadNext();
 		
