@@ -2047,7 +2047,6 @@ class ItemsMenu extends FloatingMenu
 	
 }//endclass
 
-
 class AddFurnitureMenu extends IconsMenu
 {
 	private var IcoCls:Vector.<Class> = null;
@@ -4312,7 +4311,7 @@ class Utils
 	}//endfunction
 	
 	//===================================================================================
-	//
+	// function to load image assets from url or reinstantiate from loaded bytes
 	//===================================================================================
 	public static function loadAsset(url:String,callBack:Function):void
 	{
@@ -4671,6 +4670,13 @@ class Item
 {
 	public var color:uint=0;		// tint color
 	public var icon:Sprite=null;	// furniture icon mc
+	
+	public var id:String = null;
+	public var name:String = null;
+	public var topViewUrl:String = null;
+	public var length:Number = 1;
+	public var width:Number = 1;
+	public var rotation:Number = 1;
 	
 	public function Item(ico:Sprite,frame:int=0):void
 	{
