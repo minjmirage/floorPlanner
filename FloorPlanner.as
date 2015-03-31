@@ -1453,6 +1453,7 @@ class FloatingMenu extends Sprite		// to be extended
 	protected function onMouseDown(ev:Event):void
 	{
 		if (stage==null) return;
+		trace("mouseDown!!");
 		mouseDownPt = new Point(this.mouseX,this.mouseY);
 		if (draggable)	this.startDrag();
 	}//endfunction
@@ -1469,12 +1470,16 @@ class FloatingMenu extends Sprite		// to be extended
 		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;	// is dragging
 		mouseDownPt = null;
 		if (Btns!=null)
+		{
+			trace("Chking for Btns Pressed");
 		for (var i:int=Btns.length-1; i>-1; i--)
 			if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
 			{
+				trace("Btn "+i+"pressed!");
 				if  (callBackFn!=null) callBackFn(i);	// exec callback function
 				return;
 			}
+		}
 	}//endfunction
 	
 	//===============================================================================================
@@ -1837,9 +1842,11 @@ class DialogMenu extends FloatingMenu
 	}//endfunction
 }//endclass
 
-class ItemsMenu extends FloatingMenu
+class ItemsMenu extends FloatingMenu	
 {
 	var tabs:Sprite = null;
+	
+	private var productsData:Array = [];
 	private var pageIdx:int=0;
 	private var pageBtns:Sprite = null;
 	private var r:int = 1;		// rows
@@ -1858,7 +1865,11 @@ class ItemsMenu extends FloatingMenu
 		c = 2;
 		pageBtns = new Sprite();
 		addChild(pageBtns);
-		callBack = callBackFn;		
+		callBackFn = function (idx:int):void 
+		{
+			trace("ItemsMenu callback idx:"+idx+"  item data = "+productsData[idx]);
+			callBack();
+		};		
 		
 		function pageBtnsClickHandler(ev:Event) : void
 		{
@@ -1922,7 +1933,9 @@ class ItemsMenu extends FloatingMenu
 	//===============================================================================================
 	private function showProductCatMenu(prod:Array):void
 	{
-		trace("showProductCatMenu("+prod+")");
+		//trace("showProductCatMenu("+prod+")");
+		
+		productsData = prod;
 		
 		pageIdx = 0;
 		function createIco(o:Object):Sprite 
