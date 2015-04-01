@@ -438,6 +438,8 @@ package
 				trace("SELECTED "+ Utils.prnObject(prod));
 				var ico:Sprite = new Sprite();
 				ico.addChild(new Bitmap(new BitmapData(100,100,true,0x66000000)));
+				ico.getChildAt(0).x = -50;
+				ico.getChildAt(0).y = -50;
 				var itm:Item = new Item(ico);
 				itm.id = prod.id;
 				floorPlan.addItem(itm);
@@ -454,11 +456,13 @@ package
 					var w:int = ico.width;
 					var h:int = ico.height;
 					while (ico.numChildren>0)	ico.removeChildAt(0);
+					pic.x = -pic.width/2;
+					pic.y = -pic.height/2;
 					ico.addChild(pic);
 					ico.width = w;
 					ico.height = h;
 				});
-			}));
+			},70,parseInt("01101111",2)));
 		}//endfunction
 		
 		//=============================================================================================
@@ -959,6 +963,24 @@ package
 															Lang.WallProp.done.@txt]),
 										Vector.<Function>([	function():void 
 															{
+																replaceMenu(new ItemsMenu(function(prod:Object):void 
+																{
+																	// ----- loads the pic for the item
+																	var picUrl:String = prod.pic;
+																	picUrl = apiUrl+picUrl;
+																	if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
+																	Utils.loadAsset(picUrl,function(pic:DisplayObject):void 
+																	{
+																		trace(picUrl + "  wallpaperPic = "+pic);
+																		wall.wallPaperId = prod.id;
+																		var bmd:BitmapData = new BitmapData(pic.width,pic.height);
+																		bmd.draw(pic);
+																		wall.wallPaper = bmd;
+																		wall.updateSideView();
+																		showWallAreaProperties(wall);
+																	});
+																},70,parseInt("10000000",2)));
+																/*
 																var Icos:Vector.<Sprite> = new Vector.<Sprite>();
 																for (var i:int=0; i<Wall.WallPapers.length; i++)
 																{
@@ -972,6 +994,7 @@ package
 																	wall.updateSideView();
 																	showWallAreaProperties(wall);
 																}));
+																*/
 															},
 															function(val:String):void 
 															{
@@ -1882,7 +1905,7 @@ class ItemsMenu extends FloatingMenu
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function ItemsMenu(callBack:Function,icoW:int=70):void
+	public function ItemsMenu(callBack:Function,icoW:int=70,flags:uint=127):void
 	{
 		Btns = new Vector.<Sprite>();
 		r = 4;
@@ -1931,18 +1954,29 @@ class ItemsMenu extends FloatingMenu
 			var AllProducts:Array = [];
 			var CatNames:Vector.<String> = Vector.<String>(["全部"]);
 			var LoadCatFns:Vector.<Function> = Vector.<Function>([function():void {showProductCatMenu(AllProducts);}]);
+			var flagIdx:int=1;
 			for (var catid:* in dat.products)
 			{
-				var catData:Object = dat.products[catid];
-				CatNames.push(catData.catename+"");					// category name
-				LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
-				//trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
-				for (var prodid:* in catData.product)
+				if (((1<<flagIdx) & flags)>0)
 				{
-					var prodData:Object = catData.product[prodid];
-					//trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
-					AllProducts.push(prodData);
+					trace("((1<<flagIdx) & flags) = "+((1<<flagIdx) & flags))
+					var catData:Object = dat.products[catid];
+					CatNames.push(catData.catename+"");					// category name
+					LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
+					//trace("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
+					for (var prodid:* in catData.product)
+					{
+						var prodData:Object = catData.product[prodid];
+						//trace("  Product:"+prodData.productname+" sn:"+prodData.productsn);
+						AllProducts.push(prodData);
+					}
 				}
+				flagIdx++;
+			}
+			if ((flags&1)==0 || CatNames.length==2)
+			{
+				CatNames.shift();
+				LoadCatFns.shift();
 			}
 			
 			tabs = Utils.createTabs(CatNames,LoadCatFns);
@@ -4389,7 +4423,11 @@ class Utils
 		if (LoadedAssets[url]!=null)
 		{
 			ldr = new Loader();
-			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE,function(ev:Event):void {callBack(ldr.content);});
+			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE,function(ev:Event):void 
+			{
+				trace("loadAssets -> loadBytes -> ldr.content = "+ldr.content);
+				callBack(ldr.content);
+			});
 			ldr.loadBytes(LoadedAssets[url]);
 		}
 		else
@@ -4521,6 +4559,7 @@ class Wall
 	public var planView:Sprite;					// 
 	public var sideView:Sprite;					// 
 	public var wallPaper:BitmapData = null;		// wall style
+	public var wallPaperId:String = null;		// wallpaper id
 	
 	public static var WallPapers:Vector.<BitmapData> = Vector.<BitmapData>([new wall01(),new wall02(),new wall03(),new wall04(),new wall05(),
 																			new wall06(),new wall07(),new wall08(),new wall09(),new wall10(),
