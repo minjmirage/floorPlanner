@@ -5,6 +5,7 @@ package
 	import flash.display.BitmapData;
 	import flash.display.MovieClip;
 	import flash.display.Sprite;
+	import flash.display.DisplayObject;
 	import flash.events.Event;
 	import flash.events.KeyboardEvent;
 	import flash.events.MouseEvent;
@@ -433,7 +434,30 @@ package
 		{
 			replaceMenu(new ItemsMenu(function(prod:Object):void 
 			{
+				// ----- creates the Item and add to floorplan
 				trace("SELECTED "+ Utils.prnObject(prod));
+				var ico:Sprite = new Sprite();
+				ico.addChild(new Bitmap(new BitmapData(100,100,true,0x66000000)));
+				var itm:Item = new Item(ico);
+				itm.id = prod.id;
+				floorPlan.addItem(itm);
+				
+				// ----- loads the pic for the item
+				var picUrl:String = prod.pic;
+				if (prod.modelpics!=null && prod.modelpics.up!="false")	
+					picUrl = prod.modelpics.up;
+				picUrl = apiUrl+picUrl;
+				if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
+				Utils.loadAsset(picUrl,function(pic:DisplayObject):void 
+				{
+					trace(picUrl+"loaded, updating itm ico");
+					var w:int = ico.width;
+					var h:int = ico.height;
+					while (ico.numChildren>0)	ico.removeChildAt(0);
+					ico.addChild(pic);
+					ico.width = w;
+					ico.height = h;
+				});
 			}));
 		}//endfunction
 		
@@ -1867,8 +1891,8 @@ class ItemsMenu extends FloatingMenu
 		addChild(pageBtns);
 		callBackFn = function (idx:int):void 
 		{
-			trace("ItemsMenu callback idx:"+idx+"  item data = "+productsData[idx]);
-			callBack();
+			trace("ItemsMenu callback idx:"+idx+"  item data = "+Utils.prnObject(productsData[idx]));
+			callBack(productsData[idx]);
 		};		
 		
 		function pageBtnsClickHandler(ev:Event) : void
@@ -1941,7 +1965,7 @@ class ItemsMenu extends FloatingMenu
 		function createIco(o:Object):Sprite 
 		{
 			var s:Sprite = new Sprite();
-			trace("create icon for "+Utils.prnObject(o));
+			//trace("create icon for "+Utils.prnObject(o));
 			var bmp:Bitmap = new Bitmap(new BitmapData(70,60,false,0x999999));
 			s.addChild(bmp);
 			var tf:TextField = Utils.createText(o.productname,12,0x000000,bmp.width);
@@ -1949,15 +1973,16 @@ class ItemsMenu extends FloatingMenu
 			tf.y = bmp.height;
 			s.addChild(tf);
 			
-			Utils.loadJson(FloorPlanner.apiUrl+"?n=api&a=product&c=product&m=class_detail&id="+o.classid+"&token="+ FloorPlanner.userToken, function(o:Object):void 
+			Utils.loadJson(FloorPlanner.apiUrl+"?n=api&a=product&c=product&m=class_detail&id="+o.classid+"&token="+ FloorPlanner.userToken, function(od:Object):void 
 			{
-				//trace("product details : "+Utils.prnObject(o));
-				var picUrl:String = FloorPlanner.apiUrl+o.product.pic+"";
-				if (o.product.modelpics!=null)
+				for (var atr:* in od.product)	o[atr] = od.product[atr];	// write product details into main product info object
+				var picUrl:String = FloorPlanner.apiUrl+o.pic+"";
+				if (od.product.modelpics!=null)
 				{
-					if (o.product.modelpics is String)	o.product.modelpics = JSON.parse(o.product.modelpics);
-					picUrl = FloorPlanner.apiUrl+o.product.modelpics.up;
+					if (o.modelpics is String)	o.modelpics = JSON.parse(o.modelpics);
+					picUrl = FloorPlanner.apiUrl+o.modelpics.up;
 				}
+				//trace("create Ico, product obj with details : \n"+Utils.prnObject(o));
 				if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
 				Utils.loadAsset(picUrl,function (pic:DisplayObject):void
 				{
@@ -2646,7 +2671,6 @@ class WireGrid extends Sprite
 	
 }//endclass
 
-
 class FloorPlan
 {
 	public var Joints:Vector.<Point>;
@@ -2743,7 +2767,7 @@ class FloorPlan
 		
 		function replacer(k,v):*
 		{
-			if (v is Door)			//
+			if (v is Door)				// 
 			{
 				var o:Object = new Object();
 				o.pivot = v.pivot;
@@ -2753,7 +2777,7 @@ class FloorPlan
 				o.side = getQualifiedClassName((Door)(v).sideIcon);
 				return o;
 			}
-			else if (v is Wall)		// joints become indexes
+			else if (v is Wall)			// joints become indexes
 			{
 				var wo:Object = new Object();
 				wo.j1 = Joints.indexOf((Wall)(v).joint1);
@@ -2768,7 +2792,7 @@ class FloorPlan
 				flo.flooring = (FloorArea)(v).flooring;
 				return flo;
 			}
-			else if (v is Item)	// furniture icons properties
+			else if (v is Item)			// furniture icons properties
 			{
 				var fo:Object = new Object();
 				fo.cls = getQualifiedClassName((Item)(v).icon);
@@ -2776,11 +2800,11 @@ class FloorPlan
 				fo.x = (Item)(v).icon.x;
 				fo.y = (Item)(v).icon.y;
 				fo.rot = (Item)(v).icon.rotation;
-				fo.scX = (Item)(v).icon.scaleX;
-				fo.scY = (Item)(v).icon.scaleY;
+				fo.width = (Item)(v).icon.width;
+				fo.length = (Item)(v).icon.height;
 				return fo;
 			}
-			else if(v is Point)		// so only x,y vals are converted
+			else if(v is Point)			// so only x,y vals are converted
 			{
 				var po:Object = new Object();
 				po.x = v.x;
@@ -2893,8 +2917,10 @@ class FloorPlan
 			fur.x = fo.x;
 			fur.y = fo.y;
 			fur.rotation = fo.rot;
-			fur.scaleX = fo.scX;
-			fur.scaleY = fo.scY;
+			if (fo.scX!=null)	fur.scaleX = fo.scX;
+			if (fo.scY!=null)	fur.scaleY = fo.scY;
+			if (fo.width!=null)	fur.width = fo.width;
+			if (fo.length!=null)	fur.height = fo.length;
 			itm = new Item(fur);
 			Furniture.unshift(itm);
 			overlay.addChild(fur);
@@ -3367,6 +3393,34 @@ class FloorPlan
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angL)*dir.length,-Math.cos(angL)*dir.length)),door.thickness);
 			drawBar(wall,piv,piv.add(new Point(Math.sin(angR)*dir.length,-Math.cos(angR)*dir.length)),door.thickness);
 			*/
+		}
+	}//endfunction
+	
+	//=============================================================================================
+	// 
+	//=============================================================================================
+	public function addItem(itm:Item):void
+	{
+		trace("addItem("+itm+")");
+		Furniture.push(itm);
+		itm.icon.filters = [new DropShadowFilter(1,90,0x000000,1,8,8,1)];
+		overlay.addChild(itm.icon);
+		
+		// ----- hack to start dragging
+		if (overlay.stage!=null)
+		{
+			function enterFrameHandler(ev:Event=null) :void
+			{
+				itm.icon.x = overlay.mouseX;
+				itm.icon.y = overlay.mouseY;
+			}
+			function mouseDownHandler(ev:Event=null):void
+			{
+				itm.icon.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+				overlay.stage.removeEventListener(MouseEvent.MOUSE_UP,mouseDownHandler);	
+			}
+			itm.icon.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+			overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
 		}
 	}//endfunction
 	
@@ -4686,10 +4740,12 @@ class Item
 	
 	public var id:String = null;
 	public var name:String = null;
-	public var topViewUrl:String = null;
-	public var length:Number = 1;
-	public var width:Number = 1;
-	public var rotation:Number = 1;
+	public var frontUrl:String = null;
+	public var backUrl:String = null;
+	public var leftUrl:String = null;
+	public var rightUrl:String = null;
+	public var upkUrl:String = null;
+	public var downUrl:String = null;
 	
 	public function Item(ico:Sprite,frame:int=0):void
 	{
