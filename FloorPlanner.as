@@ -2440,12 +2440,6 @@ class SaveLoadMenu extends IconsMenu
 	public function saveToServer():void
 	{
 		var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
-		var bmd:BitmapData = new BitmapData(90,90,false,0xFFFFFF);
-		var sc:Number = Math.min(90/bnds.width,90/bnds.height);
-		var mat:Matrix = new Matrix(sc,0,0,sc,-bnds.left*sc+(bmd.width-bnds.width*sc)/2,-bnds.top*sc+(bmd.height-bnds.height*sc)/2);
-		bmd.draw(floorPlan.overlay,mat,null,null,null,true);
-		var jpgEnc:JPGEncoder = new JPGEncoder(80);
-		var ba:ByteArray = jpgEnc.encode(bmd);
 		var M:Array = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 		var dat:Date = new Date();
 		
@@ -2466,7 +2460,7 @@ class SaveLoadMenu extends IconsMenu
 		{
 			trace("UPLOADED  ldr.data -> "+ldr.data);
 			var o:Object = JSON.parse(ldr.data);
-			updateBtns();
+			//updateBtns();
 			uploadWallPics(o.data.id);
 		}//endfunction
 		ldr.addEventListener(Event.COMPLETE, onComplete);
@@ -2533,8 +2527,8 @@ class SaveLoadMenu extends IconsMenu
 		{
 			floorPlan.refresh();
 			var b:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
-			var bmd:BitmapData = new BitmapData(b.width+20, b.height+20, false, 0xFFFFFF);
-			bmd.draw(floorPlan.overlay, new Matrix(1, 0, 0, 1, 10 - b.left, 10 - b.top));
+			var bmd:BitmapData = new BitmapData(b.width*2+20, b.height*2+20, false, 0xFFFFFF);
+			bmd.draw(floorPlan.overlay, new Matrix(2, 0, 0, 2, 10 - b.left*2, 10 - b.top*2));
 			var bmp:Bitmap = new Bitmap(bmd);
 			bmp.scaleX = bmp.scaleY = 1 / 10;
 			bmp.x = (overlay.width - bmp.width) / 2;
@@ -2566,6 +2560,7 @@ class SaveLoadMenu extends IconsMenu
 			{
 				trace("upload wall pic done!");
 				if (overlay.parent != null) overlay.parent.removeChild(overlay);
+				updateBtns();
 				return;
 			}
 			var wall:Wall = floorPlan.Walls[idx];
