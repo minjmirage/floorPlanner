@@ -973,6 +973,7 @@ package
 																	{
 																		trace(picUrl + "  wallpaperPic = "+pic);
 																		wall.wallPaperId = prod.id;
+																		
 																		var bmd:BitmapData = new BitmapData(pic.width,pic.height);
 																		bmd.draw(pic);
 																		wall.wallPaper = bmd;
@@ -1937,7 +1938,7 @@ class ItemsMenu extends FloatingMenu
 		function onComplete(ev:Event):void
 		{
 			var dat:Object = JSON.parse(ldr.data);
-			//trace("GOT FURNITURE LIST :  ldr.data : "+Utils.prnObject(dat));
+			trace("GOT FURNITURE LIST :  ldr.data : "+Utils.prnObject(dat));
 			
 			function createCatLoadFn(prodObj:Object):Function
 			{
@@ -1959,7 +1960,7 @@ class ItemsMenu extends FloatingMenu
 			{
 				if (((1<<flagIdx) & flags)>0)
 				{
-					trace("((1<<flagIdx) & flags) = "+((1<<flagIdx) & flags))
+				//	trace("((1<<flagIdx) & flags) = "+((1<<flagIdx) & flags))
 					var catData:Object = dat.products[catid];
 					CatNames.push(catData.catename+"");					// category name
 					LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
@@ -2016,7 +2017,7 @@ class ItemsMenu extends FloatingMenu
 					if (o.modelpics is String)	o.modelpics = JSON.parse(o.modelpics);
 					picUrl = FloorPlanner.apiUrl+o.modelpics.up;
 				}
-				//trace("create Ico, product obj with details : \n"+Utils.prnObject(o));
+				trace("create Ico, product obj with details : \n"+Utils.prnObject(o));
 				if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
 				Utils.loadAsset(picUrl,function (pic:DisplayObject):void
 				{
@@ -4198,259 +4199,6 @@ class FloorPlan
 		
 }//endclass
 
-class Utils
-{
-	private static var LoadedAssets:Object = new Object();	// hashtable of the bytes of loaded assets
-	
-	//===================================================================================
-	// 
-	//===================================================================================
-	public static function createText(txt:String="",fontSize:int=14,fontColor:uint=0x000000,w:int=-1) : TextField
-	{
-		if (txt == null) txt = "";
-		var tf:TextField = new TextField();
-		tf.height = 1;
-		tf.autoSize = "left";
-		tf.wordWrap = false;
-		tf.selectable = false;
-		var tff:TextFormat = tf.defaultTextFormat;
-		tff.size = fontSize;
-		tff.color = fontColor;
-		tf.defaultTextFormat = tff;
-		tf.setTextFormat(tff);
-		tf.textColor = fontColor;
-		tf.htmlText = txt;
-		if (w>0)
-		{
-			var h:int = tf.height+1;
-			tf.autoSize = "none";
-			tf.width = w;
-			tf.height = h;
-		}
-		
-		return tf;
-	}//endfunction
-	
-	//===================================================================================
-	// creates a text input textfield enabling input on click 
-	//===================================================================================
-	public static function createInputText(onTextChange:Function,txt:String="",size:uint=14,c:uint=0x000000,w:int=-1,replaceTxt:Boolean=false) : TextField
-	{
-		var tf:TextField = createText(txt,size,c,w);
-		tf.selectable = true;
-		var stageRef:Stage = null;
-		tf.addEventListener(FocusEvent.FOCUS_IN,enterEditHandler);
-		tf.addEventListener(MouseEvent.CLICK,enterEditHandler);
-		tf.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
-		tf.addEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
-		
-		function enterEditHandler(ev:Event):void
-		{
-			trace("enterEditClick");
-			tf.removeEventListener(MouseEvent.CLICK,enterEditHandler);
-			tf.type = "input";
-			if (replaceTxt) tf.text = "";
-			else 			tf.border = true;
-			tf.addEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
-			stageRef.addEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
-		}//endfunction
-		
-		function exitEditHandler(ev:Event):void
-		{
-			trace("exitEditClick");
-			if(ev is MouseEvent && !tf.hitTestPoint(stageRef.mouseX,stageRef.mouseY) ||	// clicked elsewhere
-			   (ev is KeyboardEvent && (ev as KeyboardEvent).charCode==13))			// key is ENTER
-			{
-				tf.removeEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
-				stageRef.removeEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
-				tf.addEventListener(MouseEvent.CLICK,enterEditHandler);
-				tf.border = false;
-				tf.type = "dynamic";
-				if (onTextChange!=null) onTextChange(tf.text);
-			}
-		}//endfunction
-		
-		function addToStageHandler(ev:Event):void
-		{
-			trace("input Tf added to stage");
-			stageRef = tf.stage;
-			tf.removeEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
-		}
-		
-		function removeHandler(ev:Event):void
-		{
-			tf.removeEventListener(FocusEvent.FOCUS_IN,enterEditHandler);
-			tf.removeEventListener(MouseEvent.CLICK,enterEditHandler);
-			stageRef.removeEventListener(MouseEvent.MOUSE_DOWN,exitEditHandler);
-			tf.removeEventListener(KeyboardEvent.KEY_DOWN,exitEditHandler);
-			tf.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
-			tf.removeEventListener(Event.ADDED_TO_STAGE, addToStageHandler);
-		}//endfunction
-		
-		return tf;
-	}//endfunction
-
-	//=============================================================================
-	// create the tabs at the top of the menu
-	//=============================================================================
-	public static function createTabs(sideLabels:Vector.<String>,fns:Vector.<Function>):Sprite
-	{
-		trace("createTabs("+sideLabels+","+fns+")");
-		
-		var Tabs:Sprite = new Sprite();
-		
-		var offY:int=0;
-		for (var i:int=0; i<sideLabels.length; i++)
-		{
-			var btn:Sprite= new Sprite();
-			sideLabels[i] = sideLabels[i].split("").join("\n");
-			var tf:TextField = createText(sideLabels[i],13,0xFFFFFF);
-			tf.x = 5;
-			tf.y = 5;
-			btn.addChild(tf);
-			btn.graphics.beginFill(0xFFFFFF,1);
-			btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
-			btn.graphics.endFill();
-			btn.buttonMode = true;
-			btn.mouseChildren = false;
-			btn.y = offY;
-			offY += btn.height+2;
-			trace("tabBtn "+btn.width+"x"+btn.height);
-			Tabs.addChild(btn);
-		}
-		
-		function setTabHighlight(idx:int):void
-		{
-			for (var i:int=0; i<Tabs.numChildren; i++)
-			{
-				var btn:Sprite = (Sprite)(Tabs.getChildAt(i));
-				var tf:TextField = (TextField)(btn.getChildAt(btn.numChildren-1));
-				var tff:TextFormat = tf.getTextFormat();
-				if (i==idx)
-				{
-					tff.color = 0xc1c1c1;
-					btn.graphics.clear();
-					btn.graphics.beginFill(0xFFFFFF,1);
-					btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
-					btn.graphics.endFill();
-				}
-				else
-				{
-					tff.color = 0xFFFFFF;
-					btn.graphics.beginFill(0xA1A1A1,1);
-					btn.graphics.drawRoundRect(0,0,tf.width+10,tf.height+10,5,5);
-					btn.graphics.endFill();
-				}
-				tf.setTextFormat(tff);
-			}
-		}//endfunction
-		setTabHighlight(0);
-		
-		function clickHandler(ev:Event):void
-		{
-			for (var i:int = 0; i < Tabs.numChildren; i++)
-				if (Tabs.getChildAt(i).hitTestPoint(Tabs.stage.mouseX, Tabs.stage.mouseY,true))
-				{
-					setTabHighlight(i);
-					fns[i]();
-					return;
-				}
-		}
-		
-		function removeHandler(ev:Event):void
-		{
-			Tabs.removeEventListener(MouseEvent.CLICK, clickHandler);
-			Tabs.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);	
-		}
-		
-		Tabs.addEventListener(MouseEvent.CLICK, clickHandler);
-		Tabs.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
-		
-		return Tabs;
-	}//endfunction
-	
-	//===================================================================================
-	// to pretty print JSON data
-	//===================================================================================
-	public static function prnObject(o:Object,nest:int=0):String
-	{
-		var tabs:String="";
-		for (var i:int=0; i<nest; i++)
-			tabs+="  ";
-			
-		var s:String = "{";
-		for(var id:String in o) 
-		{
-			var value:Object = o[id];
-			if (value is String || value is int || value is Number || value is Boolean)
-				s += "\n"+tabs+"  "+id+"="+value;
-			else
-				s += "\n"+tabs+"  "+id+"="+prnObject(value,nest+1);
-		}
-		return s+"}";
-	}//endfunction
-	
-	//=============================================================================
-	// convenience function to load JSON from server
-	//=============================================================================
-	public static function loadJson(url:String, callBack:Function):void
-	{
-		var ldr:URLLoader = new URLLoader();
-		var req:URLRequest = new URLRequest(url);
-		ldr.load(req);
-		ldr.addEventListener(Event.COMPLETE, onComplete);  
-		function onComplete(e:Event):void
-		{
-			ldr.removeEventListener(Event.COMPLETE, onComplete);  
-			callBack(JSON.parse(ldr.data));
-		}//
-	}//endfunction
-	
-	//===================================================================================
-	// function to load image assets from url or reinstantiate from loaded bytes
-	//===================================================================================
-	public static function loadAsset(url:String,callBack:Function):void
-	{
-		url = url.split("//").join("/").split(":/").join("://");
-		
-		var ldr:Loader = null;
-		
-		if (LoadedAssets[url]!=null)
-		{
-			ldr = new Loader();
-			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE,function(ev:Event):void 
-			{
-				trace("loadAssets -> loadBytes -> ldr.content = "+ldr.content);
-				callBack(ldr.content);
-			});
-			ldr.loadBytes(LoadedAssets[url]);
-		}
-		else
-		{
-			trace("loading asset " + url);
-			ldr = new Loader();
-			ldr.load(new URLRequest(url));
-			function imgLoaded(ev:Event):void
-			{
-				ldr.contentLoaderInfo.removeEventListener(Event.COMPLETE, imgLoaded);
-				ldr.contentLoaderInfo.removeEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
-				if (ev is IOErrorEvent)
-				{
-					trace("Load IOError! "+ev);
-					callBack(new Bitmap(new BitmapData(90,90,false,0xFF0000)));
-				}
-				else
-				{
-					LoadedAssets[url] = ldr.contentLoaderInfo.bytes;	// stores teh laoded bytes
-					callBack(ldr.content);
-				}
-			}
-			ldr.contentLoaderInfo.addEventListener(Event.COMPLETE, imgLoaded);
-			ldr.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, imgLoaded);
-		}
-	}
-}//endclass
-
 class Line
 {
 	public var joint1:Point;
@@ -4555,6 +4303,7 @@ class Wall
 	public var sideView:Sprite;					// 
 	public var wallPaper:BitmapData = null;		// wall style
 	public var wallPaperId:String = null;		// wallpaper id
+	public var wallPaperUnitCost:Number = 0;	// 
 	
 	public static var WallPapers:Vector.<BitmapData> = Vector.<BitmapData>([new wall01(),new wall02(),new wall03(),new wall04(),new wall05(),
 																			new wall06(),new wall07(),new wall08(),new wall09(),new wall10(),
@@ -4769,17 +4518,24 @@ class FloorArea
 
 class Item
 {
-	public var color:uint=0;		// tint color
-	public var icon:Sprite=null;	// furniture icon mc
+	public var icon:DisplayObject = null;
+	public var color:int = 0;
 	
 	public var id:String = null;
 	public var name:String = null;
+	public var price:Number = 0;
+	
 	public var frontUrl:String = null;
 	public var backUrl:String = null;
 	public var leftUrl:String = null;
 	public var rightUrl:String = null;
-	public var upkUrl:String = null;
+	public var upUrl:String = null;
 	public var downUrl:String = null;
+	
+	public var length:Number = 0;		// in meters
+	public var width:Number = 0;		// in meters
+	public var height:Number = 0;		// in meters
+	
 	
 	public function Item(ico:Sprite,frame:int=0):void
 	{
@@ -4790,6 +4546,9 @@ class Item
 
 class Door
 {
+	public var id:String = null;
+	public var name:String = null;
+	public var cost:Number = 0;
 	public var pivot:Number=0.5;	// a ratio from joint1 to joint2 of wall	
 	public var dir:Number=0.25;		// an added ratio relative to pivot, should i make this absolute
 	public var height:Number = 1;	// height ratio relative to wall height
