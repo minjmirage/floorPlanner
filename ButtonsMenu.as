@@ -30,7 +30,8 @@ package
 
 		private var titleTf:TextField = null;		// menu title at the top
 		private var menuBtns:Sprite = null;			// container for all the menu buttons proper
-		private var pageNav:Sprite = null;
+		private var pageNav:Sprite = null;			// bottom little squares to page navigate
+		private var menuTabs:Sprite = null;
 
 		private var r:int = 1;		// rows
 		private var c:int = 1;		// cols
@@ -44,14 +45,14 @@ package
 		public function ButtonsMenu(title:String,Icos:Vector.<Sprite>,callBack:Function,rows:int=3,cols:int=2):void
 		{
 			callBackFn = callBack;
-
+			
 			if (rows<1)	rows = 1;
 			if (cols<1) cols = 1;
 			r = rows;
 			c = cols;
 
 			// ----- create the top title
-			titleTf = Utils.createText(title,15,0x000000,(bw+marg)*c+marg*3);
+			titleTf = Utils.createText(title,15,0x333333,(bw+marg)*c+marg*3);
 			titleTf.y = 10;
 			var tff:TextFormat = titleTf.defaultTextFormat;
 			tff.align = "center";
@@ -61,6 +62,8 @@ package
 			filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
 
 			menuBtns = new Sprite();		// the menu buttons container
+			menuBtns.buttonMode = true;
+			menuBtns.mouseChildren = false;
 			addChild(menuBtns);
 			pageNav = new Sprite();		// the page buttons at the bottom of the page
 			addChild(pageNav);
@@ -112,33 +115,108 @@ package
 			for (i=0; i<pageCnt; i++)
 			{
 				var sqr:Sprite = new Sprite();
+				sqr.graphics.beginFill(0x666666,1);
+				sqr.graphics.drawRect(0,0,9,9);
+				sqr.graphics.endFill();
 				if (i==idx)
-					sqr.graphics.beginFill(0x888888,1);
+					sqr.graphics.beginFill(0x999999,1);
 				else
-					sqr.graphics.beginFill(0x666666,1);
+					sqr.graphics.beginFill(0x777777,1);
 				sqr.graphics.drawRect(0,0,9,9);
 				sqr.graphics.endFill();
 				sqr.x = i*(sqr.width+10);
 				sqr.buttonMode = true;
 				pageNav.addChild(sqr);
 			}
-
+			
+			// ----- draws the menu base panel
+			this.graphics.clear();
 			if (pageCnt>1)
 			{
 				pageNav.visible=true;
-				Utils.drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xFFFFFF,0xF6F6F6,20,10);
+				Utils.drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xEEEEEE,0xEAEAEA,20,10);
+				Utils.drawStripedRect(this,3,3,(bw+marg)*c+marg*3-6,(bh+marg)*r+marg*3+marg*2-6,0xFFFFFF,0xFCFCFC,20,10);
 			}
 			else
 			{
 				pageNav.visible=false;
-				Utils.drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xFFFFFF,0xF6F6F6,20,10);
+				Utils.drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xEEEEEE,0xEAEAEA,20,10);
+				Utils.drawStripedRect(this,3,3,(bw+marg)*c+marg*3-6,(bh+marg)*r+marg*3-6,0xFFFFFF,0xFCFCFC,20,10);
 			}
+			
+			// ----- center bottom pageNav buttons
 			pageNav.x = (this.width-pageNav.width)/2;
 			pageNav.y =this.height-marg*2-pageNav.height/2;
 
 			pageIdx = idx;
 		}//endfunction
-
+		
+		//===============================================================================================
+		// create the tabs at the top of the menu, callback with the selected index
+		//===============================================================================================
+		public function createTabs(sideLabels:Vector.<String>,callBack:Function):void
+		{
+			trace("createTabs("+sideLabels+","+callBack+")");
+			var Tabs:Sprite = new Sprite();
+			
+			for (var i:int=0; i<sideLabels.length; i++)
+			{
+				var btn:Sprite= new Sprite();
+				sideLabels[i] = sideLabels[i].split("").join("\n");
+				var tf:TextField = Utils.createText(sideLabels[i],13,0x333333);
+				tf.x = 5;
+				tf.y = 5;
+				btn.addChild(tf);
+				btn.buttonMode = true;
+				btn.mouseChildren = false;
+				Tabs.addChild(btn);
+			}
+			
+			var tbTfW:int = Tabs.width;
+			function setTabHighlight(idx:int):void
+			{
+				var offY:int=0;
+				for (var i:int=0; i<Tabs.numChildren; i++)
+				{
+					var btn:Sprite = (Sprite)(Tabs.getChildAt(i));
+					var tf:TextField = (TextField)(btn.getChildAt(btn.numChildren-1));
+					btn.graphics.clear();
+					if (i==idx)
+						Utils.drawStripedRect(btn,0,0,tbTfW+10,tf.height+10,0xFFFFFF,0xFCFCFC,10,10);
+					else
+						Utils.drawStripedRect(btn,0,0,tbTfW+10,tf.height+10,0xEEEEEE,0xEAEAEA,10,10);
+					tf.x = 5+(tbTfW-tf.width)/2;
+					btn.y = offY;
+					offY += btn.height+2;
+				}
+			}//endfunction
+			setTabHighlight(0);
+			
+			function clickHandler(ev:Event):void
+			{
+				for (var i:int = 0; i < Tabs.numChildren; i++)
+					if (Tabs.getChildAt(i).hitTestPoint(Tabs.stage.mouseX, Tabs.stage.mouseY,true))
+					{
+						setTabHighlight(i);
+						if (callBack!=null) callBack(i);
+						return;
+					}
+			}//endfunction
+			
+			function removeHandler(ev:Event):void
+			{
+				Tabs.removeEventListener(MouseEvent.CLICK, clickHandler);
+				Tabs.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);	
+			}//endfunction
+			
+			Tabs.addEventListener(MouseEvent.CLICK, clickHandler);
+			Tabs.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
+			
+			if (menuTabs!=null) menuTabs.parent.removeChild(menuTabs);
+			menuTabs = Tabs;
+			addChild(menuTabs);
+		}//endfunction
+		
 		//===============================================================================================
 		// enable drag or listen to button press
 		//===============================================================================================
@@ -170,7 +248,7 @@ package
 			if (Btns!=null)
 			{
 				for (i=Btns.length-1; i>-1; i--)
-				if (Btns[i].parent==pageNav && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+				if (Btns[i].parent==menuBtns && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
 				{
 					trace("Btn "+i+"pressed!");
 					if  (callBackFn!=null) callBackFn(i);	// exec callback function
@@ -180,14 +258,14 @@ package
 		}//endfunction
 
 		//===============================================================================================
-		// handles buttons interractions
+		// handles buttons/menu drag interractions
 		//===============================================================================================
 		protected function onEnterFrame(ev:Event):void
 		{
 			if (stage==null) return;
-
+			
 			var A:Array = null;
-
+			
 			if (Btns!=null)
 			for (var i:int=Btns.length-1; i>-1; i--)
 				if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
@@ -216,16 +294,24 @@ package
 				this.x = menuOffset.x+this.parent.mouseX;
 				this.y = menuOffset.y+this.parent.mouseY;
 			}
-
-				// ----- ensure menu within stage bounds
-			if (this.x+this.width>this.stage.stageWidth)	this.x = this.stage.stageWidth-this.width;
-			if (this.y+this.height>this.stage.stageHeight)	this.y = this.stage.stageHeight-this.height;
+			
+			if (menuTabs!=null)
+			{
+				if (x*2+(bw+marg)*c+marg*3 < stage.stageWidth)
+					menuTabs.x = (bw+marg)*c+marg*3 + 5;
+				else
+					menuTabs.x = -menuTabs.width-5;
+			}
+			
+			// ----- ensure menu within stage bounds
+			if (this.x+(bw+marg)*c+marg*3>stage.stageWidth)		this.x = stage.stageWidth-(bw+marg)*c-marg*3;
+			if (this.y+this.height>stage.stageHeight)			this.y = stage.stageHeight-this.height;
 			if (this.x<0)	this.x = 0;
 			if (this.y<0)	this.y = 0;
 		}//endfunction
 
 		//===============================================================================================
-		//
+		// to cleanup listeners when removed from stage
 		//===============================================================================================
 		protected function onRemove(ev:Event):void
 		{

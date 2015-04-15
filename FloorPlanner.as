@@ -730,7 +730,7 @@ package
 					s.addChild(new Bitmap(floorPlan.FloorPatterns[i]));
 					Icos.push(s);
 				}
-				replaceMenu(new IconsMenu(Icos,5,2,callBack));
+				replaceMenu(new ButtonsMenu("Floor Tiles",Icos,5,2,callBack));
 			}//endfunction
 			
 			
@@ -989,7 +989,7 @@ package
 																	s.addChild(new Bitmap(Wall.WallPapers[i]));
 																	Icos.push(s);
 																}
-																replaceMenu(new IconsMenu(Icos,5,2,function(f:int):void 
+																replaceMenu(new ButtonsMenu("Wallpapers",Icos,5,2,function(f:int):void 
 																{
 																	wall.wallPaper = Wall.WallPapers[f];
 																	wall.updateSideView();
@@ -1474,258 +1474,15 @@ import flash.utils.getTimer;
 import mx.utils.Base64Encoder;
 import mx.utils.Base64Decoder;
 
-class FloatingMenu extends Sprite		// to be extended
+class TopBarMenu extends Sprite
 {
-	protected var Btns:Vector.<Sprite> = null;
-	protected var callBackFn:Function = null;
-	protected var overlay:Sprite = null;			// something on top to disable this
-	protected var mouseDownPt:Point = null;
-	protected var draggable:Boolean = true;
+	private var callBackFn:Function = null;
 	
-	//===============================================================================================
-	// simpleton constructor, subclasses must initialize Btns and callBackFn
-	//===============================================================================================
-	public function FloatingMenu():void
-	{
-		filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
-		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		addEventListener(Event.ENTER_FRAME,onEnterFrame);
-		addEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	protected function onMouseDown(ev:Event):void
-	{
-		if (stage==null) return;
-		trace("mouseDown!!");
-		mouseDownPt = new Point(this.mouseX,this.mouseY);
-		if (draggable)	this.startDrag();
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	protected function onMouseUp(ev:Event):void
-	{
-		if (stage==null) return;
-		this.stopDrag();
-		if (overlay!=null) return;
-		if (mouseDownPt==null)	return;	// mousedown somewhere else
-		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;	// is dragging
-		mouseDownPt = null;
-		if (Btns!=null)
-		{
-			trace("Chking for Btns Pressed");
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
-			{
-				trace("Btn "+i+"pressed!");
-				if  (callBackFn!=null) callBackFn(i);	// exec callback function
-				return;
-			}
-		}
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	protected function onEnterFrame(ev:Event):void
-	{
-		if (overlay!=null && overlay.parent!=this) overlay=null;
-		if (stage==null) return;
-		
-		var A:Array = null;
-		
-		if (Btns!=null)
-		for (var i:int=Btns.length-1; i>-1; i--)
-			if (overlay==null && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
-			{
-				A = Btns[i].filters;
-				if (A.length==0)
-					Btns[i].filters=[new GlowFilter(0x000000,1,4,4,1)];
-				else if ((GlowFilter)(A[0]).strength<1)
-					(GlowFilter)(A[0]).strength+=0.1;
-			}
-			else
-			{
-				if (Btns[i].filters.length>0)
-				{
-					A = Btns[i].filters;
-					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
-						(GlowFilter)(A[0]).strength-=0.1;
-					else 
-						A = null;
-					Btns[i].filters = A;
-				}
-			}
-		
-		// ----- ensure menu within stage bounds
-		if (this.x+this.width>this.stage.stageWidth)	this.x = this.stage.stageWidth-this.width;
-		if (this.y+this.height>this.stage.stageHeight)	this.y = this.stage.stageHeight-this.height;
-		if (this.x<0)	this.x = 0;
-		if (this.y<0)	this.y = 0;
-		
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	protected function onRemove(ev:Event):void
-	{
-		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
-		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
-		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
-		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
-		removeEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
-	}//endfunction
-	
-	//===============================================================================================
-	// draws a striped rectangle in given sprite 
-	//===============================================================================================
-	public static function drawStripedRect(s:Sprite,x:Number,y:Number,w:Number,h:Number,c1:uint,c2:uint,rnd:uint=10,sw:Number=5,rot:Number=Math.PI/4) : Sprite
-	{
-		if (s==null)	s = new Sprite();
-		var mat:Matrix = new Matrix();
-		mat.createGradientBox(sw,sw,rot,0,0);
-		s.graphics.beginGradientFill("linear",[c1,c2],[1,1],[127,128],mat,"repeat");
-		s.graphics.drawRoundRect(x,y,w,h,rnd,rnd);
-		s.graphics.endFill();
-		
-		return s;
-	}//endfunction 
-}//endclass
-
-class IconsMenu extends FloatingMenu	
-{
-	private var pageIdx:int=0;
-	private var pageBtns:Sprite = null;
-	private var r:int = 1;		// rows
-	private var c:int = 1;		// cols
-	private var bw:int = 50;	// btn width
-	private var bh:int = 50;	// btn height
-	private var marg:int = 10;
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	public function IconsMenu(Icos:Vector.<Sprite>,rows:int,cols:int,callBack:Function):void
-	{
-		Btns = Icos;
-		callBackFn = callBack;
-	
-		if (rows<1)	rows = 1;
-		if (cols<1) cols = 1;
-		r = rows;
-		c = cols;
-		pageBtns = new Sprite();
-		addChild(pageBtns);
-		
-		refresh();
-		
-		function pageBtnsClickHandler(ev:Event) : void
-		{
-			for (var i:int=pageBtns.numChildren-1; i>-1; i--)
-				if (pageBtns.getChildAt(i).hitTestPoint(stage.mouseX,stage.mouseY))
-					pageTo(i);
-		}
-		function pageBtnsRemoveHandler(ev:Event) : void
-		{
-			pageBtns.removeEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
-			pageBtns.removeEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
-		}
-		
-		pageBtns.addEventListener(MouseEvent.CLICK,pageBtnsClickHandler);
-		pageBtns.addEventListener(Event.REMOVED_FROM_STAGE,pageBtnsRemoveHandler);
-	}//endfunction
-	
-	//===============================================================================================
-	// 
-	//===============================================================================================
-	public function refresh():void
-	{
-		var tw:int=0;
-		var th:int=0;
-		for (var i:int=Btns.length-1; i>-1; i--)
-		{
-			tw+=Btns[i].width;
-			th+=Btns[i].height;
-		}
-		if (tw>0)	bw = tw/Btns.length;
-		if (th>0)	bh = th/Btns.length;
-		
-		// ----- update pageBtns to show correct pages
-		var pageCnt:int = Math.ceil(Btns.length/(r*c));
-		while (pageBtns.numChildren>pageCnt)	
-			pageBtns.removeChildAt(pageBtns.numChildren-1);
-		for (i=0; i<pageCnt; i++)
-		{
-			var sqr:Sprite = new Sprite();
-			sqr.graphics.beginFill(0x666666,1);
-			sqr.graphics.drawRect(0,0,9,9);
-			sqr.graphics.endFill();
-			sqr.x = i*(sqr.width+10);
-			sqr.buttonMode = true;
-			pageBtns.addChild(sqr);
-		}
-		
-		if (pageCnt>1)
-		{
-			pageBtns.visible=true;
-			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3+marg*2,0xFFFFFF,0xF6F6F6,20,10);
-		}
-		else
-		{
-			pageBtns.visible=false;
-			drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xFFFFFF,0xF6F6F6,20,10);
-		}
-		pageBtns.x = (this.width-pageBtns.width)/2;
-		pageBtns.y =this.height-marg*2-pageBtns.height/2;
-		
-		pageTo(pageIdx);
-	}//endfunction
-	
-	//===============================================================================================
-	// go to page number
-	//===============================================================================================
-	public function pageTo(idx:int):void
-	{
-		while (numChildren>1)	removeChildAt(1);	// child 0 is pageBtns
-		
-		if (idx<0)	idx = 0;
-		if (idx>Math.ceil(Btns.length/(r*c)))	idx = Math.ceil(Btns.length/(r*c));
-		var a:int = idx*r*c;
-		var b:int = Math.min(Btns.length,a+r*c);
-		for (var i:int=a; i<b; i++)
-		{
-			var btn:Sprite = Btns[i];
-			btn.x = marg*2+(i%c)*(bw+marg)+(bw-btn.width)/2;
-			btn.y = marg*2+int((i-a)/c)*(bh+marg)+(bh-btn.height)/2;
-			addChild(btn);
-		}
-		
-		for (i=pageBtns.numChildren-1; i>-1; i--)
-		{
-			if (i==idx)
-				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform(1,1,1,1,70,70,70);
-			else
-				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform();
-		}
-		pageIdx = idx;
-	}//endfunction	
-}//endclass
-
-class TopBarMenu extends FloatingMenu
-{
 	//===============================================================================================
 	// 
 	//===============================================================================================
 	public function TopBarMenu(labels:XMLList,callBack:Function):void
 	{
-		draggable = false;
 		callBackFn = callBack;
 		
 		// ----- create buttons
@@ -1733,15 +1490,7 @@ class TopBarMenu extends FloatingMenu
 		var n:int = labels.length();
 		for (var i:int=0; i<n; i++)
 		{
-			var tf:TextField = new TextField();
-			tf.autoSize = "left";
-			tf.wordWrap = false;
-			var tff:TextFormat  = tf.defaultTextFormat;
-			tff.font = "arial";
-			tff.size = 12;
-			tff.color = 0x888888;
-			tf.defaultTextFormat = tff;
-			tf.text = labels[i].@txt;
+			var tf:TextField = Utils.createText(labels[i].@txt,12,0x888888);
 			var b:Sprite = new Sprite();
 			if (getDefinitionByName(labels[i].@ico)!=null)
 			{
@@ -1761,9 +1510,7 @@ class TopBarMenu extends FloatingMenu
 		{
 			var btn:Sprite = Btns[i];
 			var cW:int = btn.width;
-			btn.graphics.beginFill(0xEEEEEE,1);
-			btn.graphics.drawRoundRect(0,0,btn.width+10,btn.height,10,10);
-			btn.graphics.endFill();
+			Utils.drawStripedRect(btn,0,0,btn.width+10,btn.height,0xEEEEEE,0xECECEC,10,10);
 			for (var j:int=btn.numChildren-1; j>-1; j--)
 			{
 				var e:DisplayObject = btn.getChildAt(j);
@@ -1793,19 +1540,102 @@ class TopBarMenu extends FloatingMenu
 		function onResize(ev:Event):void
 		{
 			ppp.graphics.clear();
-			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
+			Utils.drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
 		}
 		function onAddedToStage(ev:Event):void
 		{
-			drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
+			Utils.drawStripedRect(ppp,0,0,stage.stageWidth,ppp.height+10,0xFFFFFF,0xF6F6F6,0,10);
 			ppp.removeEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
 			stage.addEventListener(Event.RESIZE,onResize);
 		}
 		ppp.addEventListener(Event.ADDED_TO_STAGE,onAddedToStage);
+	
+		filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+		addEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		addEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		addEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		addEventListener(Event.ENTER_FRAME,onEnterFrame);
+		addEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onMouseDown(ev:Event):void
+	{
+		if (stage==null) return;
+		trace("mouseDown!!");
+		mouseDownPt = new Point(this.mouseX,this.mouseY);
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onMouseUp(ev:Event):void
+	{
+		if (stage==null) return;
+		if (mouseDownPt==null)	return;	// mousedown somewhere else
+		if (mouseDownPt.subtract(new Point(this.mouseX,this.mouseY)).length>10) return;	// is dragging
+		mouseDownPt = null;
+		if (Btns!=null)
+		{
+			for (var i:int=Btns.length-1; i>-1; i--)
+				if (Btns[i].parent==this && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+				{
+					trace("Btn "+i+"pressed!");
+					if  (callBackFn!=null) callBackFn(i);	// exec callback function
+					return;
+				}
+		}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onEnterFrame(ev:Event):void
+	{
+		if (stage==null) return;
+		
+		var A:Array = null;
+		
+		if (Btns!=null)
+		for (var i:int=Btns.length-1; i>-1; i--)
+			if (overlay==null && Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
+			{
+				A = Btns[i].filters;
+				if (A.length==0)
+					Btns[i].filters=[new GlowFilter(0x000000,1,4,4,1)];
+				else if ((GlowFilter)(A[0]).strength<1)
+					(GlowFilter)(A[0]).strength+=0.1;
+			}
+			else
+			{
+				if (Btns[i].filters.length>0)
+				{
+					A = Btns[i].filters;
+					if (A.length>0 && (GlowFilter)(A[0]).strength>0)
+						(GlowFilter)(A[0]).strength-=0.1;
+					else 
+						A = null;
+					Btns[i].filters = A;
+				}
+			}
+	}//endfunction
+	
+	//===============================================================================================
+	// 
+	//===============================================================================================
+	protected function onRemove(ev:Event):void
+	{
+		removeEventListener(MouseEvent.MOUSE_DOWN,onMouseDown);
+		removeEventListener(MouseEvent.MOUSE_UP,onMouseUp);
+		removeEventListener(Event.REMOVED_FROM_STAGE,onRemove);
+		removeEventListener(Event.ENTER_FRAME,onEnterFrame);
+		removeEventListener(MouseEvent.MOUSE_OUT,onMouseUp);
 	}//endfunction
 }//endclass
 
-class DialogMenu extends FloatingMenu
+class DialogMenu extends ButtonsMenu
 {
 	private var Fns:Vector.<Function> = null;
 	private var titleTf:TextField = null;
@@ -1813,8 +1643,17 @@ class DialogMenu extends FloatingMenu
 	//===============================================================================================
 	// 
 	//===============================================================================================
-	public function DialogMenu(title:String,labels:Vector.<String>,callBacks:Vector.<Function>):void
+	public function DialogMenu(title:String,labels:Vector.<String>,callBack:Vector.<Function>):void
 	{
+		var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+		for (var i:int=0; i<labels.length; i++)
+		{
+			var tf:TextField = Utils.createText(labels[i],13,0x888888);
+			var s:Sprite = new Sprite();
+			s.addChild(tf);
+		}//endfor
+		
+		super(title,Icos,callBack,Icos.length,1);
 		Fns = callBacks;
 		
 		// ----- create title
@@ -1890,7 +1729,7 @@ class DialogMenu extends FloatingMenu
 	}//endfunction
 }//endclass
 
-class ItemsMenu extends FloatingMenu	
+class ItemsMenu extends ButtonsMenu	
 {
 	var tabs:Sprite = null;
 	
@@ -2120,7 +1959,7 @@ class ItemsMenu extends FloatingMenu
 	
 }//endclass
 
-class AddFurnitureMenu extends IconsMenu
+class AddFurnitureMenu extends ButtonsMenu
 {
 	private var IcoCls:Vector.<Class> = null;
 	
@@ -2170,7 +2009,7 @@ class AddFurnitureMenu extends IconsMenu
 	}//endfunction
 }//endclass
 
-class AddSideViewItemsMenu extends IconsMenu
+class AddSideViewItemsMenu extends ButtonsMenu
 {
 	private var IcoCls:Vector.<Class> = null;
 	
@@ -2220,7 +2059,7 @@ class AddSideViewItemsMenu extends IconsMenu
 	}//endfunction
 }//endclass
 
-class SaveLoadMenu extends IconsMenu
+class SaveLoadMenu extends ButtonsMenu
 {
 	private var floorPlan:FloorPlan;
 	private var hasInit:Boolean = false;
@@ -2599,7 +2438,7 @@ class SaveLoadMenu extends IconsMenu
 	
 }//endclass
 
-class ColorMenu extends IconsMenu
+class ColorMenu extends ButtonsMenu
 {
 	public function ColorMenu(callBack:Function):void
 	{

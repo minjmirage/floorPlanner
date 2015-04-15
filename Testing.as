@@ -1,6 +1,7 @@
 package 
 {
 	import flash.display.Sprite;
+	import ButtonsMenu;
 	
 	[SWF(width = "1024", height = "768", backgroundColor = "#FFFFFF", frameRate = "30")];
 		
@@ -14,8 +15,10 @@ package
 		{
 			
 			var men:ButtonsMenu = 
-			new ButtonsMenu("HAHAHA MENU",Vector.<Sprite>([makeBtn(),makeBtn(),makeBtn(),makeBtn(),makeBtn(),makeBtn(),makeBtn(),makeBtn(),makeBtn()]),
-							function(idx:int):void {trace(idx+"pressed");});
+			new ButtonsMenu("HAHAHA MENU",Vector.<Sprite>([makeBtn(),makeBtn(),makeBtn()]),
+							function(idx:int):void {trace("btn "+idx+" pressed");});
+			
+			men.createTabs(Vector.<String>(["1","2","CAT"]),function(idx:int):void {trace("tab "+idx+" pressed");});
 			
 			addChild(men);
 		}//endFunction
