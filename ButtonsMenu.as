@@ -83,6 +83,16 @@ package
 		{
 			if (Icos==null) Icos = new Vector.<Sprite>();
 			Btns = Icos;
+			var mbw:int=0;
+			var mbh:int=0;
+			for (var i:int=Icos.length-1; i>-1; i--)
+			{
+				mbw+=Icos[i].width;
+				mbh+=Icos[i].height;
+			}
+			if (mbw>0)	bw = mbw/Icos.length;
+			if (mbh>0)	bh = mbh/Icos.length;
+			
 			pageTo(0);
 		}//endfunction
 

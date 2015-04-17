@@ -95,115 +95,6 @@ package
 			} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
 		}//
 		
-		//=============================================================================
-		// gets the userId and userToken
-		//=============================================================================
-		private function createLoginPage(callBack:Function=null):Sprite
-		{
-			var s:Sprite = new Sprite();
-			s.graphics.beginFill(0x000000,0.8);
-			s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
-			s.graphics.endFill();
-			var login:MovieClip = new PopLogin();
-			login.x = (stage.stageWidth-login.width)/2;
-			login.y = (stage.stageHeight-login.height)/2;
-			s.addChild(login);
-			
-			var tff:TextFormat = login.usernameTf.defaultTextFormat;
-			tff.color = 0x999999;
-			login.usernameTf.setTextFormat(tff);
-			login.passwordTf.setTextFormat(tff);
-			login.usernameTf.type = "input";
-			login.passwordTf.type = "input";
-			
-			function enterFrameHandler(ev:Event):void
-			{
-				if (s.stage==null) 
-				{
-					s.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-					return;
-				}
-				if (s.width!=stage.stageWidth || s.height!=stage.stageHeight)
-				{
-					s.graphics.clear();
-					s.graphics.beginFill(0x000000,0.8);
-					s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
-					s.graphics.endFill();
-				}
-				login.x = (stage.stageWidth-login.width)/2;
-				login.y = (stage.stageHeight-login.height)/2;
-			}//endfunction
-			s.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			
-			function keyHandler(event:KeyboardEvent):void
-			{
-				// if the key is ENTER
-				if(event.charCode == 13)
-				{
-					if (login.usernameTf.text!="" && login.passwordTf.text!="")
-					{
-						var rootUrl:String = apiUrl;
-						try {
-							rootUrl = ExternalInterface.call("window.location.hostname.toString");
-						} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
-						var ldr:URLLoader = new URLLoader();
-						var req:URLRequest = new URLRequest(rootUrl+"?n=api&a=login&c=user");
-						req.method = "post";  
-						var vars : URLVariables = new URLVariables(); 
-						vars.n = "api";
-						vars.a = "login";
-						vars.c = "user"
-						vars.username = login.usernameTf.text;  
-						vars.password = login.passwordTf.text;  
-						req.data = vars;
-						ldr.load(req);
-						ldr.addEventListener(Event.COMPLETE, onComplete);  
-						function onComplete(e : Event):void
-						{  
-							trace("login return="+ldr.data);
-							var o:Object = JSON.parse(ldr.data);
-							login.textTf.text = o.meta.message; 
-							if (o.meta.code==200)
-							{
-								userId = o.data.userid;
-								userToken = o.data.utoken;
-								if (callBack!=null) callBack();
-							}
-						}
-					}
-				}
-			}//endfunction
-			
-			function focusHandler(ev:Event):void
-			{
-				(TextField)(ev.target).text = "";
-			}
-			login.usernameTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
-			login.passwordTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
-			login.usernameTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
-			login.passwordTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
-			
-			return s;
-		}//endfunction
-		
-		//=============================================================================================
-		// takes a 2D snapshot of current floorplan
-		//=============================================================================================
-		public function saveToJpg():void
-		{
-			var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
-			var bmd:BitmapData = new BitmapData(bnds.width+60,bnds.height+60,false,0x00000000);
-			var mat:Matrix = new Matrix(1,0,0,1,-bnds.left+30,-bnds.top+30);
-			bmd.draw(grid,mat);
-			bmd.draw(floorPlan.overlay,mat);
-			
-			var jpgEnc:JPGEncoder = new JPGEncoder(80);
-			var ba:ByteArray = jpgEnc.encode(bmd);
-			
-			var fr:FileReference=new FileReference();
-			fr.save(ba, "floorPlan.jpg"); 	
-		}//endfunction
-		
 		//=============================================================================================
 		// Entry point
 		//=============================================================================================
@@ -331,8 +222,8 @@ package
 			
 			if (userToken==null)
 			{
-				//defaLogin(initInterractions);
-				
+				defaLogin(initInterractions);
+				/*
 				// ----- force user to login ----------------------------
 				var loginPage:Sprite = createLoginPage(function():void 
 				{
@@ -340,6 +231,7 @@ package
 					initInterractions();
 				});
 				addChild(loginPage);
+				*/
 			}
 			else initInterractions();
 		}//endfunction
@@ -373,7 +265,116 @@ package
 					if (callBack!=null) callBack();
 				}
 			}
-		}
+		}//endfunction
+		
+		//=============================================================================
+		// gets the userId and userToken
+		//=============================================================================
+		private function createLoginPage(callBack:Function=null):Sprite
+		{
+			var s:Sprite = new Sprite();
+			s.graphics.beginFill(0x000000,0.8);
+			s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+			s.graphics.endFill();
+			var login:MovieClip = new PopLogin();
+			login.x = (stage.stageWidth-login.width)/2;
+			login.y = (stage.stageHeight-login.height)/2;
+			s.addChild(login);
+			
+			var tff:TextFormat = login.usernameTf.defaultTextFormat;
+			tff.color = 0x999999;
+			login.usernameTf.setTextFormat(tff);
+			login.passwordTf.setTextFormat(tff);
+			login.usernameTf.type = "input";
+			login.passwordTf.type = "input";
+			
+			function enterFrameHandler(ev:Event):void
+			{
+				if (s.stage==null) 
+				{
+					s.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
+					return;
+				}
+				if (s.width!=stage.stageWidth || s.height!=stage.stageHeight)
+				{
+					s.graphics.clear();
+					s.graphics.beginFill(0x000000,0.8);
+					s.graphics.drawRect(0,0,stage.stageWidth,stage.stageHeight);
+					s.graphics.endFill();
+				}
+				login.x = (stage.stageWidth-login.width)/2;
+				login.y = (stage.stageHeight-login.height)/2;
+			}//endfunction
+			s.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
+			
+			function keyHandler(event:KeyboardEvent):void
+			{
+				// if the key is ENTER
+				if(event.charCode == 13)
+				{
+					if (login.usernameTf.text!="" && login.passwordTf.text!="")
+					{
+						var rootUrl:String = apiUrl;
+						try {
+							rootUrl = ExternalInterface.call("window.location.hostname.toString");
+						} catch (e:Error) {trace("ExternalInterface call error : "+ e);}
+						var ldr:URLLoader = new URLLoader();
+						var req:URLRequest = new URLRequest(rootUrl+"?n=api&a=login&c=user");
+						req.method = "post";  
+						var vars : URLVariables = new URLVariables(); 
+						vars.n = "api";
+						vars.a = "login";
+						vars.c = "user"
+						vars.username = login.usernameTf.text;  
+						vars.password = login.passwordTf.text;  
+						req.data = vars;
+						ldr.load(req);
+						ldr.addEventListener(Event.COMPLETE, onComplete);  
+						function onComplete(e : Event):void
+						{  
+							trace("login return="+ldr.data);
+							var o:Object = JSON.parse(ldr.data);
+							login.textTf.text = o.meta.message; 
+							if (o.meta.code==200)
+							{
+								userId = o.data.userid;
+								userToken = o.data.utoken;
+								if (callBack!=null) callBack();
+							}
+						}
+					}
+				}
+			}//endfunction
+			
+			function focusHandler(ev:Event):void
+			{
+				(TextField)(ev.target).text = "";
+			}
+			login.usernameTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
+			login.passwordTf.addEventListener(FocusEvent.FOCUS_IN,focusHandler);
+			login.usernameTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
+			login.passwordTf.addEventListener(KeyboardEvent.KEY_DOWN,keyHandler);
+			
+			return s;
+		}//endfunction
+		
+		//=============================================================================================
+		// takes a 2D snapshot of current floorplan
+		//=============================================================================================
+		public function saveToJpg():void
+		{
+			var bnds:Rectangle = floorPlan.overlay.getBounds(floorPlan.overlay);
+			var bmd:BitmapData = new BitmapData(bnds.width+60,bnds.height+60,false,0x00000000);
+			var mat:Matrix = new Matrix(1,0,0,1,-bnds.left+30,-bnds.top+30);
+			bmd.draw(grid,mat);
+			bmd.draw(floorPlan.overlay,mat);
+			
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
+			
+			var fr:FileReference=new FileReference();
+			fr.save(ba, "floorPlan.jpg"); 	
+		}//endfunction
 		
 		//=============================================================================================
 		// default room to look at just so it wouldnt be too boring 
@@ -1637,49 +1638,25 @@ class TopBarMenu extends Sprite
 
 class DialogMenu extends ButtonsMenu
 {
-	private var Fns:Vector.<Function> = null;
-	private var titleTf:TextField = null;
-
 	//===============================================================================================
-	// 
+	// makes menu with text options
 	//===============================================================================================
 	public function DialogMenu(title:String,labels:Vector.<String>,callBack:Vector.<Function>):void
 	{
 		var Icos:Vector.<Sprite> = new Vector.<Sprite>();
+		var w:int = Utils.createText(title,14,0x888888).width;
 		for (var i:int=0; i<labels.length; i++)
 		{
 			var tf:TextField = Utils.createText(labels[i],13,0x888888);
-			var s:Sprite = new Sprite();
-			s.addChild(tf);
+			if (w<tf.width) w = tf.width;
+			var b:Sprite = new Sprite();
+			b.addChild(tf);
+			Icos.push(b);
 		}//endfor
 		
-		super(title,Icos,callBack,Icos.length,1);
-		Fns = callBacks;
-		
-		// ----- create title
-		titleTf = Utils.createText(title, 12, 0x888888);
-		addChild(titleTf);
-		
-		// ----- create buttons
-		Btns = new Vector.<Sprite>();
-		var n:int = Math.min(labels.length,callBacks.length);
-		for (var i:int=0; i<n; i++)
+		for (i=0; i<labels.length; i++)
 		{
-			var lab:String = labels[i];
-			var b:Sprite = new Sprite();
-			var tf:TextField = Utils.createText(lab,14,0x888888);
-			b.addChild(tf);
-			b.buttonMode = true;
-			b.mouseChildren = false;
-			Btns.push(b);
-			addChild(b);
-		}
-		
-		// ----- aligning
-		var w:int = this.width+20;
-		for (i=0; i<Btns.length; i++)
-		{
-			var btn:Sprite = Btns[i];
+			var btn:Sprite = Icos[i];
 			var cW:int = btn.width;
 			btn.graphics.beginFill(0xEEEEEE,1);
 			btn.graphics.drawRoundRect(0,0,w,btn.height,10,10);
@@ -1687,45 +1664,8 @@ class DialogMenu extends ButtonsMenu
 			for (var j:int=0; j<btn.numChildren; j++)
 				btn.getChildAt(j).x += (w-cW)/2;
 		}
-		var offY:int=20;
-		for (i=0; i<this.numChildren; i++)
-		{
-			var c:DisplayObject = this.getChildAt(i);
-			c.y = offY;
-			c.x = (w-c.width)/2+10;
-			offY += c.height+5;
-		}
-		drawStripedRect(this,0,0,w+20,this.height+40,0xFFFFFF,0xF6F6F6,20,10);
 		
-		callBackFn = function(idx:int):void
-		{
-			if (labels[idx].indexOf("[")!=-1 && labels[idx].indexOf("]")!=-1)
-			{
-				if (Btns[idx].numChildren == 1)
-				{
-					trace("create itf");
-					var tf:TextField = Btns[idx].getChildAt(0) as TextField;
-					tf.text = tf.text.split("=")[0];
-					var val:String = labels[idx].split("[")[1].split("]")[0];
-					var itf:TextField = Utils.createInputText(function():void 
-					{
-						itf.parent.removeChild(itf);
-						Btns[idx].mouseEnabled = false;
-						tf.text = tf.text + "=[" + itf.text + "]";
-						Fns[idx](itf.text);
-					},
-					val);
-					itf.width = Btns[idx].width;
-					itf.x = this.x + Btns[idx].x + tf.x + tf.width + 5;
-					itf.y = this.y + Btns[idx].y;
-					this.parent.addChild(itf);
-					this.stage.focus = itf;
-					Btns[idx].mouseEnabled = true;
-				}
-			}
-			else
-				Fns[idx]();	// exec callback function
-		}//endfunction
+		super(title,Icos,callBack,Icos.length,1);
 	}//endfunction
 }//endclass
 
@@ -1928,34 +1868,7 @@ class ItemsMenu extends ButtonsMenu
 		pageTo(pageIdx);
 	}//endfunction
 	
-	//===============================================================================================
-	// go to page number
-	//===============================================================================================
-	public function pageTo(idx:int):void
-	{
-		while (numChildren>2)	removeChildAt(2);	// child 0 is pageBtns 1 is tabs
-		
-		if (idx<0)	idx = 0;
-		if (idx>Math.ceil(Btns.length/(r*c)))	idx = Math.ceil(Btns.length/(r*c));
-		var a:int = idx*r*c;
-		var b:int = Math.min(Btns.length,a+r*c);
-		for (var i:int=a; i<b; i++)
-		{
-			var btn:Sprite = Btns[i];
-			btn.x = marg*2+(i%c)*(bw+marg)+(bw-btn.width)/2 + tabs.width+2;
-			btn.y = marg*2+int((i-a)/c)*(bh+marg)+(bh-btn.height)/2;
-			addChild(btn);
-		}
-		
-		for (i=pageBtns.numChildren-1; i>-1; i--)
-		{
-			if (i==idx)
-				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform(1,1,1,1,70,70,70);
-			else
-				pageBtns.getChildAt(i).transform.colorTransform = new ColorTransform();
-		}
-		pageIdx = idx;
-	}//endfunction	
+	
 	
 }//endclass
 
@@ -2455,7 +2368,7 @@ class ColorMenu extends ButtonsMenu
 			ico.graphics.endFill();
 			Icos.unshift(ico);
 		}
-		super(Icos,5,5,function (idx:int):void {callBack(C[idx]);});
+		super("Color Palette",Icos,function (idx:int):void {callBack(C[idx]);},5,5);
 	}//endfunction
 }//endclass
 
