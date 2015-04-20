@@ -36,6 +36,7 @@ package
 			tf.wordWrap = false;
 			tf.selectable = false;
 			var tff:TextFormat = tf.defaultTextFormat;
+			tff.font = "sans";
 			tff.size = fontSize;
 			tff.color = fontColor;
 			tf.defaultTextFormat = tff;

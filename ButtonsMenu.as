@@ -12,6 +12,7 @@ package
 	import flash.geom.Point;
 	import flash.text.TextField;
 	import flash.text.TextFormat;
+	import flash.geom.ColorTransform;
 
 	/**
 	 * generic menu class
@@ -24,9 +25,9 @@ package
 		protected var Btns:Vector.<Sprite> = null;	// list of all buttons
 		protected var callBackFn:Function = null;	// callbacks, returning the index of the button clicked
 		protected var mouseDownPt:Point = null;
-		protected var menuOffset:Point = null;
+		private var menuOffset:Point = null;
 
-		private var pageIdx:int=0;					// current page
+		private var pageIdx:int=0;							// current page
 
 		private var titleTf:TextField = null;		// menu title at the top
 		private var menuBtns:Sprite = null;			// container for all the menu buttons proper
@@ -45,7 +46,7 @@ package
 		public function ButtonsMenu(title:String,Icos:Vector.<Sprite>,callBack:Function,rows:int=3,cols:int=2):void
 		{
 			callBackFn = callBack;
-			
+
 			if (rows<1)	rows = 1;
 			if (cols<1) cols = 1;
 			r = rows;
@@ -92,7 +93,7 @@ package
 			}
 			if (mbw>0)	bw = mbw/Icos.length;
 			if (mbh>0)	bh = mbh/Icos.length;
-			
+
 			pageTo(0);
 		}//endfunction
 
@@ -138,7 +139,7 @@ package
 				sqr.buttonMode = true;
 				pageNav.addChild(sqr);
 			}
-			
+
 			// ----- draws the menu base panel
 			this.graphics.clear();
 			if (pageCnt>1)
@@ -153,14 +154,14 @@ package
 				Utils.drawStripedRect(this,0,0,(bw+marg)*c+marg*3,(bh+marg)*r+marg*3,0xEEEEEE,0xEAEAEA,20,10);
 				Utils.drawStripedRect(this,3,3,(bw+marg)*c+marg*3-6,(bh+marg)*r+marg*3-6,0xFFFFFF,0xFCFCFC,20,10);
 			}
-			
+
 			// ----- center bottom pageNav buttons
-			pageNav.x = (this.width-pageNav.width)/2;
+			pageNav.x = ((bw+marg)*c+marg*3-pageNav.width)/2;
 			pageNav.y =this.height-marg*2-pageNav.height/2;
 
 			pageIdx = idx;
 		}//endfunction
-		
+
 		//===============================================================================================
 		// create the tabs at the top of the menu, callback with the selected index
 		//===============================================================================================
@@ -168,7 +169,7 @@ package
 		{
 			trace("createTabs("+sideLabels+","+callBack+")");
 			var Tabs:Sprite = new Sprite();
-			
+
 			for (var i:int=0; i<sideLabels.length; i++)
 			{
 				var btn:Sprite= new Sprite();
@@ -181,7 +182,7 @@ package
 				btn.mouseChildren = false;
 				Tabs.addChild(btn);
 			}
-			
+
 			var tbTfW:int = Tabs.width;
 			function setTabHighlight(idx:int):void
 			{
@@ -201,7 +202,7 @@ package
 				}
 			}//endfunction
 			setTabHighlight(0);
-			
+
 			function clickHandler(ev:Event):void
 			{
 				for (var i:int = 0; i < Tabs.numChildren; i++)
@@ -212,28 +213,46 @@ package
 						return;
 					}
 			}//endfunction
-			
+
 			function removeHandler(ev:Event):void
 			{
 				Tabs.removeEventListener(MouseEvent.CLICK, clickHandler);
-				Tabs.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);	
+				Tabs.removeEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
 			}//endfunction
-			
+
 			Tabs.addEventListener(MouseEvent.CLICK, clickHandler);
 			Tabs.addEventListener(Event.REMOVED_FROM_STAGE, removeHandler);
-			
+
 			if (menuTabs!=null) menuTabs.parent.removeChild(menuTabs);
 			menuTabs = Tabs;
 			addChild(menuTabs);
 		}//endfunction
-		
+
+		//===============================================================================================
+		// 
+		//===============================================================================================
+		public function enable():void
+		{
+			menuBtns.buttonMode = true;
+			transform.colorTransform = new ColorTransform();
+		}//endfunction
+
+		//===============================================================================================
+		// 
+		//===============================================================================================
+		public function disable():void
+		{
+			menuBtns.buttonMode = false;
+			mouseDownPt = null;
+			transform.colorTransform = new ColorTransform(1,1,1,1,50,50,50);
+		}//endfunction
+
 		//===============================================================================================
 		// enable drag or listen to button press
 		//===============================================================================================
 		protected function onMouseDown(ev:Event):void
 		{
-			if (stage==null) return;
-			trace("mouseDown!!");
+			if (stage==null || menuBtns.buttonMode==false) return;
 			mouseDownPt = new Point(this.parent.mouseX,this.parent.mouseY);
 			if (draggable)	menuOffset = new Point(this.x,this.y).subtract(mouseDownPt);
 		}//endfunction
@@ -248,6 +267,8 @@ package
 			menuOffset = null;
 			if (mouseDownPt.subtract(new Point(this.parent.mouseX,this.parent.mouseY)).length>10) return;	// is dragging
 			mouseDownPt = null;
+
+			if (menuBtns.buttonMode==false) return;		// is disabled
 
 			// ----- switch page if page nav button pressed
 			for (var i:int=pageNav.numChildren-1; i>-1; i--)
@@ -273,9 +294,9 @@ package
 		protected function onEnterFrame(ev:Event):void
 		{
 			if (stage==null) return;
-			
+
 			var A:Array = null;
-			
+
 			if (Btns!=null)
 			for (var i:int=Btns.length-1; i>-1; i--)
 				if (Btns[i].hitTestPoint(stage.mouseX,stage.mouseY))
@@ -304,7 +325,7 @@ package
 				this.x = menuOffset.x+this.parent.mouseX;
 				this.y = menuOffset.y+this.parent.mouseY;
 			}
-			
+
 			if (menuTabs!=null)
 			{
 				if (x*2+(bw+marg)*c+marg*3 < stage.stageWidth)
@@ -312,7 +333,7 @@ package
 				else
 					menuTabs.x = -menuTabs.width-5;
 			}
-			
+
 			// ----- ensure menu within stage bounds
 			if (this.x+(bw+marg)*c+marg*3>stage.stageWidth)		this.x = stage.stageWidth-(bw+marg)*c-marg*3;
 			if (this.y+this.height>stage.stageHeight)			this.y = stage.stageHeight-this.height;
