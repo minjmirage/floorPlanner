@@ -2156,7 +2156,7 @@ class AddFurnitureMenu extends ButtonsMenu
 			Btns.push(btn);
 		}
 
-		super("家具",Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+		super("家具",Btns,callBackFn,3,2);		// menu of 3 rows by 2 cols
 	}//endfunction
 }//endclass
 
@@ -4251,7 +4251,6 @@ class Wall
 	{
 		Items.push(itm);
 		sideView.addChild(itm.icon);
-
 	}//endfunction
 
 	//=======================================================================================
