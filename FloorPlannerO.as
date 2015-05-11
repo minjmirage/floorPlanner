@@ -420,6 +420,7 @@ package
 			function initInterractions():void
 			{
 				// ----- enter default editing mode
+				showFurnitureMenu();
 				modeDefault();
 
 				// ----- create default room walls
@@ -634,7 +635,7 @@ package
 								modeDefault();
 							}
 							else if (idx==4)
-								modeDefault();
+								modeDefault()
 						}));
 		}
 
@@ -650,6 +651,7 @@ package
 				var itm:Item = new Item(prod,apiUrl);
 				itm.switchFace(0);
 				floorPlan.addItem(itm);
+			},0,70,parseInt("01101111",2)));	// flags specify what categories to show
 		}//endfunction
 
 		//=============================================================================================
@@ -670,8 +672,6 @@ package
 		//=============================================================================================
 		private function modeDefault():void
 		{
-			showFurnitureMenu();
-			
 			var px:int = 0;
 			var py:int = topBar.height+5;
 
@@ -702,8 +702,6 @@ package
 							Vector.<String>(["切换图片方向",
 											"镜像",
 											Lang.FurnitureProp.rotation.@txt+" = ["+itm.icon.rotation+"]",
-											"上层",
-											"下层",
 											Lang.FurnitureProp.remove.@txt,
 											Lang.FurnitureProp.done.@txt]),
 							function(idx:int,val:String=""):void
@@ -712,18 +710,14 @@ package
 									showFurnitureViews(itm);
 								else if (idx==1)		// mirror
 									itm.icon.scaleX*=-1;
-								else if (idx==2)		// set rotation
+								else if (idx==1)		// set rotation
 									itm.icon.rotation = Number(val);
-								else if (idx==3)		// move up
-									floorPlan.shiftItem(itm,1);
-								else if (idx==4)		// move down
-									floorPlan.shiftItem(itm,-1);
-								else if (idx==5)		// remove item
+								else if (idx==2)		// remove
 								{
-									showFurnitureMenu();
 									floorPlan.removeItem(itm);
+									showFurnitureMenu();
 								}
-								else if (idx==6)		// exit
+								else if (idx==3)
 									showFurnitureMenu();
 							}));
 			}//endfunction
@@ -1076,7 +1070,7 @@ package
 			FloorPlanner.prn("modeWallSideView("+wall+")");
 			var ports:XMLList = Lang.Ports[0].port;
 
-			var selected:* = null;
+			var selected:Door = null;
 			var ctrls:Sprite = null;
 
 			function showSideItemsMenu():void
@@ -1087,22 +1081,16 @@ package
 				ctrls = null;
 				replaceMenu(new ItemsMenu(function(prod:Object):void
 				{
-					// ----- creates the Item and add to wallplan
+					// ----- creates the Item and add to floorplan
 					prn("SELECTED Item"+ Utils.prnObject(prod));
 					var itm:Item = new Item(prod,apiUrl);
 					var SF:Array = [2,3,4,5,0,1];
 					for (var i:int=0; i<SF.length-1; i++)
 						if (itm.Faces[SF[i]]!=null)
 						{
-							itm.switchFace(SF[i],function():void 
-							{
-								ctrls = floorPlan.furnitureTransformControls(itm.icon,5,true);
-								wall.sideView.addChild(ctrls);
-							});
+							itm.switchFace(SF[i]);
 							break;
 						}	
-					wall.addItem(itm);
-					selected = itm;
 					
 				},2,70,parseInt("11111111",2)));	// flags specify what categories to show
 				/*
@@ -1215,16 +1203,14 @@ package
 			topBar.visible = false;
 			trace("grid="+grid+"  wall.sideVied.width="+wall.sideView.width);
 
-			// ----------------------------------------------------------------
 			var mouseDownPt:Vector3D = null;
 			stepFn = function():void
 			{
 				if (mouseDownPt != null)
 				{
-					if (selected)
+					if (ctrls)
 					{
-						if (selected is Door)
-							wall.updateDoorWithIconPosn(selected);
+						wall.updateDoorWithIconPosn(selected);
 					}
 					else
 					{
@@ -1235,21 +1221,13 @@ package
 				}
 			}//endfunction
 
-			// ----------------------------------------------------------------
 			mouseDownFn = function():void
 			{
 				mouseDownPt = new Vector3D(grid.mouseX, grid.mouseY, 0, getTimer());
 				if (ctrls == null)
 				{
 					selected = null;
-					for (var i:int=0; i<wall.Items.length && ctrls==null; i++)
-						if (wall.Items[i].icon.hitTestPoint(stage.mouseX, stage.mouseY))
-						{
-							selected = wall.Items[i];
-							ctrls = floorPlan.furnitureTransformControls(selected.icon,5);
-							wall.sideView.addChild(ctrls);
-						}
-					for (i=0; i < wall.Doors.length && ctrls==null; i++)
+					for (var i:int = 0; i < wall.Doors.length && ctrls==null; i++)
 						if (wall.Doors[i].sideIcon.hitTestPoint(stage.mouseX, stage.mouseY))
 						{
 							selected = wall.Doors[i];
@@ -1258,15 +1236,10 @@ package
 						}
 				}
 
-				if (selected != null)	
-				{
-					if (selected is Item)	{};
-					if (selected is Door)	showDoorMenu(selected);
-				}
+				if (selected != null)	showDoorMenu(selected);
 				else					showSideItemsMenu();
 			}//endfunction
 
-			// ----------------------------------------------------------------
 			mouseUpFn = function():void
 			{
 				if (mouseDownPt==null) return;
@@ -1720,7 +1693,6 @@ import flash.geom.Rectangle;
 import flash.geom.Vector3D;
 import flash.net.SharedObject;
 import flash.net.URLLoader;
-import flash.net.URLLoaderDataFormat;
 import flash.net.URLVariables;
 import flash.net.URLRequest;
 import flash.text.TextField;
@@ -1980,61 +1952,54 @@ class ItemsMenu extends ButtonsMenu
 			//trace("ItemsMenu callback idx:"+idx+"  item data = "+Utils.prnObject(productsData[idx]));
 			callBack(productsData[idx]);
 		}
-		
-		
-		var CatNames:Vector.<String> = Vector.<String>(["全部"]);
-		var prodData:Object = new Object();
-		prodData["全部"] = [];
-		
-		// ----- LOADS the space details of the user
-		Utils.loadJson(FloorPlanner.apiUrl + "?n=api&a=space&c=space&m=index&limit=1&page=1&token="+FloorPlanner.userToken,function(o:Object):void 
+		// ----- LOADS THE FURNITURE DATA AND CREATE CATEGORY TABS
+		var ldr:URLLoader = new URLLoader(new URLRequest(FloorPlanner.apiUrl + "?n=api&c=product&m=qd&a=product&productids=047431,047551,047549,047550,047503,047496,J042433,J044554,047419,047422,042418,028710,022182,044209,045398&token=" + FloorPlanner.userToken));
+		function onComplete(ev:Event):void
 		{
-			
-			var sidx:int=0;
-			function loadNextSpaceDetails():void
+			var dat:Object = JSON.parse(ldr.data);
+			function createCatLoadFn(prodObj:Object):*
 			{
-				if (sidx<o.datas.length)
-				Utils.loadJson(FloorPlanner.apiUrl + "?n=api&a=space&c=space&m=info&id="+o.datas[sidx].id+"&token="+FloorPlanner.userToken,function(sdo:Object):void 
+				return function():void
 				{
-					//FloorPlanner.prn("space "+sidx+" products "+Utils.prnObject(JSON.parse(sdo.space.productjson)));
-					var productsObj:Object = JSON.parse(sdo.space.productjson);
-					
-					for (var p:* in productsObj)
-					{
-						if (prodData[productsObj[p].catename]==null)
-						{
-							prodData[productsObj[p].catename] = [];
-							CatNames.push(productsObj[p].catename);
-						}
-						prodData[productsObj[p].catename].push(productsObj[p]);
-						prodData["全部"].push(productsObj[p]);
-					}
-					sidx++;
-					loadNextSpaceDetails();
-				});
-				else
-				{
-					// ----- does flag selection
-					for (var i:int=CatNames.length-1; i>-1; i--)
-						if (((1<<i) & flags) == 0)
-						{
-							FloorPlanner.prn("remov cat "+CatNames[i]);
-							CatNames.splice(i,1);
-							
-						}
-					if (CatNames.length>0)	
-						setButtons(createProductIcons(prodData[CatNames[0]],icoW));	// populate this menu
-					createTabs(CatNames.slice(),function(i:int):void 		// set category tab for this menu
-					{
-						var catName:String = CatNames[i];
-						FloorPlanner.prn("switch to cat:"+catName);
-						setButtons(createProductIcons(prodData[catName],icoW));
-					});			
+					var A:Array = [];
+					for (var prodid:* in prodObj)
+						A.push(prodObj[prodid]);
+					setButtons(createProductIcons(A,icoW));
 				}
-			}//
-			loadNextSpaceDetails();
-		});
-		
+			}//endfunction
+
+			// ----- generate all the categories
+			var AllProducts:Array = [];
+			var CatNames:Vector.<String> = Vector.<String>(["全部"]);
+			var LoadCatFns:Vector.<Function> = Vector.<Function>([function():void {setButtons(createProductIcons(AllProducts,icoW));}]);
+			var flagIdx:int=1;
+			for (var catid:* in dat.products)
+			{
+				if (((1<<flagIdx) & flags)>0)						// category is flagged to be shown
+				{
+					var catData:Object = dat.products[catid];
+					CatNames.push(catData.catename+"");									// category name
+					LoadCatFns.push(createCatLoadFn(catData.product));	// category load function
+					//FloorPlanner.prn("Category:"+catData.catename+" id:"+catData.cateid+" sn:"+catData.catesn);
+					for (var prodid:* in catData.product)
+					{
+						var prodData:Object = catData.product[prodid];
+						AllProducts.push(prodData);
+					}
+				}
+				flagIdx++;
+			}
+			if ((flags&1)==0 || CatNames.length==2)	// removes the all tag as well
+			{
+				CatNames.shift();
+				LoadCatFns.shift();
+			}
+
+			setButtons(createProductIcons(AllProducts,icoW));						// populate this menu
+			createTabs(CatNames,function(idx:int):void {LoadCatFns[idx]()});	// set category tab for this menu
+		}//endfunction
+		ldr.addEventListener(Event.COMPLETE,onComplete);
+
 		super("物品",new Vector.<Sprite>(),callBackFn);	// init this super class
 	}//endfunction
 
@@ -2191,7 +2156,7 @@ class AddFurnitureMenu extends ButtonsMenu
 			Btns.push(btn);
 		}
 
-		super("家具",Btns,3,2,callBackFn);		// menu of 3 rows by 2 cols
+		super("家具",Btns,callBackFn,3,2);		// menu of 3 rows by 2 cols
 	}//endfunction
 }//endclass
 
@@ -2515,32 +2480,6 @@ class SaveLoadMenu extends ButtonsMenu
 		overlay.addChild(tf);
 		this.parent.addChild(overlay);
 
-		function upPicFn(bmd:BitmapData,houseId:String,callBack:Function,name:String,wallId:String,isOrig:String="1"):void
-		{
-			var jpgEnc:JPGEncoder = new JPGEncoder(80);
-			var jpgBytes:ByteArray = jpgEnc.encode(bmd);
-			
-			var ldr:URLLoader = new URLLoader();
-			ldr.dataFormat = URLLoaderDataFormat.BINARY;
-			var postStr:String = 'data={"houseid":"'+houseId+'","name":"'+name+'","wallid":"'+wallId+'","sort":"0","isoriginal":"'+isOrig+'"}&pic=';
-			FloorPlanner.prn(postStr);
-			var postBytes:ByteArray = new ByteArray();
-			postBytes.writeMultiByte(postStr,"utf-8");
-			postBytes.writeBytes(jpgBytes);
-			var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=house&m=add_pic&token="+FloorPlanner.userToken);
-			req.contentType = 'application/octet-stream';
-			req.method = "post";
-			req.data = postBytes;
-			
-			function onComplete(ev:Event):void
-			{
-				FloorPlanner.prn(req+"\nUPLOADED floor pic ldr.data : "+ldr.data);
-				if (callBack!=null) callBack();
-			}//endfunction
-			ldr.addEventListener(Event.COMPLETE, onComplete);
-			ldr.load(req);
-		}//endfunction
-
 		function uploadFloorPic(callBack:Function=null):void
 		{
 			floorPlan.refresh();
@@ -2556,16 +2495,34 @@ class SaveLoadMenu extends ButtonsMenu
 			tf.text = "Uploading floorplan";
 			tf.x = (overlay.width - tf.width) / 2;
 			tf.y = bmp.y + bmp.height + 3;
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
 			
-			upPicFn(bmd,saveId,callBack,"floorPlan","0","1");
+			var ldr:URLLoader = new URLLoader();
+			var postStr:String = 'data={"houseid":"'+saveId+'","name":"'+'floorplan'+'","wallid":"0",sort:"0","isoriginal":"1"}&pic=';
+			FloorPlanner.prn(postStr);
+			var postBytes:ByteArray = new ByteArray();
+			postBytes.writeUTFBytes(postStr);
+			postBytes.writeBytes(ba);
+			var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&token=" + FloorPlanner.userToken);
+			req.contentType = 'application/octet-stream';
+			req.method = "post";
+			req.data = postBytes;
 			
+			function onComplete(ev:Event):void
+			{
+				FloorPlanner.prn(req+"\nUPLOADED floor pic ldr.data : "+ldr.data);
+				if (callBack!=null) callBack();
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
 		}//endfunction
 
 		function uploadWallPics():void
 		{
 			if (idx >= floorPlan.Walls.length)
 			{
-				trace("uploaded wall pic done!");
+				trace("upload wall pic done!");
 				if (overlay.parent != null) overlay.parent.removeChild(overlay);
 				updateBtns();
 				return;
@@ -2583,13 +2540,23 @@ class SaveLoadMenu extends ButtonsMenu
 			tf.text = "Uploading wall" + idx;
 			tf.x = (overlay.width - tf.width) / 2;
 			tf.y = bmp.y + bmp.height + 3;
-			
-			upPicFn(bmd,saveId,function():void 
+			var jpgEnc:JPGEncoder = new JPGEncoder(80);
+			var ba:ByteArray = jpgEnc.encode(bmd);
+			var ldr:URLLoader = new URLLoader();
+			var postO:Object = {"houseid":saveId,"name":"wallplan"+(idx+1),"wallid":idx+1,"sort":"0","isoriginal":"1"};
+			var postStr:String = JSON.stringify(postO)+"&pic=" ;
+			var req:URLRequest = new URLRequest(FloorPlanner.apiUrl + "?n=api&a=scheme&c=scheme_house_pic&m=add&type=1&token=" + FloorPlanner.userToken+"&houseid="+saveId+"&name=wall"+idx);
+			req.contentType = 'application/octet-stream';
+			req.method = "post";
+			req.data = ba;
+			function onComplete(ev:Event):void
 			{
-				FloorPlanner.prn("UPLOADED wall"+idx+" pic");
+				FloorPlanner.prn(req+"\nUPLOADED wall"+idx+" pic ldr.data : "+ldr.data);
 				idx++;
 				uploadWallPics();
-			},"wallPlan"+(idx+1)+"",(idx+1)+"");
+			}//endfunction
+			ldr.addEventListener(Event.COMPLETE, onComplete);
+			ldr.load(req);
 		}//endfunction
 
 		uploadFloorPic(uploadWallPics);
@@ -2716,7 +2683,6 @@ class FloorPlan
 	public var selected:* = null;				// of Furniture or Joint or Wall
 
 	private var jointsOverlay:Sprite = null;	// to draw all the joint positions in
-	private var itemsOverlay:Sprite = null;		// to add all the items in
 	public var overlay:Sprite = null;			// to add to display list
 	public var FloorPatterns:Vector.<BitmapData> = null;
 
@@ -2734,15 +2700,10 @@ class FloorPlan
 		floorAreas = new Vector.<FloorArea>();
 		Labels = new Vector.<TextField>();
 
+		jointsOverlay = new Sprite();
 		overlay = new Sprite();
 		overlay.buttonMode = true;
 
-		jointsOverlay = new Sprite();
-		overlay.addChild(jointsOverlay);
-		
-		itemsOverlay = new Sprite();
-		overlay.addChild(itemsOverlay);
-		
 		FloorPatterns =  Vector.<BitmapData>([new Floor1(),
 												new Floor2(),
 												new Floor3(),
@@ -2780,15 +2741,9 @@ class FloorPlan
 
 		// ----- remove furniture
 		while (Furniture.length>0)				// clear off prev furniture
-			removeItem(Furniture[0]);
-		
-		// ----- remove drawn lines
-		while (Lines.length>0)
-			removeLine(Lines[0]);
-		
-		// ----- remove all text labels
-		while (Labels.length>0)
-			removeLabel(Labels[0]);
+		{
+			overlay.removeChild(Furniture.pop().icon);
+		}
 		refresh();
 	}//endfunction
 
@@ -2823,7 +2778,6 @@ class FloorPlan
 				wo.j1 = Joints.indexOf((Wall)(v).joint1);
 				wo.j2 = Joints.indexOf((Wall)(v).joint2);
 				wo.w = (Wall)(v).thickness;
-				wo.Items = (Wall)(v).Items;
 				wo.Doors = (Wall)(v).Doors;
 				return wo;
 			}
@@ -2930,25 +2884,24 @@ class FloorPlan
 					door.height=1;
 				wall.addDoor(door);
 			}
-			if (wo.Items!=null)
-			for (j=wo.Items.length-1; j>-1; j--)
-			{
-				var wallItm:Item = new Item(wo.Items[j],FloorPlanner.apiUrl);
-				wall.addItem(wallItm);
-			}
 			overlay.addChild(wall.planView);
 			Walls.unshift(wall);
 		}
 				
 		// ----- replace furniture ----------------------------------
 		while (Furniture.length>0)				// clear off prev furniture
-			removeItem(Furniture[0]);
+		{
+			var itm:Item = Furniture.pop();
+			overlay.removeChild(itm.icon);
+		}
 		if (o.Furniture!=null)
-		for (i=0; i<o.Furniture.length; i++)		// add in new walls
+		for (i=o.Furniture.length-1; i>-1; i--)		// add in new walls
 		{
 			var fo:Object = o.Furniture[i];
-			var itm:Item = new Item(fo,FloorPlanner.apiUrl);
-			addItem(itm,false);
+			itm = new Item(fo,FloorPlanner.apiUrl);
+			if (itm.icoCls==null)	itm.switchFace(0);	// trigger image load
+			Furniture.unshift(itm);
+			overlay.addChild(itm.icon);
 		}
 						
 		// ----- replace text labels --------------------------------
@@ -3320,6 +3273,9 @@ class FloorPlan
 			jointsOverlay.graphics.drawCircle(Joints[i].x,Joints[i].y,3);
 			jointsOverlay.graphics.endFill();
 		}
+		if (jointsOverlay.parent!=null)
+			jointsOverlay.parent.removeChild(jointsOverlay);
+		overlay.addChild(jointsOverlay);
 	}//endfunction
 
 	//=============================================================================================
@@ -3421,15 +3377,15 @@ class FloorPlan
 	//=============================================================================================
 	//
 	//=============================================================================================
-	public function addItem(itm:Item,startDragging:Boolean=true):void
+	public function addItem(itm:Item):void
 	{
 		trace("addItem("+itm+")");
 		Furniture.push(itm);
 		itm.icon.filters = [new DropShadowFilter(1,90,0x000000,1,8,8,1)];
-		itemsOverlay.addChild(itm.icon);
+		overlay.addChild(itm.icon);
 
 		// ----- hack to start dragging
-		if (startDragging && overlay.stage!=null)
+		if (overlay.stage!=null)
 		{
 			function enterFrameHandler(ev:Event=null) :void
 			{
@@ -3458,20 +3414,6 @@ class FloorPlan
 		}
 		if (Furniture.indexOf(itm)!=-1)	Furniture.splice(Furniture.indexOf(itm),1);
 		if (itm.icon.parent!=null)			itm.icon.parent.removeChild(itm.icon);
-	}//endfunction
-	
-	//=============================================================================================
-	// 
-	//=============================================================================================
-	public function shiftItem(itm:Item,dir:int=0):void
-	{
-		var idx:int = Furniture.indexOf(itm);
-		if (idx==-1) return;
-		var nidx:int = Math.min(Furniture.length-1,Math.max(0,idx+dir));
-		Furniture.splice(idx,1);
-		Furniture.splice(nidx,0,itm);
-		itemsOverlay.removeChild(itm.icon);
-		itemsOverlay.addChildAt(itm.icon,nidx);
 	}//endfunction
 
 	//=============================================================================================
@@ -4309,7 +4251,6 @@ class Wall
 	{
 		Items.push(itm);
 		sideView.addChild(itm.icon);
-		FloorPlanner.prn("addItem("+itm+")");
 	}//endfunction
 
 	//=======================================================================================
@@ -4536,7 +4477,6 @@ class Item
 	//----------------------------------------------------------------------------
 	public function Item(prod:Object,domURL:String=""):void
 	{
-		//FloorPlanner.prn("Item("+JSON.stringify(prod)+","+domURL+")");
 		if (prod.cls!=null)	// is legacy code
 		{
 			icoCls = prod.cls;
@@ -4584,17 +4524,14 @@ class Item
 			if (Faces[i]=="false" || Faces[i]=="null")
 				Faces[i] = null;
 		domUrl = domURL;
-		
-		if (prod.faceIdx!=null)	switchFace(parseInt(prod.faceIdx));
-		else 					switchFace(0);
 	}//endfunction
 
 	//----------------------------------------------------------------------------
 	// switch to the relevant image 
 	//----------------------------------------------------------------------------
-	public function switchFace(idx:uint,callBack:Function=null):void
+	public function switchFace(idx:uint):void
 	{
-		//FloorPlanner.prn("switchFace("+idx+") Faces="+Faces);
+		FloorPlanner.prn("switchFace("+idx+") Faces="+Faces);
 		if (idx<0) idx=0;
 		if (idx>Faces.length-1) idx = Faces.length-1;
 		if (Faces[idx]==null) return;
@@ -4615,8 +4552,6 @@ class Item
 			if (idx==5)	{bmp.width=width/10; bmp.height=height/10;}	// back
 			bmp.x = -bmp.width/2;
 			bmp.y = -bmp.height/2;
-			
-			if (callBack!=null) callBack();
 		});
 	}//enfunction
 
