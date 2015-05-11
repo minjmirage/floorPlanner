@@ -650,6 +650,7 @@ package
 				var itm:Item = new Item(prod,apiUrl);
 				itm.switchFace(0);
 				floorPlan.addItem(itm);
+			},0,70,parseInt("1111111111",2)));	// flags specify what categories to show
 		}//endfunction
 
 		//=============================================================================================
