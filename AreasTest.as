@@ -13,68 +13,115 @@ package
 	 */
 	public class AreasTest extends Sprite
 	{
-		private var areas:FloorAreas = null;
+		private var flrAreas:FloorAreas = null;		// 
 		
+		private var enterFrameFn:Function = null;	// custom fn to exec every frame
+		private var mouseUpFn:Function = null;		// custom fn to exec on mouse up
+		
+		private var numWalls:int = 0;
+		
+		/**
+		 * 
+		 */
 		public function AreasTest():void
 		{
-			areas = new FloorAreas();
-			addChild(areas.overlay);
+			flrAreas = new FloorAreas();
+			addChild(flrAreas.overlay);
 			
 			stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+			stage.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
 		}//endconstr
 		
-		function mouseDownHandler(ev:MouseEvent):void
+		/**
+		 * 
+		 */
+		private function mouseDownHandler(ev:MouseEvent):void
 		{
-			var njt:Point = areas.nearestJoint(new Point(mouseX,mouseY),10);
-			if (njt!=null)	shiftJoint(njt);
-			else			startDrawWall();
+			numWalls = flrAreas.Walls.length;
+			var njt:Point = flrAreas.nearestJoint(new Point(mouseX,mouseY),10);
+			if (njt!=null && flrAreas.selected==njt)	
+				startShiftJoint(njt);
+			else			
+				startDrawWall();
 		}//endfunction
 		
 		/**
-		 * enables wall joint move
+		 * 
 		 */
-		private function shiftJoint(jt:Point):void
+		private function mouseUpHandler(ev:MouseEvent):void
 		{
-			function enterFrameHandler(ev:Event):void
+			if (mouseUpFn!=null)	mouseUpFn();
+			
+			if (flrAreas.Walls.length==numWalls)
+			{
+				flrAreas.selected = flrAreas.nearestJoint(new Point(mouseX,mouseY),10);
+				flrAreas.refresh();
+			}
+		}//endfunction
+		
+		/**
+		 * 
+		 */
+		private function enterFrameHandler(ev:Event):void
+		{
+			if (enterFrameFn!=null)	enterFrameFn();
+		}//endfunction
+		
+		/**
+		 * start wall joint move
+		 */
+		private function startShiftJoint(jt:Point):void
+		{
+			enterFrameFn = function():void
 			{
 				if (jt!=null)
 				{
 					jt.x = mouseX;
 					jt.y = mouseY;
-					areas.refresh();
+					flrAreas.refresh();
 				}//endif
 			}//endfunction
 			
-			function mouseUpHandler(ev:Event):void
+			mouseUpFn = function():void
 			{
-				stage.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-				stage.removeEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
-			}//endfunction
-			
-			stage.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
-		}
+				var near:Point = flrAreas.nearestJoint(jt,10);
+				if (near!=null)	
+				{
+					flrAreas.replaceJointWith(jt,near);
+					flrAreas.refresh();
+				}
+				enterFrameFn = null;
+				mouseUpFn = null;
+			}
+		}//endfunction
 		
 		/**
-		 * enables draw new wall
+		 * start draw new wall
 		 */
 		private function startDrawWall(thickness:int=10):void
 		{
 			var mouseDownPt:Point = new Point(mouseX,mouseY);
-			var jta:Point = areas.nearestJoint(new Point(mouseX,mouseY),10);
+			var jta:Point = flrAreas.nearestJoint(new Point(mouseX,mouseY),10);
 			if (jta==null) jta = new Point(mouseX,mouseY);
-			var W:Vector.<Wall> = Vector.<Wall>([areas.createWall(jta,mouseDownPt,thickness)]);
+			var W:Vector.<Wall> = Vector.<Wall>([flrAreas.createWall(jta,mouseDownPt,thickness)]);
 			
-			function mouseUpHandler(ev:MouseEvent):void
+			mouseUpFn = function():void
 			{
-				var near:Point = areas.nearestJoint(mouseDownPt,10);
-				if (near!=null)	areas.replaceJointWith(mouseDownPt,near);
+				var near:Point = flrAreas.nearestJoint(mouseDownPt,10);
+				if (near!=null)	
+				{
+					if (near==W[0].joint1)
+						flrAreas.removeWall(W[0]);
+					else
+						flrAreas.replaceJointWith(mouseDownPt,near);
+				}
 				mouseDownPt = null;
 				
 				while (W.length>0)
 				{
 					var wall:Wall = W.shift();
-					var collided:Wall = areas.chkWallCollide(wall);
+					var collided:Wall = flrAreas.chkWallCollide(wall);
 					if (collided!=null)
 					{
 						var crs:Point = 
@@ -82,32 +129,29 @@ package
 														collided.joint2.x,collided.joint2.y,
 														wall.joint1.x,wall.joint1.y,
 														wall.joint2.x,wall.joint2.y);
-						areas.removeWall(wall);
-						W.push(areas.createWall(wall.joint1,crs,wall.thickness));
-						W.push(areas.createWall(wall.joint2,crs,wall.thickness));
-						areas.removeWall(collided);
-						areas.createWall(collided.joint1,crs,collided.thickness);
-						areas.createWall(collided.joint2,crs,collided.thickness);
+						flrAreas.removeWall(wall);
+						W.push(flrAreas.createWall(wall.joint1,crs,wall.thickness));
+						W.push(flrAreas.createWall(wall.joint2,crs,wall.thickness));
+						flrAreas.removeWall(collided);
+						flrAreas.createWall(collided.joint1,crs,collided.thickness);
+						flrAreas.createWall(collided.joint2,crs,collided.thickness);
 					}
 				}
-				areas.refresh();
+				flrAreas.refresh();
 				
-				stage.removeEventListener(Event.ENTER_FRAME,enterFrameHandler);
-				stage.removeEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+				mouseUpFn = null;
+				enterFrameFn = null;
 			}//endfunction
 		
-			function enterFrameHandler(ev:Event):void
+			enterFrameFn = function():void
 			{
 				if (mouseDownPt!=null)
 				{
 					mouseDownPt.x = mouseX;
 					mouseDownPt.y = mouseY;
-					areas.refresh();
+					flrAreas.refresh();
 				}//endif
-			}//endfunction
-			
-			stage.addEventListener(Event.ENTER_FRAME,enterFrameHandler);
-			stage.addEventListener(MouseEvent.MOUSE_UP,mouseUpHandler);
+			}//endfunction			
 		}//endfunction
 	}//endclass
 }
@@ -146,6 +190,7 @@ class FloorAreas
 		overlay = new Sprite();
 		overlay.buttonMode = true;
 		wallsOverlay = new Sprite();
+		wallsOverlay.alpha = 0.5;
 		overlay.addChild(wallsOverlay);
 		jointsOverlay = new Sprite();
 		overlay.addChild(jointsOverlay);
@@ -324,11 +369,28 @@ class FloorAreas
 	 */
 	public function refresh():void
 	{
-		// ----- redraw all walls ---------------------------------------------
 		var i:int=0;
+		overlay.graphics.clear();
+		overlay.graphics.lineStyle(0);
+		
+		// -----
+		for (i=Joints.length-1; i>-1; i--)
+		{
+			var star:Vector.<Number> = getWallJointStar(Joints[i]);
+			if (star.length>2)
+			{
+				for (var j:int=star.length-2; j>-1; j-=2)
+				{
+					overlay.graphics.moveTo(star[0],star[1]);
+					overlay.graphics.lineTo(star[j],star[j+1]);
+				}
+			}
+		}
+		
+		// ----- redraw all walls ---------------------------------------------
 		for (i=Walls.length-1; i>-1; i--)
 			drawWall(Walls[i]);
-
+		
 		// ----- redraw enclosed floor areas ----------------------------------
 		var A:Vector.<Vector.<Point>> = findIsolatedAreas();
 		while (floorAreas.length<A.length)
@@ -413,80 +475,59 @@ class FloorAreas
 		drawI(wall.planView,wallB[0].x+uy*5,wallB[0].y-ux*5,wallB[1].x+uy*5,wallB[1].y-ux*5,10,true);
 		drawI(wall.planView,wallB[2].x-uy*5,wallB[2].y+ux*5,wallB[3].x-uy*5,wallB[3].y+ux*5,10,true);
 	}//endfunction
-
+	
 	/**
-	 * convenience function to draw the length markings
-	 * @param	s		target to draw on
-	 * @param	ax		point a
-	 * @param	ay		point a
-	 * @param	bx		point b
-	 * @param	by		point b
-	 * @param	w		stop end width
-	 * @param	showLen	whether to show length markings
+	 * returns the dividing bisectors of wall joint
+	 * @param	jt
+	 * @return	[x0,y0,x1,y1,x2,y2,...xn,yn] where each (x0,y0 , xi,yi) is bisecting line
 	 */
-	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	private function getWallJointStar(jt:Point):Vector.<Number>
 	{
-		var vx:Number = bx-ax;
-		var vy:Number = by-ay;
-		var vl:Number = Math.sqrt(vx*vx+vy*vy);
-		var ux:Number = vx/vl;
-		var uy:Number = vy/vl;
-		w/=2;
-		// ----- draw rect
-		s.graphics.lineStyle();
-		s.graphics.beginFill(0x000000,0);
-		s.graphics.moveTo(ax-uy*w,ay+ux*w);
-		s.graphics.lineTo(ax+uy*w,ay-ux*w);
-		s.graphics.lineTo(bx+uy*w,by-ux*w);
-		s.graphics.lineTo(bx-uy*w,by+ux*w);
-		s.graphics.endFill();
-
-		// ----- draw lines
-		s.graphics.lineStyle(0,0x000000,1);
-		s.graphics.moveTo(ax-uy*w,ay+ux*w);
-		s.graphics.lineTo(ax+uy*w,ay-ux*w);
-		s.graphics.moveTo(bx-uy*w,by+ux*w);
-		s.graphics.lineTo(bx+uy*w,by-ux*w);
-
-		if (showLen)
+		var V:Vector.<Point> = new Vector.<Point>();
+		var jt0:Point = new Point(jt.x,jt.y-1000);
+		for (var i:int=Walls.length-1; i>-1; i--)
 		{
-			var tf:TextField = new TextField();
-			var tff:TextFormat = tf.defaultTextFormat;
-			tff.size = 22;
-			tff.color = 0x000000;
-			tff.font = "arial";
-			tf.defaultTextFormat = tff;
-			tf.wordWrap = false;
-			tf.autoSize = "left";
-			tf.selectable = false;
-			tf.text = (int(vl)/100)+"m";
-			tf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
-			var bmp:Bitmap = new Bitmap(new BitmapData(tf.width,tf.height,true,0x00000000),"auto",true);
-			bmp.bitmapData.draw(tf,null,null,null,null,true);
-			bmp.scaleX = bmp.scaleY = 0.5;
-			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
-			var tx:Number = -0.5*bmp.width;
-			var ty:Number = 0.5*bmp.height;
-			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
-			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
-			bmp.rotation = rot/Math.PI*180;
-			bmp.x += (ax+bx)/2;
-			bmp.y += (ay + by) / 2;
-
-			s.addChild(bmp);
-			var tw:int = Math.max(bmp.width,bmp.height);
-			s.graphics.moveTo(ax,ay);
-			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
-			s.graphics.moveTo(bx,by);
-			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
+			var insJt:Point = null;
+			if (Walls[i].joint1==jt)	insJt = Walls[i].joint2;
+			if (Walls[i].joint2==jt)	insJt = Walls[i].joint1;
+			if (insJt!=null)
+			{
+				insJt = insJt.subtract(jt);
+				insJt.normalize(100);
+				insJt.x+=jt.x;
+				insJt.y+=jt.y;
+				// ----- binary sort insert 
+				var p:int=0;
+				var q:int=V.length-1;
+				while (p<=q)
+				{
+					var m:int = (p+q)/2;
+					if (turnAngle(jt0,jt,V[m])<turnAngle(jt0,jt,insJt))
+						p=m+1;
+					else
+						q=m-1;
+				}
+				V.splice(p,0,insJt);
+			}
 		}
-		else
+		
+		// ----- find bisectors for each wall joint sector
+		var B:Vector.<Number> = new Vector.<Number>();
+		for (i=V.length-1; i>-1; i--)
 		{
-			s.graphics.moveTo(ax,ay);
-			s.graphics.lineTo(bx,by);
+			var a:Point = V[i];
+			var b:Point = V[(i+1)%V.length];
+			B.unshift(a.x+b.x-jt.x,a.y+b.y-jt.y);
 		}
+		B.unshift(jt.x,jt.y);
+		return B;
+		
+		//var R:Vector.<Number> = Vector.<Number>([jt.x,jt.y]);
+		//for (i=V.length-1; i>-1; i--)
+		//	R.push(V[i].x,V[i].y);
+		//return R;
 	}//endfunction
-
+	
 	//=============================================================================================
 	// convenience function to extend wall ends so they intersect nicely at acute angles
 	//=============================================================================================
@@ -640,6 +681,84 @@ class FloorAreas
 		trace("seek t="+(getTimer()-timr)+" R.length="+R.length);
 		return R;
 	}//endfunction
+	
+	private static var drawTf:TextField = null;
+	
+	/**
+	 * convenience function to draw the length markings
+	 * @param	s		target to draw on
+	 * @param	ax		point a
+	 * @param	ay		point a
+	 * @param	bx		point b
+	 * @param	by		point b
+	 * @param	w		stop end width
+	 * @param	showLen	whether to show length markings
+	 */
+	public static function drawI(s:Sprite,ax:Number,ay:Number,bx:Number,by:Number,w:int=6,showLen:Boolean=false):void
+	{
+		var vx:Number = bx-ax;
+		var vy:Number = by-ay;
+		var vl:Number = Math.sqrt(vx*vx+vy*vy);
+		var ux:Number = vx/vl;
+		var uy:Number = vy/vl;
+		w/=2;
+		// ----- draw rect
+		s.graphics.lineStyle();
+		s.graphics.beginFill(0x000000,0);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);
+		s.graphics.lineTo(bx-uy*w,by+ux*w);
+		s.graphics.endFill();
+
+		// ----- draw lines
+		s.graphics.lineStyle(0,0x000000,1);
+		s.graphics.moveTo(ax-uy*w,ay+ux*w);
+		s.graphics.lineTo(ax+uy*w,ay-ux*w);
+		s.graphics.moveTo(bx-uy*w,by+ux*w);
+		s.graphics.lineTo(bx+uy*w,by-ux*w);
+
+		if (showLen)
+		{
+			if (drawTf==null)
+			{
+				drawTf = new TextField();
+				var tff:TextFormat = drawTf.defaultTextFormat;
+				tff.size = 22;
+				tff.color = 0x000000;
+				tff.font = "arial";
+				drawTf.defaultTextFormat = tff;
+				drawTf.wordWrap = false;
+				drawTf.autoSize = "left";
+				drawTf.selectable = false;
+				drawTf.filters = [new GlowFilter(0xFFFFFF,1,2,2,10)];
+			}
+			drawTf.text = (int(vl)/100)+"m";
+			var bmp:Bitmap = new Bitmap(new BitmapData(drawTf.width,drawTf.height,true,0x00000000),"auto",true);
+			bmp.bitmapData.draw(drawTf,null,null,null,null,true);
+			bmp.scaleX = bmp.scaleY = 0.5;
+			var rot:Number = Math.atan2(ux,-uy)-Math.PI/2;
+			var tx:Number = -0.5*bmp.width;
+			var ty:Number = 0.5*bmp.height;
+			bmp.x = tx*Math.cos(rot)+ty*Math.sin(rot);
+			bmp.y = -(ty*Math.cos(rot)-tx*Math.sin(rot));
+			bmp.rotation = rot/Math.PI*180;
+			bmp.x += (ax+bx)/2;
+			bmp.y += (ay + by) / 2;
+
+			s.addChild(bmp);
+			var tw:int = Math.max(bmp.width,bmp.height);
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(ax+ux*(vl-tw)/2,ay+uy*(vl-tw)/2);
+			s.graphics.moveTo(bx,by);
+			s.graphics.lineTo(bx-ux*(vl-tw)/2,by-uy*(vl-tw)/2);
+		}
+		else
+		{
+			s.graphics.moveTo(ax,ay);
+			s.graphics.lineTo(bx,by);
+		}
+	}//endfunction
 
 	//=======================================================================================
 	// calculates area of poly by triangulating and summing the triangle areas
@@ -757,9 +876,12 @@ class FloorAreas
 		return (cnt%2)==1;
 	}//endfunction
 
-	//=======================================================================================
-	// returns angle of turn form by the 3 points
-	//=======================================================================================
+	/**
+	 * @param	a	start pt
+	 * @param	b	mid pt
+	 * @param	c	end pt
+	 * @return	angle of turn at b, going from a->b->c 
+	 */
 	public static function turnAngle(a:Point,b:Point,c:Point) : Number
 	{
 		var px:Number = b.x-a.x;
@@ -776,7 +898,7 @@ class FloorAreas
 		var ang:Number = +Math.acos(dp); // in radians
 		if (px*qy-py*qx<0)	ang*=-1;
 		return ang;
-	}
+	}//endfunction
 
 	//=======================================================================================
 	// find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
