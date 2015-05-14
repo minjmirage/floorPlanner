@@ -190,7 +190,6 @@ class FloorAreas
 		overlay = new Sprite();
 		overlay.buttonMode = true;
 		wallsOverlay = new Sprite();
-		wallsOverlay.alpha = 0.5;
 		overlay.addChild(wallsOverlay);
 		jointsOverlay = new Sprite();
 		overlay.addChild(jointsOverlay);
@@ -373,10 +372,12 @@ class FloorAreas
 		overlay.graphics.clear();
 		overlay.graphics.lineStyle(0);
 		
-		// -----
+		// ----- debug draws the wall joint star ------------------------------
+		var Stars:Vector.<Vector.<Number>> = new Vector.<Vector.<Number>>();
 		for (i=Joints.length-1; i>-1; i--)
 		{
 			var star:Vector.<Number> = getWallJointStar(Joints[i]);
+			Stars.unshift(star);
 			if (star.length>2)
 			{
 				for (var j:int=star.length-2; j>-1; j-=2)
@@ -389,7 +390,7 @@ class FloorAreas
 		
 		// ----- redraw all walls ---------------------------------------------
 		for (i=Walls.length-1; i>-1; i--)
-			drawWall(Walls[i]);
+			drawWall(Walls[i],Stars);
 		
 		// ----- redraw enclosed floor areas ----------------------------------
 		var A:Vector.<Vector.<Point>> = findIsolatedAreas();
@@ -422,44 +423,42 @@ class FloorAreas
 	 * draws given wall with any door and windows on it
 	 * @param	wall
 	 */
-	public function drawWall(wall:Wall):void
+	public function drawWall(wall:Wall,Stars:Vector.<Vector.<Number>>):void
 	{
 		// ----- draw wall bounds
 		var wallB:Vector.<Point> = wall.wallBounds(false);
-
+		
 		var ipt:Point = null;
-		var j:int=0;
-		var wb:Vector.<Point>=null;
-		var Adj:Vector.<Wall> = connectedToJoint(wall.joint2);
-		for (j=Adj.length-1; j>-1; j--)
+		var i:int=0;
+		
+		var star1:Vector.<Number> = Stars[Joints.indexOf(wall.joint1)];
+		for (i=star1.length-2; i>-1; i-=2)
 		{
-			wb = null;
-			if (Adj[j].joint2==wall.joint2)		wb = Adj[j].wallBounds(true);	// ensure point ordering is correct
-			else								wb = Adj[j].wallBounds(false);
-
-			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
-			if (ipt!=null)	wallB[1] = ipt;
-			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
-			if (ipt!=null)	wallB[2] = ipt;
-		}
-
-		Adj = connectedToJoint(wall.joint1);
-		for (j=Adj.length-1; j>-1; j--)
-		{
-			wb = null;
-			if (Adj[j].joint2==wall.joint1)		wb = Adj[j].wallBounds(false);	// ensure point ordering is correct
-			else								wb = Adj[j].wallBounds(true);
-
-			ipt = extendedSegsIntersectPt(wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,wb[0].x,wb[0].y,wb[1].x,wb[1].y);
+			ipt = segmentsIntersectPt(	wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,
+										star1[0],star1[1],star1[i],star1[i+1]);
 			if (ipt!=null)	wallB[0] = ipt;
-			ipt = extendedSegsIntersectPt(wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,wb[3].x,wb[3].y,wb[2].x,wb[2].y);
+			ipt = segmentsIntersectPt(	wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,
+										star1[0],star1[1],star1[i],star1[i+1]);
 			if (ipt!=null)	wallB[3] = ipt;
 		}
+		
+		var star2:Vector.<Number> = Stars[Joints.indexOf(wall.joint2)];
+		for (i=star2.length-2; i>-1; i-=2)
+		{
+			ipt = segmentsIntersectPt(	wallB[0].x,wallB[0].y,wallB[1].x,wallB[1].y,
+										star2[0],star2[1],star2[i],star2[i+1]);
+			if (ipt!=null)	wallB[1] = ipt;
+			ipt = segmentsIntersectPt(	wallB[3].x,wallB[3].y,wallB[2].x,wallB[2].y,
+										star2[0],star2[1],star2[i],star2[i+1]);
+			if (ipt!=null)	wallB[2] = ipt;
+		}
+		
 		// ----- draws the calculated wallB
 		wall.planView.graphics.clear();
 		while (wall.planView.numChildren>0)	wall.planView.removeChildAt(0);
-		if (selected==wall)		wall.planView.graphics.beginFill(0xFF6600,1);
-		else					wall.planView.graphics.beginFill(0x000000,1);
+		if (selected==wall)		wall.planView.graphics.beginFill(0xFF6600,0.5);
+		else					wall.planView.graphics.beginFill(0x000000,0.5);
+		wall.planView.graphics.lineStyle(0,0);
 		wall.planView.graphics.moveTo(wallB[0].x,wallB[0].y);
 		wall.planView.graphics.lineTo(wallB[1].x,wallB[1].y);
 		wall.planView.graphics.lineTo(wallB[2].x,wallB[2].y);
@@ -484,7 +483,8 @@ class FloorAreas
 	private function getWallJointStar(jt:Point):Vector.<Number>
 	{
 		var V:Vector.<Point> = new Vector.<Point>();
-		var jt0:Point = new Point(jt.x,jt.y-1000);
+		var _p0:Point = new Point(0,-1000);
+		var p0:Point = new Point(0,0);
 		for (var i:int=Walls.length-1; i>-1; i--)
 		{
 			var insJt:Point = null;
@@ -493,16 +493,15 @@ class FloorAreas
 			if (insJt!=null)
 			{
 				insJt = insJt.subtract(jt);
-				insJt.normalize(100);
-				insJt.x+=jt.x;
-				insJt.y+=jt.y;
+				insJt.normalize(1);
+				
 				// ----- binary sort insert 
 				var p:int=0;
 				var q:int=V.length-1;
 				while (p<=q)
 				{
 					var m:int = (p+q)/2;
-					if (turnAngle(jt0,jt,V[m])<turnAngle(jt0,jt,insJt))
+					if (turnAngle(_p0,p0,V[m])<turnAngle(_p0,p0,insJt))
 						p=m+1;
 					else
 						q=m-1;
@@ -510,6 +509,15 @@ class FloorAreas
 				V.splice(p,0,insJt);
 			}
 		}
+		/*
+		var B:Vector.<Number> = new Vector.<Number>();
+		for (i=V.length-1; i>-1; i--)
+		{
+			B.unshift(V[i].x*100+jt.x,V[i].y*100+jt.y);
+		}
+		B.unshift(jt.x,jt.y);
+		return B;
+		*/
 		
 		// ----- find bisectors for each wall joint sector
 		var B:Vector.<Number> = new Vector.<Number>();
@@ -517,20 +525,27 @@ class FloorAreas
 		{
 			var a:Point = V[i];
 			var b:Point = V[(i+1)%V.length];
-			B.unshift(a.x+b.x-jt.x,a.y+b.y-jt.y);
+			var dp:Number = a.x*b.x+a.y*b.y;
+			if (dp<-1) dp = -1;
+			if (dp>1) dp = 1;
+			var ang:Number = Math.acos(dp);
+			if (a.x*b.y-a.y*b.x>0)	ang = Math.PI*2-ang;
+			ang/=2;
+			// ----- do rotation on a by ang/2
+			var sinA:Number = Math.sin(ang);
+			var cosA:Number = Math.cos(ang);
+			var cx:Number = a.x*cosA+a.y*sinA;
+			var cy:Number = a.y*cosA-a.x*sinA;
+			B.unshift(-cx*100+jt.x,-cy*100+jt.y);
 		}
 		B.unshift(jt.x,jt.y);
 		return B;
 		
-		//var R:Vector.<Number> = Vector.<Number>([jt.x,jt.y]);
-		//for (i=V.length-1; i>-1; i--)
-		//	R.push(V[i].x,V[i].y);
-		//return R;
 	}//endfunction
 	
-	//=============================================================================================
-	// convenience function to extend wall ends so they intersect nicely at acute angles
-	//=============================================================================================
+	/**
+	* convenience function to extend wall ends so they intersect nicely at acute angles
+	*/
 	private function extendedSegsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number,ext:Number=100):Point
 	{
 		var pvx:Number = bx-ax;
@@ -544,9 +559,9 @@ class FloorAreas
 		return segmentsIntersectPt(ax-pvx,ay-pvy,bx+pvx,by+pvy,cx-qvx,cy-qvy,dx+qvx,dy+qvy);
 	}//endfunction
 
-	//=============================================================================================
-	// finds all walls connected to given wall joint
-	//=============================================================================================
+	/**
+	* finds all walls connected to given wall joint
+	*/
 	private function connectedToJoint(pt:Point):Vector.<Wall>
 	{
 		var W:Vector.<Wall> = new Vector.<Wall>();
@@ -556,10 +571,10 @@ class FloorAreas
 		return W;
 	}//endfunction
 
-	//=============================================================================================
-	// find cyclics, by walking in tightest possible circles
-	//=============================================================================================
-	public function findIsolatedAreas():*
+	/**
+	* find cyclics, by walking in tightest possible circles
+	*/
+	public function findIsolatedAreas():Vector.<Vector.<Point>>
 	{
 		var timr:uint = getTimer();
 		var R:Vector.<Vector.<Point>> = new Vector.<Vector.<Point>>();	// results
@@ -760,9 +775,9 @@ class FloorAreas
 		}
 	}//endfunction
 
-	//=======================================================================================
-	// calculates area of poly by triangulating and summing the triangle areas
-	//=======================================================================================
+	/**
+	* calculates area of poly by triangulating and summing the triangle areas
+	*/
 	public static function calculateArea(Poly:Vector.<Point>):Number
 	{
 		var area:Number = 0;
@@ -787,9 +802,9 @@ class FloorAreas
 		return area;
 	}//endfunction
 
-	//=======================================================================================
-	// triangulate by cutting ears off polygon O(n*n)  slow... just so i can find floorarea
-	//=======================================================================================
+	/**
+	* triangulate by cutting ears off polygon O(n*n)  slow... just so i can find floorarea
+	*/
 	public static function triangulate(Poly:Vector.<Point>):Vector.<Point>
 	{
 		var R:Vector.<Point> = new Vector.<Point>();
@@ -812,9 +827,9 @@ class FloorAreas
 		return R;
 	}//endfunction
 
-	//=======================================================================================
-	// test if poly is entirely within bigPoly
-	//=======================================================================================
+	/**
+	* test if poly is entirely within bigPoly
+	*/
 	public static function polyIsIn(poly:Vector.<Point>,bigPoly:Vector.<Point>):Boolean
 	{
 		// ----- test points within or on poly
@@ -835,9 +850,9 @@ class FloorAreas
 		return true;
 	}//endfunction
 
-	//=======================================================================================
-	// test if edge connecting 2 points is entirely in poly
-	//=======================================================================================
+	/**
+	* test if edge connecting 2 points is entirely in poly
+	*/
 	public static function edgeInPoly(ax:Number,ay:Number,bx:Number,by:Number,Poly:Vector.<Point>):Boolean
 	{
 		var n:int = Poly.length;
@@ -850,9 +865,9 @@ class FloorAreas
 		return pointInPoly(new Point((ax+bx)/2,(ay+by)/2),Poly);
 	}//endfunction
 
-	//=======================================================================================
-	// tests if pt is within polygon
-	//=======================================================================================
+	/**
+	* tests if pt is within polygon
+	*/
 	public static function pointInPoly(pt:Point,Poly:Vector.<Point>):Boolean
 	{
 		// ----- find external point (top left)
@@ -900,10 +915,10 @@ class FloorAreas
 		return ang;
 	}//endfunction
 
-	//=======================================================================================
-	// find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
-	// returns null for parrallel segs and point segments, does not detect end points
-	//=======================================================================================
+	/**
+	* find line segments intersect point of lines A=(ax,ay,bx,by) C=(cx,cy,dx,dy)
+	* returns null for parrallel segs and point segments, does not detect end points
+	*/
 	public static function segmentsIntersectPt(ax:Number,ay:Number,bx:Number,by:Number,cx:Number,cy:Number,dx:Number,dy:Number) : Point
 	{
 		if ((ax==cx && ay==cy) || (ax==dx && ay==dy)) return null;	// false if any endpoints are shared
