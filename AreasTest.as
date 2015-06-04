@@ -40,7 +40,7 @@ package
 		{
 			numWalls = flrAreas.Walls.length;
 			var njt:Point = flrAreas.nearestJoint(new Point(mouseX,mouseY),10);
-			if (njt!=null && flrAreas.selected==njt)	
+			if (njt!=null)	
 				startShiftJoint(njt);
 			else			
 				startDrawWall();
@@ -99,7 +99,7 @@ package
 		/**
 		 * start draw new wall
 		 */
-		private function startDrawWall(thickness:int=10):void
+		private function startDrawWall(thickness:int=20):void
 		{
 			var mouseDownPt:Point = new Point(mouseX,mouseY);
 			var jta:Point = flrAreas.nearestJoint(new Point(mouseX,mouseY),10);
@@ -461,8 +461,10 @@ class FloorAreas
 		wall.planView.graphics.lineStyle(0,0);
 		wall.planView.graphics.moveTo(wallB[0].x,wallB[0].y);
 		wall.planView.graphics.lineTo(wallB[1].x,wallB[1].y);
+		wall.planView.graphics.lineTo(wall.joint2.x,wall.joint2.y);
 		wall.planView.graphics.lineTo(wallB[2].x,wallB[2].y);
 		wall.planView.graphics.lineTo(wallB[3].x,wallB[3].y);
+		wall.planView.graphics.lineTo(wall.joint1.x,wall.joint1.y);
 		wall.planView.graphics.lineTo(wallB[0].x,wallB[0].y);
 		wall.planView.graphics.endFill();
 
@@ -478,7 +480,7 @@ class FloorAreas
 	/**
 	 * returns the dividing bisectors of wall joint
 	 * @param	jt
-	 * @return	[x0,y0,x1,y1,x2,y2,...xn,yn] where each (x0,y0 , xi,yi) is bisecting line
+	 * @return	[x0,y0,x1,y1,x2,y2,...xn,yn] where each (x0,y0 , xi,yi) forms the bisecting line
 	 */
 	private function getWallJointStar(jt:Point):Vector.<Number>
 	{
