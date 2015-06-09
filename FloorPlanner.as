@@ -1088,6 +1088,7 @@ package
 			var selected:* = null;
 			var ctrls:Sprite = null;
 
+			// ----------------------------------------------------------------
 			function showSideItemsMenu():void
 			{
 				FloorPlanner.prn("showSideItemsMenu()");
@@ -1104,6 +1105,8 @@ package
 						{
 							itm.switchFace(SF[i],function():void
 							{
+								if (ctrls!=null && ctrls.parent!=null)
+									ctrls.parent.removeChild(ctrls);
 								ctrls = floorPlan.furnitureTransformControls(itm.icon,5,true);
 								wall.sideView.addChild(ctrls);
 							});
@@ -1127,7 +1130,7 @@ package
 				}));
 				*/
 			}//endfunction
-
+			// ----------------------------------------------------------------
 			function showWallAreaProperties(wall:Wall):void
 			{
 				replaceMenu(new DialogMenu(Lang.WallProp.area.@txt+":"+int(wall.area/100)/100+"m sq",
@@ -1168,7 +1171,7 @@ package
 												showSideItemsMenu();
 									}));
 			}//endfunction
-
+			// ----------------------------------------------------------------
 			function showItemProperties(itm:Item):void
 			{
 				replaceMenu(new DialogMenu(itm.name,
@@ -1177,7 +1180,16 @@ package
 							{
 								if (idx==0)
 								{
-									
+									itm.switchFace((itm.faceIdx+1)%itm.Faces.length,function():void 
+									{
+										ctrls = floorPlan.furnitureTransformControls(itm.icon,5,true);
+										wall.sideView.addChild(ctrls);
+									});
+									trace("itm.switchFace("+itm.faceIdx);
+									wall.removeItem(itm);
+									wall.addItem(itm);
+									if (ctrls!=null && ctrls.parent!=null) 
+										ctrls.parent.removeChild(ctrls);
 								}
 								else if (idx==1)
 								{
@@ -1198,7 +1210,7 @@ package
 									showSideItemsMenu();
 							}));
 			}//endfunction
-			
+			// ----------------------------------------------------------------
 			function showDoorMenu(door:Door):void
 			{
 				var wallW:Number = wall.joint1.subtract(wall.joint2).length;
@@ -1236,8 +1248,52 @@ package
 											showSideItemsMenu()
 									}));		// done
 			}//endfunction
+			// ----------------------------------------------------------------
+			function showLabelProperties(tf:TextField):void
+			{
+				replaceMenu(new DialogMenu(Lang.LabelProp.title.@txt,
+							Vector.<String>([Lang.LabelProp.size.@txt+" = ["+tf.defaultTextFormat.size+"]",
+											Lang.LabelProp.color.@txt+" = "+tf.defaultTextFormat.color.toString(16),
+											Lang.LabelProp.remove.@txt,
+											Lang.LabelProp.done.@txt]),
+							function(idx:int,val:String=""):void
+							{
+								if (idx==0)
+								{
+									var tff:TextFormat = tf.defaultTextFormat;
+									tff.size = Number(val);
+									tf.defaultTextFormat = tff;
+									tf.setTextFormat(tff);
+								}
+								else if (idx==1)
+								{
+									showColorMenu(function(color:uint):void
+									{
+										var tff:TextFormat = tf.defaultTextFormat;
+										tff.color = color;
+										tf.defaultTextFormat = tff;
+										tf.setTextFormat(tff);
+										showLabelProperties(tf);
+									});
+								}
+								else if (idx==2)
+								{
+									tf.parent.removeChild(tf);
+									showSideItemsMenu();
+								}
+								else if (idx==3)
+									showSideItemsMenu();
+							}));
+			}//endfunction
+			// ----------------------------------------------------------------
+			function showColorMenu(callBack:Function):void
+			{
+				replaceMenu(new ColorMenu(callBack));
+			}//endfunction
+			
 			showSideItemsMenu();
-
+			
+			
 			floorPlan.selected = null;
 			floorPlan.overlay.visible = false;
 			//wall.updateSideView();
@@ -1245,55 +1301,42 @@ package
 			wall.sideView.y = -grid.y + stage.stageHeight / 2;
 			grid.addChild(wall.sideView);
 
-			// ----- shows new topbar 
-			topBar.parent.removeChild(topBar);
-			topBar = new TopBarMenu(<TopBar>
-				<btn ico="MenuIcoFurniture" txt="家具" />
-				<btn ico="MenuIcoDrawDoor" txt="门窗" />
-				<btn ico="MenuIcoDrawLine" txt="画线" />
-				<btn ico="MenuIcoText" txt="文字" />
-				<btn ico="MenuIcoUndo" txt="后退" />
-				<btn ico="MenuIcoRedo" txt="重做" />
+			topBar.visible = false;	// hide the top bar
+			
+			// ----- create the side view icon top bar ------------------------
+			var localTopBar:Sprite = new TopBarMenu(<TopBar>
+			<btn ico="MenuIcoFurniture" txt="家具" />
+			<btn ico="MenuIcoText" txt="文字" />
 			</TopBar>,
 			function (i:int):void
 			{
-				prn("Walls mode TopBarMenu "+i);
-				if (i==0)				// furniture
+				if (i==0)
+					showSideItemsMenu();
+				else if (i==1)	// text
 				{
-
-				}
-				else if (i==1)	// doors
-				{
-
-				}
-				else if (i==2)	// lines
-				{
-
-				}
-				else if (i==3)	// text
-				{
-
-				}
-				else if (i==4)	// undo
-				{
-					if (undoStk.length>0)
+					var csr:Sprite = new Sprite();
+					csr.graphics.lineStyle(0);
+					csr.graphics.beginFill(0xFFFFFF,1);
+					csr.graphics.drawCircle(0,0,5);
+					csr.graphics.endFill();
+					var ico:Sprite = new MenuIcoText();
+					ico.x = 10;
+					ico.y = 10;
+					csr.addChild(ico);
+					csr.x = floorPlan.overlay.mouseX;
+					csr.y = floorPlan.overlay.mouseY;
+					wall.sideView.addChild(csr);
+					csr.startDrag(true);
+					function setLab(ev:Event):void
 					{
-						redoStk.push(floorPlan.exportData());
-						//prn("undo:" +undoStk[undoStk.length-1]);
-						floorPlan.importData(undoStk.pop());
+						csr.stopDrag();
+						wall.sideView.removeChild(csr);
+						wall.createSideViewText(csr.x,csr.y);
 					}
-				}
-				else if (i==5)	// redo
-				{
-					if (redoStk.length>0)
-					{
-						undoStk.push(floorPlan.exportData());
-						//prn("undo:" +redoStk[redoStk.length-1]);
-						floorPlan.importData(redoStk.pop());
-					}
+					csr.addEventListener(MouseEvent.MOUSE_UP,setLab);
 				}
 			});
-			addChild(topBar);
+			addChild(localTopBar);
 
 			// ----------------------------------------------------------------
 			var mouseDownPt:Vector3D = null;
@@ -1332,14 +1375,17 @@ package
 
 					if (selected!=null)
 					{
-						ctrls = floorPlan.furnitureTransformControls(selected.icon,5,wall.Items.indexOf(selected)!=-1);
+						if (selected is Door)
+							ctrls = floorPlan.furnitureTransformControls(selected.sideIcon,5,true);
+						else 
+							ctrls = floorPlan.furnitureTransformControls(selected.icon,5,true);
 						wall.sideView.addChild(ctrls);
 					}
 				}
 
 				if (selected != null)
 				{
-					if (selected is Item)	{showItemProperties(selected);};
+					if (selected is Item)	showItemProperties(selected);
 					if (selected is Door)	showDoorMenu(selected);
 				}
 				else					showSideItemsMenu();
@@ -1359,11 +1405,21 @@ package
 						ctrls = null;
 					}
 				}
+				else 
+				{
+					for (var i:int=0; i < wall.Labels.length; i++)
+						if (wall.Labels[i].hitTestPoint(stage.mouseX, stage.mouseY))
+							selected = wall.Labels[i];
+				}
+				
+				if (selected is TextField)	
+					showLabelProperties(selected);
 				else if (wall.sideView.hitTestPoint(grid.stage.mouseX, grid.stage.mouseY))
 					showWallAreaProperties(wall);
 				else if (getTimer()-mouseDownPt.w<200)
 				{
 					grid.removeChild(wall.sideView);
+					localTopBar.parent.removeChild(localTopBar);
 					topBar.visible = true;
 					floorPlan.overlay.visible = true;
 					showFurnitureMenu();
@@ -2777,6 +2833,130 @@ class WireGrid extends Sprite
 		}
 	}//endfunction
 
+}//endclass
+
+class LabelsAndLines
+{
+	public var overlay:Sprite = null;
+	
+	public var Lines:Vector.<Line>;
+	public var LineEndings:Vector.<Point>;
+	public var Labels:Vector.<TextField>;		// list of text labels added to drawing
+	
+	//=============================================================================================
+	//
+	//=============================================================================================
+	function LabelsAndLines():void
+	{
+		
+	}//endfunction
+	
+	//=============================================================================================
+	//
+	//=============================================================================================
+	public function createLabel(x:int,y:int):TextField
+	{
+		var base:Sprite = new Sprite();
+		overlay.addChild(base);
+		base.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+
+		var tf:TextField = new TextField();
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.size = 20;
+		tf.defaultTextFormat = tff;
+		tf.type = "input";
+		tf.background = true;
+		overlay.stage.focus = tf;
+		tf.x = x;
+		tf.y = y;
+		base.addChild(tf);
+		overlay.addChild(base);
+
+		var downPt:Point = null;
+		function mouseDownHandler(ev:Event=null):void
+		{
+			downPt = new Point(overlay.mouseX,overlay.mouseY);
+		}
+		function changeHandler(ev:Event=null):void
+		{
+			base.graphics.clear();
+			Utils.drawStripedRect(base,tf.x-10,tf.y-10,tf.width+20,tf.height+20,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		function finalize(ev:Event=null):void
+		{
+			if (tf.hitTestPoint(overlay.stage.mouseX,overlay.stage.mouseY))
+				return;
+			if ((overlay.mouseX-downPt.x)*(overlay.mouseX-downPt.x)+(overlay.mouseY-downPt.y)*(overlay.mouseY-downPt.y)>1)
+				return;
+			tf.background = false;
+			tf.htmlText = tf.text;
+			tf.type = "dynamic";
+			tf.selectable = false;
+			overlay.removeChild(base);
+			base.removeChild(tf);
+			Labels.push(tf);
+			overlay.addChild(tf);
+			tf.removeEventListener(Event.ENTER_FRAME,changeHandler);
+			overlay.stage.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			overlay.stage.removeEventListener(MouseEvent.CLICK,finalize);
+		}
+		tf.addEventListener(Event.ENTER_FRAME,changeHandler);
+		overlay.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		overlay.stage.addEventListener(MouseEvent.CLICK,finalize);
+
+		return tf;
+	}//endfunction
+
+	//=============================================================================================
+	//
+	//=============================================================================================
+	public function removeLabel(tf:TextField):void
+	{
+		if (Labels.indexOf(tf)!=-1)	Labels.splice(Labels.indexOf(tf),1);
+		if (tf.parent!=null)		tf.parent.removeChild(tf);
+	}//endfunction
+
+	//=============================================================================================
+	// creates and add wall to floorplan
+	//=============================================================================================
+	public function createLine(pt1:Point, pt2:Point):Line
+	{
+		for (var i:int = LineEndings.length - 1; i > -1; i--)
+		{
+			if (LineEndings[i].subtract(pt1).length < 3)	pt1 = LineEndings[i];
+		}
+
+		var line:Line = new Line(pt1, pt2);
+		Lines.push(line);
+		if (LineEndings.indexOf(line.joint1)==-1) LineEndings.push(line.joint1);
+		if (LineEndings.indexOf(line.joint2)==-1) LineEndings.push(line.joint2);
+		line.refresh();
+		overlay.addChild(line.planView);
+		return line;
+	}//endfunction
+
+	//=============================================================================================
+	// cleanly remove wall and its unused joints
+	//=============================================================================================
+	public function removeLine(line:Line):void
+	{
+		if (Lines.indexOf(line) != -1)	Lines.splice(Lines.indexOf(line), 1);
+		if (line.planView.parent != null)	line.planView.parent.removeChild(line.planView);
+
+		var canRemJt1:Boolean = true;
+		var canRemJt2:Boolean = true;
+		for (var i:int=Lines.length-1; i>-1; i--)
+		{
+			var l:Line = Lines[i];
+			if (l.joint1==line.joint1 || l.joint2==line.joint1)	canRemJt1 = false;
+			if (l.joint1==line.joint2 || l.joint2==line.joint2)	canRemJt2 = false;
+		}
+		if (canRemJt1 && LineEndings.indexOf(line.joint1)!=-1) LineEndings.splice(LineEndings.indexOf(line.joint1),1);
+		if (canRemJt2 && LineEndings.indexOf(line.joint2)!=-1) LineEndings.splice(LineEndings.indexOf(line.joint2),1);
+	}//endfunction
+	
 }//endclass
 
 class FloorPlan
@@ -4353,10 +4533,12 @@ class Wall
 	public var height:Number;
 	public var Doors:Vector.<Door>;
 	public var Items:Vector.<Item>;
+	public var Labels:Vector.<TextField>;
 	public var planView:Sprite;					// top down view of wall
 	public var sideView:Sprite;					// side view of wall
 	private var svDoors:Sprite;					// dedicated doors layer
 	private var svItems:Sprite;					// dedicated items layer
+	private var svTexts:Sprite;
 	
 	public var wallPaper:BitmapData = null;		// wall style
 	public var wallPaperId:String = null;		// wallpaper id
@@ -4388,13 +4570,16 @@ class Wall
 		height = 200;
 		Doors = new Vector.<Door>();		// objects stuck on the wall
 		Items = new Vector.<Item>();		// objects not on the wall
+		Labels = new Vector.<TextField>();
 		planView = new Sprite();
 		sideView = new Sprite();
 		svDoors = new Sprite();
 		svItems = new Sprite();
 		svItems.filters = [new GlowFilter(0x000000,1,4,4)];
+		svTexts = new Sprite();
 		sideView.addChild(svDoors);
 		sideView.addChild(svItems);
+		sideView.addChild(svTexts);
 		setWallpaper(new BitmapData(1, 1, false, 0xFFFFFF));
 	}//endconstr
 
@@ -4494,6 +4679,64 @@ class Wall
 		}
 	}//endfunction
 
+	//=============================================================================================
+	// adds textfield on top of sideview
+	//=============================================================================================
+	public function createSideViewText(x:int,y:int):TextField
+	{
+		var base:Sprite = new Sprite();
+		svTexts.addChild(base);
+		base.filters = [new DropShadowFilter(4,90,0x000000,1,4,4,0.5)];
+
+		var tf:TextField = new TextField();
+		tf.autoSize = "left";
+		tf.wordWrap = false;
+		var tff:TextFormat = tf.defaultTextFormat;
+		tff.size = 20;
+		tf.defaultTextFormat = tff;
+		tf.type = "input";
+		tf.background = true;
+		svTexts.stage.focus = tf;
+		tf.x = x;
+		tf.y = y;
+		base.addChild(tf);
+		svTexts.addChild(base);
+
+		var downPt:Point = null;
+		function mouseDownHandler(ev:Event=null):void
+		{
+			downPt = new Point(svTexts.mouseX,svTexts.mouseY);
+		}
+		function changeHandler(ev:Event=null):void
+		{
+			base.graphics.clear();
+			Utils.drawStripedRect(base,tf.x-10,tf.y-10,tf.width+20,tf.height+20,0xFFFFFF,0xF6F6F6,20,10);
+		}
+		function finalize(ev:Event=null):void
+		{
+			if (tf.hitTestPoint(svTexts.stage.mouseX,svTexts.stage.mouseY))
+				return;
+			if ((svTexts.mouseX-downPt.x)*(svTexts.mouseX-downPt.x)+(svTexts.mouseY-downPt.y)*(svTexts.mouseY-downPt.y)>1)
+				return;
+			tf.background = false;
+			tf.htmlText = tf.text;
+			tf.type = "dynamic";
+			tf.selectable = false;
+			svTexts.removeChild(base);
+			base.removeChild(tf);
+			svTexts.addChild(tf);
+			Labels.push(tf);
+			tf.removeEventListener(Event.ENTER_FRAME,changeHandler);
+			svTexts.stage.removeEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+			svTexts.stage.removeEventListener(MouseEvent.CLICK,finalize);
+		}
+		tf.addEventListener(Event.ENTER_FRAME,changeHandler);
+		svTexts.stage.addEventListener(MouseEvent.MOUSE_DOWN,mouseDownHandler);
+		svTexts.stage.addEventListener(MouseEvent.CLICK,finalize);
+
+		return tf;
+	}//endfunction
+
 	//=======================================================================================
 	// chks if door can be placed on wall
 	//=======================================================================================
@@ -4526,7 +4769,6 @@ class Wall
 	//=======================================================================================
 	// returns perpendicular dist ffom posn to wall, return MAX_VAL if not within wall bounds
 	// @param	posn
-	// @return
 	//=======================================================================================
 	public function perpenticularDist(posn:Point):Number
 	{
@@ -4687,7 +4929,6 @@ class Item
 		domUrl = domURL;
 
 		if (prod.faceIdx!=null)	switchFace(parseInt(prod.faceIdx));
-		else 					switchFace(0);
 	}//endfunction
 
 	//----------------------------------------------------------------------------
@@ -4696,10 +4937,10 @@ class Item
 	public function switchFace(idx:uint,callBack:Function=null):void
 	{
 		//FloorPlanner.prn("switchFace("+idx+") Faces="+Faces);
-		if (idx<0) idx=0;
-		if (idx>Faces.length-1) idx = Faces.length-1;
-		if (Faces[idx]==null) return;
+		while (idx<0)	idx+=Faces.length;
+		idx = idx%Faces.length;
 		faceIdx = idx;
+		if (Faces[faceIdx]==null) return;
 
 		var picUrl:String = domUrl+Faces[idx];
 		if (picUrl.indexOf("http")==-1)	picUrl = "http://"+picUrl;
